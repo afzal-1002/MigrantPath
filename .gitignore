@@ -1,0 +1,41 @@
+# Secrets / environment
+.env
+.env.*.local
+
+# Backend (Maven / Java) - the wrapper scripts (mvnw, mvnw.cmd,
+# .mvn/wrapper/maven-wrapper.properties) ARE committed and required - see
+# IMPLEMENTATION_PLAN.md 1.1. This wrapper uses distributionType=only-script, so there
+# is no maven-wrapper.jar to worry about either way.
+backend/target/
+*.class
+
+# Frontend (Angular / Node)
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+npm-debug.log*
+
+# Playwright
+frontend/playwright-report/
+frontend/test-results/
+frontend/blob-report/
+
+# Logs
+*.log
+logs/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.classpath
+.project
+.settings/
+
+# OS metadata
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Local database volumes if ever bind-mounted instead of a named volume
+/pgdata/

@@ -1,0 +1,25 @@
+# Local development only. Fallback values below are for a developer's own machine
+# against `docker compose up -d postgres` and are NOT used in staging/production,
+# which require every value to be supplied via environment variable (fail-fast if
+# missing - see IMPLEMENTATION_PLAN.md 1.7 and docs/development/LOCAL_SETUP.md).
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:foreigner_warsaw}
+    username: ${DB_USERNAME:foreigner_warsaw}
+    password: ${DB_PASSWORD:foreigner_warsaw_local_dev_only}
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
+
+app:
+  cors:
+    allowed-origins: ${FRONTEND_URL:http://localhost:4200}
+
+management:
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    com.foreignerwarsaw: DEBUG

@@ -1,0 +1,54 @@
+# Base configuration shared by every profile. Profile-specific files
+# (application-{local,test,staging,production}.yml) only override what genuinely
+# differs per environment - see docs/database/DATABASE.md and ARCHITECTURE.md §11.
+spring:
+  application:
+    name: foreigner-warsaw-backend
+  jpa:
+    # Flyway owns the schema; Hibernate only ever validates it against the entities.
+    # Never create/update here - see ARCHITECTURE.md §4 / IMPLEMENTATION_PLAN.md §8.
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        # Timezone policy (docs/database/DATABASE.md, brief §6): all timestamps are
+        # stored and processed in UTC; conversion to a user/UI timezone happens at
+        # the presentation layer only, once one exists.
+        jdbc:
+          time_zone: UTC
+  jackson:
+    time-zone: UTC
+  flyway:
+    enabled: true
+  datasource:
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000
+
+management:
+  endpoints:
+    web:
+      exposure:
+        # Only health and info are ever exposed - see ARCHITECTURE.md §11 /
+        # IMPLEMENTATION_PLAN.md 1.6. No metrics/env/beans endpoints publicly.
+        include: health,info
+  endpoint:
+    health:
+      # Overridden to "always" in local only - never leak internal component
+      # details (datasource URLs, disk paths) publicly.
+      show-details: never
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+
+app:
+  cors:
+    # Empty by default - CORS fails safe (denies cross-origin) unless a profile
+    # explicitly configures allowed origins. Never "*" (see ARCHITECTURE.md §11 /
+    # brief §15).
+    allowed-origins: []

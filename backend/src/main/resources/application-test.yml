@@ -1,0 +1,11 @@
+# Used by the test source set. Datasource connection details are supplied at
+# runtime by Testcontainers' @ServiceConnection (see TestcontainersConfiguration),
+# never by a developer's local PostgreSQL instance - see IMPLEMENTATION_PLAN.md §20.
+app:
+  cors:
+    allowed-origins: http://localhost:4200
+
+logging:
+  level:
+    com.foreignerwarsaw: DEBUG
+    org.testcontainers: INFO

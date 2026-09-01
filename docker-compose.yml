@@ -1,0 +1,42 @@
+name: foreigner-warsaw
+
+# Local development only. Phase 1 scope (IMPLEMENTATION_PLAN.md §1): a developer runs
+# `docker compose up -d postgres` and then the backend/frontend natively (mvnw / npm) -
+# see docs/development/LOCAL_SETUP.md. Mailpit is included now because Phase 2's
+# email-verification/password-reset flows need it, and it's free to have idle today.
+# No backend/frontend service is defined yet - Phase 1 doesn't require a reliable
+# full-container path, and the modules that make one worth adding (Phase 13's
+# production Dockerfiles) come later.
+
+services:
+  postgres:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-foreigner_warsaw}
+      POSTGRES_USER: ${POSTGRES_USER:-foreigner_warsaw}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-foreigner_warsaw_local_dev_only}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      # NOTE: postgres:18+ images changed their expected mount point from
+      # /var/lib/postgresql/data to /var/lib/postgresql (pg_ctlcluster-style
+      # versioned subdirectories underneath) - mounting at the old /data path makes
+      # the 18+ entrypoint refuse to start. See
+      # https://github.com/docker-library/postgres/pull/1259.
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-foreigner_warsaw} -d ${POSTGRES_DB:-foreigner_warsaw}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - "${MAIL_PORT:-1025}:1025" # SMTP - backend sends here in the local profile
+      - "8025:8025" # web UI to view caught emails
+
+volumes:
+  postgres_data:

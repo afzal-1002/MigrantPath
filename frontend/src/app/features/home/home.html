@@ -1,0 +1,16 @@
+<h1>Your guide to living legally in Warsaw</h1>
+<p>Answer a few questions and receive a personalized roadmap based on your situation.</p>
+
+<mat-card class="status-card">
+  @switch (connectionState()) {
+    @case ('checking') {
+      <p>Checking API connection&hellip;</p>
+    }
+    @case ('connected') {
+      <p>API connected (backend {{ backendVersion() }})</p>
+    }
+    @case ('unreachable') {
+      <p>API not reachable. Is the backend running?</p>
+    }
+  }
+</mat-card>
