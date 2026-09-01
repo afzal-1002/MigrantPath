@@ -1,0 +1,28 @@
+<mat-card class="auth-card">
+  @switch (state()) {
+    @case ('verifying') {
+      <p>Verifying your email…</p>
+    }
+    @case ('success') {
+      <h1>Email verified</h1>
+      <p>You can now sign in.</p>
+      <a routerLink="/login">Sign in</a>
+    }
+    @case ('error') {
+      <h1>Verification failed</h1>
+      <p>{{ errorMessage() }}</p>
+
+      @if (resendSent()) {
+        <p>If an account exists for this email and is not yet verified, a new verification link has been sent.</p>
+      } @else {
+        <form [formGroup]="resendForm" (ngSubmit)="resend()">
+          <mat-form-field appearance="outline">
+            <mat-label>Email</mat-label>
+            <input matInput type="email" formControlName="email" />
+          </mat-form-field>
+          <button mat-flat-button color="primary" type="submit">Resend verification email</button>
+        </form>
+      }
+    }
+  }
+</mat-card>

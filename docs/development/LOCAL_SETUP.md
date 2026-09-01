@@ -121,9 +121,30 @@ npm install
 npm start
 ```
 
-Open http://localhost:4200 - the home page checks connectivity to the backend
-(`http://localhost:8080` in the `development` environment config) and shows either
-"API connected" or "API not reachable."
+Open http://localhost:4200 - the home page checks connectivity to the backend and shows
+either "API connected" or "API not reachable."
+
+`npm start` (`ng serve`) proxies `/api` and `/actuator` to `http://localhost:8080`
+itself, per `proxy.conf.json` - the browser only ever talks to `localhost:4200`,
+same-origin, mirroring production's reverse-proxy topology. **This isn't optional
+convenience**: Angular's built-in CSRF handling deliberately refuses to attach the
+`X-XSRF-TOKEN` header on a genuinely cross-origin request (see
+[ADR-005](../architecture/ADR/ADR-005-authentication-strategy.md)), so pointing the
+frontend straight at `http://localhost:8080` would make every register/login/etc.
+request fail CSRF validation in a real browser. If you ever need to bypass the proxy
+for debugging, you'll hit this - go back through the proxy rather than working around
+it.
+
+### Trying the auth flow locally
+
+1. Postgres + Mailpit + backend (`local` profile) + frontend all running (see above).
+2. Open http://localhost:4200/register, create an account.
+3. Open Mailpit's UI at http://localhost:8025 - the verification email is there
+   (subject "Verify your Foreigner Warsaw account"). Click its link (or copy the
+   `token=` value into `/verify-email?token=...`).
+4. Sign in at http://localhost:4200/login. You should land on `/dashboard`.
+5. Forgot-password works the same way - `/forgot-password` sends a Mailpit email with a
+   `/reset-password?token=...` link.
 
 ### Frontend tests, lint, build
 
@@ -142,18 +163,21 @@ npx playwright install chromium   # first time only
 npm run e2e
 ```
 
-Playwright starts the Angular dev server itself. For the connectivity test to actually
-exercise the backend (rather than skip), the backend must already be running
-separately (see above) - CI starts both explicitly (`.github/workflows/ci.yml`).
+Playwright starts the Angular dev server itself. The Phase 1 connectivity check skips
+gracefully if the backend isn't running; the Phase 2 auth suite (`e2e/auth.spec.ts`)
+does not - it needs the real backend, Postgres, and Mailpit (all from the docker
+compose stack) running first, exactly as documented above. CI starts all of it
+explicitly (`.github/workflows/ci.yml`).
 
 ## Database migrations
 
 **Every schema change goes through a Flyway migration file** in
 `backend/src/main/resources/db/migration/` - never hand-edit a shared database, and
 never use `spring.jpa.hibernate.ddl-auto=create`/`update` outside a very specifically
-justified test (see docs/architecture/ADR/ADR-002-postgresql.md). Phase 1 ships with no
-domain migrations yet - the schema is intentionally empty until Phase 2 introduces the
-first real tables.
+justified test (see docs/architecture/ADR/ADR-002-postgresql.md). Phase 2 introduced the
+first real tables: `users`, `roles`/`user_roles`, `email_verification_tokens`,
+`password_reset_tokens`, `user_consents`, and Spring Session JDBC's `SPRING_SESSION`/
+`SPRING_SESSION_ATTRIBUTES` (V1–V6 in `backend/src/main/resources/db/migration/`).
 
 ## Project structure
 

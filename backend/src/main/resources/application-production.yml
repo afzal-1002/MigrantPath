@@ -15,6 +15,14 @@ spring:
 app:
   cors:
     allowed-origins: ${FRONTEND_URL}
+  auth:
+    frontend-base-url: ${FRONTEND_URL}
+
+server:
+  servlet:
+    session:
+      cookie:
+        secure: true # HTTPS-only environment (ARCHITECTURE.md §13)
 
 springdoc:
   api-docs:

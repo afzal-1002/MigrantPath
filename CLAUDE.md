@@ -16,10 +16,11 @@ expansion). Read these before making changes, in this order:
 6. [docs/product/IMPLEMENTATION_PLAN.md](docs/product/IMPLEMENTATION_PLAN.md) — the full phase-by-phase task breakdown; find the next task here before starting new work
 7. [docs/architecture/ADR/](docs/architecture/ADR/) — the "why" behind the five foundational decisions
 
-**Current status: Phase 1 (repository/infrastructure) complete.** No business features
-exist yet (auth, procedures, questionnaire, rules engine, cases, admin — all later
-phases per IMPLEMENTATION_PLAN.md). Work through IMPLEMENTATION_PLAN.md's tasks in
-order starting at Phase 2.
+**Current status: Phase 2 (authentication + user management) complete.** Registration,
+email verification, login/logout, forgot/reset/change password, roles, and Spring
+Session JDBC-backed sessions all work end to end. Procedures, questionnaire, rules
+engine, cases, and admin are still later phases per IMPLEMENTATION_PLAN.md. Work through
+IMPLEMENTATION_PLAN.md's tasks in order starting at Phase 3.
 
 ## Commands
 
@@ -38,13 +39,19 @@ cd frontend && npm install && npm start
 cd frontend && npm run lint
 cd frontend && npm test -- --no-watch
 cd frontend && npm run build
-cd frontend && npx playwright install chromium && npm run e2e   # backend should be running too
+cd frontend && npx playwright install chromium && npm run e2e   # backend + Postgres + Mailpit must be running
 ```
 
 No Maven install required — `backend/mvnw`/`mvnw.cmd` bootstrap the pinned Maven
 version themselves. `backend/target` occasionally hits a transient Windows file-lock on
 `mvnw clean` right after a build; `rm -rf backend/target` and retry, it's not a code
 issue.
+
+`ng serve`/`npm start` proxies `/api` and `/actuator` to `localhost:8080` (see
+`frontend/proxy.conf.json`) — the browser only ever talks to `localhost:4200`. Don't
+point the frontend straight at `localhost:8080`; Angular's XSRF interceptor refuses to
+attach its header on a genuinely cross-origin request, so every unsafe request would
+fail CSRF validation (see ADR-005).
 
 ## Non-obvious rules for working in this repo
 
@@ -87,3 +94,20 @@ issue.
 - **If you find existing code in a later session**, inspect it (build files, migrations,
   security config, entities, routes, env files, tests) and report existing/missing/
   incorrect/risky/recommended *before* modifying it — don't overwrite blindly.
+- **401 vs 403 vs 404, by design** (see SecurityConfig's Javadoc): an unauthenticated
+  request to any non-public path gets 401 regardless of whether the route exists —
+  route existence is only discoverable once authenticated. 403 is reserved for an
+  authenticated principal lacking a required authority. Don't "fix" a 401 you expected
+  to be a 404; check whether the request was authenticated first.
+- **CSRF is enabled everywhere, including public endpoints** (register/login/etc.) —
+  cookie-based session auth means every unsafe (POST/PUT/PATCH/DELETE) request needs a
+  valid `X-XSRF-TOKEN` header, obtained from the `XSRF-TOKEN` cookie `CsrfCookieFilter`
+  sets on every response. Never disable CSRF to make an endpoint "easier" to call.
+- **Never point the Angular dev server straight at the backend's origin.** Use
+  `proxy.conf.json` (already wired into `ng serve`). Angular's XSRF interceptor
+  silently no-ops on cross-origin requests, so bypassing the proxy reintroduces a CSRF
+  failure that only shows up in a real browser, not in curl/MockMvc-style tests.
+- **Only a hash of a verification/reset token is ever persisted** (`TokenGenerator`) —
+  never log or store the raw token. Both token types are one-time-use and expire; see
+  `AuthProperties` for the centralized TTL/lockout configuration, never a scattered
+  literal.

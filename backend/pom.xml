@@ -57,6 +57,13 @@
 			<artifactId>spring-boot-starter-security-oauth2-client</artifactId>
 		</dependency>
 		<dependency>
+			<!-- Server-side sessions persisted in PostgreSQL, not application memory -
+			     see ADR-005. Schema is Flyway-owned (V5__create_spring_session_jdbc_schema.sql),
+			     never auto-initialized (spring.session.jdbc.initialize-schema=never). -->
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-session-jdbc</artifactId>
+		</dependency>
+		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-validation</artifactId>
 		</dependency>
@@ -106,6 +113,11 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-security-oauth2-client-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-session-jdbc-test</artifactId>
 			<scope>test</scope>
 		</dependency>
 		<dependency>

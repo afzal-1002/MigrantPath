@@ -1,5 +1,13 @@
 <mat-toolbar color="primary">
   <a routerLink="/" class="brand">Foreigner Warsaw</a>
+  <span class="spacer"></span>
+  @if (authService.isAuthenticated()) {
+    <a mat-button routerLink="/dashboard">Dashboard</a>
+    <button mat-button (click)="logout()">Logout</button>
+  } @else {
+    <a mat-button routerLink="/login">Sign in</a>
+    <a mat-button routerLink="/register">Register</a>
+  }
 </mat-toolbar>
 
 <main class="content">

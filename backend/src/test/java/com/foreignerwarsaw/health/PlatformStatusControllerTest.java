@@ -2,28 +2,17 @@ package com.foreignerwarsaw.health;
 
 import static org.hamcrest.Matchers.is;
 
-import com.foreignerwarsaw.TestcontainersConfiguration;
+import com.foreignerwarsaw.AbstractIntegrationTest;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.context.annotation.Import;
-import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 
 /**
- * Proves the Phase 1 baseline end to end: the public platform-status endpoint is reachable, the
- * actuator health endpoint is reachable, and everything else is denied by the intentionally
- * restrictive Phase 1 {@link com.foreignerwarsaw.config.SecurityConfig} (brief §28) - not merely
- * "not yet implemented" but actively closed.
+ * Proves the Phase 1 baseline still holds end to end: the public platform-status endpoint is
+ * reachable, the actuator health endpoint is reachable, and everything else requires authentication
+ * - not merely "not yet implemented" but actively enforced (brief §28).
  */
-@SpringBootTest
-@AutoConfigureMockMvc
-@Import(TestcontainersConfiguration.class)
-class PlatformStatusControllerTest {
-
-  @Autowired private MockMvc mockMvc;
+class PlatformStatusControllerTest extends AbstractIntegrationTest {
 
   @Test
   void platformStatusIsPubliclyReachable() throws Exception {
@@ -43,9 +32,16 @@ class PlatformStatusControllerTest {
   }
 
   @Test
-  void unmappedEndpointsAreDeniedNotSilentlyOpen() throws Exception {
+  void unauthenticatedRequestToNonPublicPathRequiresAuthenticationNotSilentlyOpen()
+      throws Exception {
+    // 401, not 403 or 404: as of Phase 2's SecurityConfig, an unauthenticated request
+    // to any non-public path is rejected as "not authenticated" regardless of whether
+    // that path exists - route existence is only discoverable once authenticated (see
+    // SecurityConfig's Javadoc / ADR-005 for the full 401 vs 403 vs 404 rationale).
+    // This replaces Phase 1's blanket 403.
     mockMvc
         .perform(MockMvcRequestBuilders.get("/api/v1/does-not-exist-yet"))
-        .andExpect(MockMvcResultMatchers.status().isForbidden());
+        .andExpect(MockMvcResultMatchers.status().isUnauthorized())
+        .andExpect(MockMvcResultMatchers.jsonPath("$.code").value("AUTHENTICATION_REQUIRED"));
   }
 }

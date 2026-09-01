@@ -1,10 +1,14 @@
 name: CI
 
-# Phase 1 scope (docs/product/IMPLEMENTATION_PLAN.md 1.8): validation only, on every
-# PR and push - no deployment. Backend integration tests need a real PostgreSQL
-# instance for Testcontainers, so the backend job runs on a Docker-capable runner
-# (ubuntu-latest ships Docker by default) - Windows/macOS runners are not used here
-# specifically because Testcontainers-on-Docker is the point being validated.
+# Validation only, on every PR and push - no deployment (docs/product/
+# IMPLEMENTATION_PLAN.md 1.8). Backend integration tests need real PostgreSQL *and*
+# Mailpit instances for Testcontainers (as of Phase 2's AbstractIntegrationTest), so
+# the backend job runs on a Docker-capable runner (ubuntu-latest ships Docker by
+# default) - Windows/macOS runners are not used here specifically because
+# Testcontainers-on-Docker is the point being validated. The e2e job additionally
+# starts a docker-compose Mailpit/Postgres pair for the real dev-stack Playwright auth
+# suite (e2e/auth.spec.ts) - a separate instance from the backend job's throwaway
+# Testcontainers one, matching how a developer runs it locally.
 
 on:
   pull_request:

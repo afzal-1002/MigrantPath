@@ -26,6 +26,25 @@ spring:
       maximum-pool-size: 10
       minimum-idle: 2
       connection-timeout: 30000
+  session:
+    # Server-side sessions persisted in PostgreSQL (ADR-005), not application memory.
+    store-type: jdbc
+    jdbc:
+      # Flyway owns this schema (V5__create_spring_session_jdbc_schema.sql) - Spring
+      # Session must never create/alter it itself (ADR-002's rule, applied here).
+      initialize-schema: never
+    timeout: 30m
+
+server:
+  servlet:
+    session:
+      cookie:
+        name: SESSION # not the default JSESSIONID - no need to advertise "this is a Java app"
+        http-only: true
+        same-site: lax # see ADR-005: localhost:4200/localhost:8080 are same-site, so
+                        # Lax already covers local cross-origin dev without needing
+                        # SameSite=None (which would force Secure, i.e. HTTPS)
+        secure: false # overridden to true in staging/production (HTTPS-only there)
 
 management:
   endpoints:
@@ -39,6 +58,14 @@ management:
       # Overridden to "always" in local only - never leak internal component
       # details (datasource URLs, disk paths) publicly.
       show-details: never
+  health:
+    mail:
+      # A transient SMTP hiccup is not "the application is unhealthy" - it's a
+      # degraded external dependency, and it shouldn't make an orchestrator's health
+      # check fail the whole app (a well-known health-check anti-pattern). Discovered
+      # via a genuinely flaky test run against the Testcontainers Mailpit instance,
+      # not assumed - see AbstractIntegrationTest.
+      enabled: false
 
 springdoc:
   swagger-ui:
@@ -52,3 +79,21 @@ app:
     # explicitly configures allowed origins. Never "*" (see ARCHITECTURE.md §11 /
     # brief §15).
     allowed-origins: []
+  auth:
+    frontend-base-url: ${FRONTEND_URL:http://localhost:4200}
+    # Verification links are low-risk if intercepted late (they only confirm an email
+    # address the recipient already controls) - a day-scale window is generous without
+    # being unreasonable (brief §35).
+    email-verification-token-ttl: PT24H
+    # Reset tokens grant a password change - a much higher-value target if leaked
+    # (email forwarding, shared inboxes, delayed reading), so the window is short.
+    password-reset-token-ttl: PT30M
+    # 5 attempts is generous enough to absorb ordinary typos (brief §21: "do not
+    # permanently lock users because of ordinary mistakes") while still bounding a
+    # brute-force guess budget.
+    max-failed-login-attempts: 5
+    lockout-duration: PT15M
+    resend-verification-cooldown: PT1M
+    forgot-password-cooldown: PT1M
+  mail:
+    from-address: no-reply@foreignerwarsaw.local

@@ -1,0 +1,16 @@
+.auth-card {
+  max-width: 420px;
+  margin: 32px auto;
+  padding: 24px;
+
+  form {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 12px;
+  }
+
+  mat-form-field {
+    width: 100%;
+  }
+}

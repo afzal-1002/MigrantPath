@@ -1,0 +1,5 @@
+<mat-card class="dashboard-card">
+  <h1>Welcome, {{ authService.currentUser()?.firstName ?? authService.currentUser()?.email }}</h1>
+  <p>Account status: {{ authService.currentUser()?.emailVerified ? 'Verified' : 'Not verified' }}</p>
+  <button mat-stroked-button (click)="logout()">Logout</button>
+</mat-card>
