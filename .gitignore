@@ -2,6 +2,9 @@
 .env
 .env.*.local
 
+# Claude Code harness session/task state (not project source)
+.claude/
+
 # Backend (Maven / Java) - the wrapper scripts (mvnw, mvnw.cmd,
 # .mvn/wrapper/maven-wrapper.properties) ARE committed and required - see
 # IMPLEMENTATION_PLAN.md 1.1. This wrapper uses distributionType=only-script, so there
