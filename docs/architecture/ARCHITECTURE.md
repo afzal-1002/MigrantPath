@@ -113,8 +113,11 @@ against in Phase 3+; exact columns are worked out per-migration, not frozen here
 - **reference** (IMPLEMENTED, Phase 3): `Country` (ISO 3166), `CountryGroup`,
   `CountryGroupMembership`, `Jurisdiction`, `Region`, `City`, `District`, `Authority`,
   `Office`, `ServiceType`, `OfficeService`
-- **assessment**: `Questionnaire`, `Question`, `QuestionOption`, `QuestionDependency`,
-  `Assessment`, `AssessmentAnswer`
+- **questionnaire** (IMPLEMENTED, Phase 5 — see DATABASE.md §4 for full detail, ADR-008):
+  `Questionnaire`, `QuestionnaireVersion`, `Question`, `QuestionnaireQuestion`,
+  `QuestionOption`, `QuestionDependency`, `Assessment`, `AssessmentAnswer`,
+  `AssessmentAnswerOption` (supersedes the version-less "assessment" module sketched in
+  earlier drafts of this section).
 - **rules**: `Rule`, `RuleVersion`, `RuleCondition`, `RuleOutcome`,
   `CountrySpecificRule`, `DocumentLegalisationRule`, `DrivingLicenceRecognitionRule`,
   `VisaRequirementRule` — `Threshold`/`ThresholdVersion` moved to **procedure** below
@@ -182,7 +185,10 @@ Validation on all inbound DTOs. A consistent error envelope:
 }
 ```
 
-Representative endpoints (refined per-module during implementation, not frozen here):
+Representative endpoints (refined per-module during implementation, not frozen here) —
+`auth`/`users`/`reference`/`procedures` (Phases 2-4) and `assessments`/`questionnaires`
+(Phase 5, marked IMPLEMENTED) are real; `cases`/`admin` remain the Phase 6-9 shape this
+section has always sketched:
 
 ```
 POST   /api/v1/auth/register
@@ -195,8 +201,18 @@ PUT    /api/v1/users/me/profile
 GET    /api/v1/reference/countries
 GET    /api/v1/procedures
 GET    /api/v1/procedures/{id}
-POST   /api/v1/assessments
-PUT    /api/v1/assessments/{id}/answers
+
+# Phase 5 (IMPLEMENTED) - authenticated-only throughout (ADR-008); "id" below is an
+# Assessment id, not exposed to unauthenticated callers under any code path.
+GET    /api/v1/questionnaires/active
+POST   /api/v1/assessments                          # start, or resume the existing IN_PROGRESS one
+GET    /api/v1/assessments                           # the caller's own assessments
+GET    /api/v1/assessments/{id}                       # current visible questions/answers/progress
+PUT    /api/v1/assessments/{id}/answers/{questionCode}
+POST   /api/v1/assessments/{id}/complete
+POST   /api/v1/assessments/{id}/restart               # blank-slate restart, or edit-a-completed-one
+
+# Phase 6-8 (not yet built) - the intended eventual shape
 POST   /api/v1/assessments/{id}/evaluate
 GET    /api/v1/assessments/{id}/recommendations
 POST   /api/v1/cases

@@ -67,6 +67,9 @@ describe('AuthService', () => {
 
     service.logout().subscribe();
     httpMock.expectOne(`${environment.apiBaseUrl}/auth/logout`).flush(null);
+    // Re-primes the XSRF-TOKEN cookie Spring Security's logout handler clears - see
+    // AuthService#logout's Javadoc.
+    httpMock.expectOne(`${environment.apiBaseUrl}/platform/status`).flush({});
 
     expect(service.isAuthenticated()).toBe(false);
     expect(service.currentUser()).toBeNull();

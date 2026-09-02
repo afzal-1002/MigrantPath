@@ -1,6 +1,7 @@
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { environment } from '../../../environments/environment';
 import { Home } from './home';
 
@@ -10,7 +11,7 @@ describe('Home', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [Home],
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
     }).compileComponents();
     httpMock = TestBed.inject(HttpTestingController);
   });
@@ -35,5 +36,20 @@ describe('Home', () => {
     req.error(new ProgressEvent('network error'));
 
     expect(fixture.componentInstance['connectionState']()).toBe('unreachable');
+  });
+
+  it('offers both the questionnaire and the browse-procedures entry points (brief §2/§5)', () => {
+    const fixture = TestBed.createComponent(Home);
+    fixture.detectChanges();
+    httpMock.expectOne(`${environment.apiBaseUrl}/platform/status`).flush({
+      status: 'UP',
+      application: 'Foreigner Warsaw',
+      version: '0.0.1-SNAPSHOT',
+    });
+
+    const links = fixture.nativeElement.querySelectorAll('a[href]');
+    const hrefs = Array.from(links as NodeListOf<HTMLAnchorElement>).map((a) => a.getAttribute('href'));
+    expect(hrefs).toContain('/assessment/start');
+    expect(hrefs).toContain('/procedures');
   });
 });

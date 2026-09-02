@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { Observable, tap } from 'rxjs';
+import { Observable, catchError, map, of, switchMap, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
 export interface CurrentUser {
@@ -86,12 +86,27 @@ export class AuthService {
       );
   }
 
+  /**
+   * Spring Security's logout handler deliberately clears the {@code XSRF-TOKEN} cookie along
+   * with the session (a stale CSRF token shouldn't survive logout) - correct, but it leaves
+   * nothing in an SPA to re-prime the cookie before the next unsafe request, since there's no
+   * full page reload for {@code CsrfCookieFilter} to run on again. Without the follow-up GET
+   * below, logging out and back in again in the same browser tab (no reload in between - found
+   * via a real Playwright E2E failure, not a hypothetical) fails CSRF validation on the very
+   * next POST. Any public GET works; `/platform/status` is already the lightest one in the API.
+   */
   logout(): Observable<void> {
     return this.http.post<void>(`${this.apiBase}/logout`, {}).pipe(
       tap(() => {
         this.user.set(null);
         this.state.set('UNAUTHENTICATED');
       }),
+      switchMap(() =>
+        this.http.get(`${environment.apiBaseUrl}/platform/status`).pipe(
+          map(() => undefined),
+          catchError(() => of(undefined)),
+        ),
+      ),
     );
   }
 

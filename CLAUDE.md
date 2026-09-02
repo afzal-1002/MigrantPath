@@ -14,12 +14,15 @@ expansion). Read these before making changes, in this order:
 4. [docs/architecture/ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md) — modular monolith layout, rules engine, API, versioning, jurisdiction model
 5. [docs/database/DATABASE.md](docs/database/DATABASE.md) — the authoritative schema design: every entity, the Active-Version Predicate, provenance chains, ER diagrams
 6. [docs/product/IMPLEMENTATION_PLAN.md](docs/product/IMPLEMENTATION_PLAN.md) — the full phase-by-phase task breakdown; find the next task here before starting new work
-7. [docs/architecture/ADR/](docs/architecture/ADR/) — the "why" behind the five foundational decisions
+7. [docs/architecture/ADR/](docs/architecture/ADR/) — the "why" behind the foundational decisions
 
-**Current status: Phase 2 (authentication + user management) complete.** Registration,
-email verification, login/logout, forgot/reset/change password, roles, and Spring
-Session JDBC-backed sessions all work end to end. Procedures, questionnaire, rules
-engine, cases, and admin are still later phases per IMPLEMENTATION_PLAN.md. Work through
+**Current status: Phase 5 (dynamic questionnaire + assessment engine) complete** — see
+[docs/product/PHASE_5_REPORT.md](docs/product/PHASE_5_REPORT.md). Auth (Phase 2),
+reference data (Phase 3), and versioned procedure content (Phase 4, see
+[PHASE_4_REPORT.md](docs/product/PHASE_4_REPORT.md)) all work end to end; the
+questionnaire engine now collects structured assessment facts (authenticated-only,
+branching, resumable) but decides no eligibility itself. Rules engine, recommendations,
+cases, and admin are still later phases per IMPLEMENTATION_PLAN.md. Work through
 IMPLEMENTATION_PLAN.md's tasks in order starting at Phase 3.
 
 ## Commands

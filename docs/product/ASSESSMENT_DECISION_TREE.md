@@ -3,6 +3,14 @@
 Status: DRAFT (Phase 0) — reviewed against the required flow below
 Last updated: 2026-09-01
 
+**Phase 5 implementation note (2026-09-02):** this document remains the full research
+brainstorm; the actual `WARSAW_GENERAL_ASSESSMENT` questionnaire seeded in Phase 5
+implements a curated ~18-question subset of it, not every `Q_*` node below (brief §42/§87
+— "Quality > quantity," no overcollection ahead of a rule that needs the data). See
+[QUESTION_CODES.md](QUESTION_CODES.md) for exactly which codes were implemented, their
+Phase 5 code names (which don't always match this document's `Q_*` naming), and why each
+one earned a place in the MVP cut.
+
 ## Phase 0 review note
 
 Confirmed on review: the wizard order is Citizenship (Step 1) → current

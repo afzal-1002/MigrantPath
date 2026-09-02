@@ -522,55 +522,96 @@ JPA `@EmbeddedId` join entities, the same pattern as Phase 3's `OfficeService`.
 
 ---
 
-## 4. Questionnaire entities
+## 4. Questionnaire entities (Phase 5, ADR-008 — supersedes an earlier draft of this
+section that sketched a version-less `Questionnaire`/nullable-`user_id` `Assessment`;
+neither had been built yet when Phase 5's brief specified the opposite on both points)
 
-### Questionnaire
-- `id UUID PK`, `code UNIQUE` (`WARSAW_ELIGIBILITY_WIZARD`), `name`, `is_active`.
-- **Deliberately no `QuestionnaireVersion` lifecycle table.** Considered and rejected:
-  unlike legal-content versions, an `AssessmentAnswer` row already stores the exact
-  `question_id` and `value` given, which is a complete, immutable record of what was
-  asked and answered — it doesn't depend on the `Question` definition staying frozen to
-  remain meaningful. Retiring or editing a question is `is_active = false` on that one
-  `Question` row plus a new one if its meaning changed, not a whole-questionnaire
-  version bump. This keeps UX iteration cheap while the actual legal-traceability
-  requirement (which lives on `Rule`/`Procedure`/`Threshold`, not on question wording)
-  is unaffected.
+### Questionnaire (identity) / QuestionnaireVersion
+- **Questionnaire**: `id UUID PK`, `code UNIQUE` (`WARSAW_GENERAL_ASSESSMENT`),
+  `canonical_name`, `active`, `created_at`, `updated_at`. Answers only "which
+  questionnaire is this" — all content lives on `QuestionnaireVersion`.
+- **QuestionnaireVersion**: the same identity+version+publication-lifecycle pattern as
+  `Procedure`/`ProcedureVersion` (§3, ADR-007) — `id UUID PK`,
+  `questionnaire_id FK → Questionnaire`, `version_number`, `title`, `description`,
+  `status` (reuses `PublicationStatus`: `DRAFT → IN_REVIEW → APPROVED → PUBLISHED →
+  ARCHIVED`, not a separate enum), `effective_from`/`effective_to` (same EXCLUSIVE
+  `effective_to`, btree_gist no-overlapping-PUBLISHED-ranges convention as procedure
+  content), `created_by`/`submitted_by`/`approved_by`/`published_by FK → User`,
+  matching timestamps, `lock_version` (optimistic lock). An `Assessment` binds
+  permanently to one `QuestionnaireVersion.id` at creation and never re-resolves to a
+  newer one while `IN_PROGRESS` — see ADR-008 for why this reversed the earlier
+  version-less sketch.
 
-### Question
-- `id UUID PK`, `questionnaire_id FK → Questionnaire`, `code UNIQUE`
-  (`CITIZENSHIP_COUNTRY`, `CURRENT_LEGAL_STATUS`, `PRIMARY_PURPOSE`,
-  `MONTHLY_GROSS_SALARY`), `field_key` (the camelCase name `RuleCondition.field` and
-  `AssessmentAnswer` use — e.g. `monthlyGrossSalary` — decoupling the rule-facing field
-  name from the human-facing `code`), `question_type ENUM(SINGLE_SELECT, MULTI_SELECT,
-  BOOLEAN, DATE, NUMBER, TEXT)`, `label_translation_key`, `help_text_translation_key`,
-  `allow_unsure BOOLEAN`, `is_active`. Not coupled to any Angular type — the frontend
-  wizard is a generic renderer driven by `question_type` + `QuestionOption` +
-  `QuestionDependency`.
+### Question (identity) / QuestionnaireQuestion
+- **Question**: `id UUID PK`, `code UNIQUE` (`CITIZENSHIP_COUNTRY`,
+  `CURRENT_LEGAL_STATUS`, `PRIMARY_PURPOSE`, `MONTHLY_GROSS_SALARY` — see
+  `docs/product/QUESTION_CODES.md` for the full seeded registry), `field_key UNIQUE`
+  (the camelCase name a future `RuleCondition.field`/`AssessmentFacts` map key uses —
+  e.g. `monthlyGrossSalary`), `question_type ENUM(BOOLEAN, SINGLE_SELECT, MULTI_SELECT,
+  TEXT, INTEGER, DECIMAL, DATE, COUNTRY, REGION, CITY, DISTRICT)`,
+  `semantic_data_type ENUM(GENERIC, MONEY)` nullable (what the answer *means*,
+  independent of its widget — e.g. `MONTHLY_GROSS_SALARY` is a `DECIMAL` widget whose
+  semantic meaning is `MONEY`), `unit` nullable (`PLN_MONTHLY_GROSS`), `active`. Not
+  coupled to any Angular type — the frontend wizard is a generic renderer driven by
+  `question_type` + `QuestionOption` + `QuestionDependency`.
+- **QuestionnaireQuestion**: the per-version presentation+gating configuration for one
+  `Question` — `id UUID PK`, `questionnaire_version_id FK → QuestionnaireVersion`,
+  `question_id FK → Question`, `section_code`, `label`, `help_text` nullable,
+  `required`, `sort_order`, `option_source ENUM(STATIC, REFERENCE_COUNTRY,
+  REFERENCE_REGION, REFERENCE_CITY, REFERENCE_DISTRICT)`, `allow_unsure`,
+  `visibility_combinator ENUM(ALL, ANY)` (how this question's `QuestionDependency` rows
+  combine when more than one exists). Kept separate from `Question` so the same
+  semantic question can be reworded, re-sectioned, or re-gated across versions without
+  ever renaming the stable `Question.code` rule conditions and answers key off.
+  **Unique**: `(questionnaire_version_id, question_id)`.
 
 ### QuestionOption
-- `id UUID PK`, `question_id FK → Question`, `code`, `value`, `label_translation_key`,
-  `display_order`.
+- `id UUID PK`, `questionnaire_question_id FK → QuestionnaireQuestion`, `code`, `label`,
+  `description` nullable, `sort_order`, `active`, `reference_value` nullable. Only for
+  `option_source = STATIC` questions — a reference-backed question (`COUNTRY`/`REGION`/
+  `CITY`/`DISTRICT`) resolves its options from the Phase 3 reference API instead, never
+  duplicated here. **Unique**: `(questionnaire_question_id, code)`.
 
 ### QuestionDependency
-- `id UUID PK`, `question_id FK → Question` (the gated question),
-  `depends_on_question_id FK → Question`, `operator` (**same enum as `RuleCondition`**,
-  §5 — one shared evaluator implementation drives both "should this question show" and
-  "does this rule match"), `value`/`reference`.
-- Example: `Q_SALARY_GROSS_MONTHLY.dependsOn(Q_PURPOSE, IN, [WORK,
-  HIGHLY_QUALIFIED_WORK])`.
+- `id UUID PK`, `questionnaire_question_id FK → QuestionnaireQuestion` (the gated
+  question), `depends_on_questionnaire_question_id FK → QuestionnaireQuestion`,
+  `operator` (`com.foreignerwarsaw.common.evaluation.ComparisonOperator` — the same
+  vocabulary Phase 6's `RuleCondition` will reuse via one shared
+  `ConditionEvaluator`: `EQUALS, NOT_EQUALS, IN, NOT_IN, CONTAINS, NOT_CONTAINS, EXISTS,
+  NOT_EXISTS, GREATER_THAN, GREATER_THAN_OR_EQUAL, LESS_THAN, LESS_THAN_OR_EQUAL,
+  DATE_BEFORE, DATE_AFTER`), `expected_value JSONB` (a scalar for most operators, an
+  array for `IN`/`NOT_IN`/`CONTAINS`/`NOT_CONTAINS`).
+- Example: `MONTHLY_GROSS_SALARY.dependsOn(HAS_JOB_OFFER, EQUALS, true)`.
+- Evaluated by `QuestionVisibilityService` — "should this question be shown," never the
+  immigration Rules Engine (ADR-008).
 
 ### Assessment / AssessmentAnswer
-- **Assessment**: `id UUID PK`, `user_id FK → User NULL` (nullable to allow starting the
-  wizard before registering — see Product Requirements §6.3; an anonymous assessment is
-  claimed by a user on registration), `anonymous_session_token NULL`,
-  `questionnaire_id FK → Questionnaire`, `status ENUM(IN_PROGRESS, COMPLETED,
-  ABANDONED)`, `started_at`, `completed_at NULL`,
-  `evaluation_date DATE` (defaults to `completed_at`'s date; the value threaded into the
-  Active-Version Predicate, §0).
+- **Assessment**: `id UUID PK`, `user_id FK → User NOT NULL` (authenticated-only for
+  Phase 5 — see ADR-008 for why this reversed the nullable/anonymous-session sketch),
+  `questionnaire_version_id FK → QuestionnaireVersion` (bound permanently at creation),
+  `questionnaire_id FK → Questionnaire` (denormalized from `questionnaire_version_id`
+  purely to back the one-`IN_PROGRESS`-assessment-per-user-per-questionnaire partial
+  unique index below), `status ENUM(IN_PROGRESS, COMPLETED, ABANDONED, SUPERSEDED)`,
+  `started_at`, `completed_at` nullable, `last_updated_at`, `lock_version`. A partial
+  unique index on `(user_id, questionnaire_id) WHERE status = 'IN_PROGRESS'` enforces
+  "at most one active assessment per questionnaire identity per user" at the database
+  level, not just in application code.
 - **AssessmentAnswer**: `id UUID PK`, `assessment_id FK → Assessment`,
-  `question_id FK → Question`, `value JSONB` (handles scalar, multi-select array, or the
-  `UNSURE` sentinel uniformly), `answered_at`.
-- **Unique**: `(assessment_id, question_id)`.
+  `question_id FK → Question` (the *stable* identity, not `QuestionnaireQuestion` —
+  Phase 6 reads answers by stable code across time, independent of which version asked
+  it), typed nullable columns `string_value`/`boolean_value`/`integer_value`/
+  `decimal_value`/`date_value`/`reference_code` (exactly one populated, matching the
+  question's `question_type` — never one untyped JSONB/string value a rule engine has
+  to parse; see ADR-008), `is_unsure` (the "I don't know" sentinel, distinct from "not
+  yet answered"), `is_applicable` (recomputed by `QuestionVisibilityService` on every
+  write in this assessment — `false` once this answer's question is no longer visible
+  under the current answer set; the row itself is kept so re-showing the question
+  restores the prior value, but `AssessmentFacts` and completion validation only ever
+  consider `is_applicable = true` rows), `answered_at`. **Unique**:
+  `(assessment_id, question_id)`.
+- **AssessmentAnswerOption**: `id UUID PK`, `assessment_answer_id FK →
+  AssessmentAnswer`, `option_code` — a join table for `MULTI_SELECT` answers, not a
+  JSONB array (queryability). **Unique**: `(assessment_answer_id, option_code)`.
 
 ---
 
@@ -883,15 +924,23 @@ erDiagram
 
 ### 10.3 Assessment → recommendation → case
 
+`QUESTIONNAIRE` through `ASSESSMENT_ANSWER_OPTION` are implemented (Phase 5, ADR-008);
+`RECOMMENDATION` through `USER_CASE_EVENT` remain the Phase 6-8 design this diagram has
+always sketched — not yet built, shown here only so the intended shape of what
+`ASSESSMENT` eventually feeds is visible in one place.
+
 ```mermaid
 erDiagram
-    QUESTIONNAIRE ||--o{ QUESTION : contains
-    QUESTION ||--o{ QUESTION_OPTION : has
-    QUESTION ||--o{ QUESTION_DEPENDENCY : "gates/gated by"
+    QUESTIONNAIRE ||--o{ QUESTIONNAIRE_VERSION : has
+    QUESTIONNAIRE_VERSION ||--o{ QUESTIONNAIRE_QUESTION : configures
+    QUESTION ||--o{ QUESTIONNAIRE_QUESTION : "presented as"
+    QUESTIONNAIRE_QUESTION ||--o{ QUESTION_OPTION : has
+    QUESTIONNAIRE_QUESTION ||--o{ QUESTION_DEPENDENCY : "gates/gated by"
     USER ||--o{ ASSESSMENT : starts
-    QUESTIONNAIRE ||--o{ ASSESSMENT : answered_in
+    QUESTIONNAIRE_VERSION ||--o{ ASSESSMENT : "bound to"
     ASSESSMENT ||--o{ ASSESSMENT_ANSWER : contains
     QUESTION ||--o{ ASSESSMENT_ANSWER : answers
+    ASSESSMENT_ANSWER ||--o{ ASSESSMENT_ANSWER_OPTION : "multi-select codes"
     ASSESSMENT ||--o{ RECOMMENDATION : produces
     PROCEDURE_VERSION ||--o{ RECOMMENDATION : evaluated_against
     RECOMMENDATION ||--o{ RECOMMENDATION_REASON : explains
@@ -925,6 +974,18 @@ not on every column:
 - `rule_threshold_reference.(threshold_code)` (impact analysis on threshold changes)
 - `country_group_membership.(country_group_id, valid_from, valid_to)` (temporal
   membership lookups)
+- `questionnaire.code`, `question.code`, `question.field_key` (unique, code-based
+  lookups)
+- `questionnaire_version.(questionnaire_id, status, effective_from, effective_to)` —
+  the Active-Version Predicate's lookup path for the questionnaire side, same family as
+  the legal-content one above
+- `questionnaire_question.(questionnaire_version_id, section_code, sort_order)` —
+  assembling one version's structure/wizard order in a single query
+- `assessment.(user_id, status)` (dashboard "resume my assessment" lookup) plus the
+  partial unique index `(user_id, questionnaire_id) WHERE status = 'IN_PROGRESS'`
+  enforcing at most one active assessment per questionnaire identity per user
+- `assessment_answer.(assessment_id, question_id)` (unique — every answer read/write
+  path)
 
 GIN indexes on JSONB columns (`condition_tree`, `payload`) are deferred until a concrete
 query needs to filter *inside* the JSON — none of the MVP access patterns require it, so

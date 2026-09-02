@@ -3,3 +3,21 @@
   <p>Account status: {{ authService.currentUser()?.emailVerified ? 'Verified' : 'Not verified' }}</p>
   <button mat-stroked-button (click)="logout()">Logout</button>
 </mat-card>
+
+<mat-card class="assessment-card">
+  @if (relevantAssessment(); as assessment) {
+    @if (assessment.status === 'IN_PROGRESS') {
+      <h2>Continue your assessment</h2>
+      <p>You have an assessment in progress.</p>
+      <a mat-flat-button color="primary" [routerLink]="['/assessment', assessment.id]">Resume assessment</a>
+    } @else {
+      <h2>Assessment completed</h2>
+      <p>You've completed the Warsaw general assessment.</p>
+      <a mat-stroked-button [routerLink]="['/assessment', assessment.id]">View assessment</a>
+    }
+  } @else {
+    <h2>Help me choose</h2>
+    <p>Answer a few questions about your situation to get started.</p>
+    <a mat-flat-button color="primary" routerLink="/assessment/start">Start assessment</a>
+  }
+</mat-card>

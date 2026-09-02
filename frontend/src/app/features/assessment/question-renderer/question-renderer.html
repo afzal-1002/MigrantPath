@@ -1,0 +1,83 @@
+<div class="question" [formGroup]="group()">
+  <div class="question-label">
+    {{ question().label }}
+    @if (question().required) {
+      <span class="required" aria-hidden="true">*</span>
+    }
+  </div>
+  @if (question().helpText) {
+    <p class="help-text">{{ question().helpText }}</p>
+  }
+
+  @if (!isUnsure()) {
+    @switch (question().answerType) {
+      @case ('BOOLEAN') {
+        <mat-radio-group formControlName="value" [attr.aria-label]="question().label">
+          <mat-radio-button [value]="true">Yes</mat-radio-button>
+          <mat-radio-button [value]="false">No</mat-radio-button>
+        </mat-radio-group>
+      }
+      @case ('SINGLE_SELECT') {
+        <mat-form-field appearance="outline">
+          <mat-label>{{ question().label }}</mat-label>
+          <mat-select formControlName="value">
+            @for (option of question().options; track option.code) {
+              <mat-option [value]="option.code">{{ option.label }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      }
+      @case ('MULTI_SELECT') {
+        <div class="checkbox-list" role="group" [attr.aria-label]="question().label">
+          @for (option of question().options; track option.code) {
+            <mat-checkbox
+              [checked]="isOptionSelected(option.code)"
+              (change)="toggleOption(option.code, $event.checked)"
+            >
+              {{ option.label }}
+            </mat-checkbox>
+          }
+        </div>
+      }
+      @case ('TEXT') {
+        <mat-form-field appearance="outline">
+          <mat-label>{{ question().label }}</mat-label>
+          <input matInput type="text" formControlName="value" />
+        </mat-form-field>
+      }
+      @case ('INTEGER') {
+        <mat-form-field appearance="outline">
+          <mat-label>{{ question().label }}</mat-label>
+          <input matInput type="number" step="1" formControlName="value" />
+        </mat-form-field>
+      }
+      @case ('DECIMAL') {
+        <mat-form-field appearance="outline">
+          <mat-label>{{ question().label }}</mat-label>
+          <input matInput type="number" step="0.01" formControlName="value" />
+        </mat-form-field>
+      }
+      @case ('DATE') {
+        <mat-form-field appearance="outline">
+          <mat-label>{{ question().label }}</mat-label>
+          <input matInput type="date" formControlName="value" />
+        </mat-form-field>
+      }
+      @case ('COUNTRY') {
+        <app-country-select [label]="question().label" formControlName="value"></app-country-select>
+      }
+      @default {
+        <!-- REGION/CITY/DISTRICT: not exercised by the seeded MVP questionnaire, plain
+             reference-code fallback (see this component's class Javadoc). -->
+        <mat-form-field appearance="outline">
+          <mat-label>{{ question().label }} (code)</mat-label>
+          <input matInput type="text" formControlName="value" />
+        </mat-form-field>
+      }
+    }
+  }
+
+  @if (question().allowUnsure) {
+    <mat-checkbox formControlName="unsure">I'm not sure</mat-checkbox>
+  }
+</div>

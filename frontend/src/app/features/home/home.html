@@ -1,6 +1,11 @@
 <h1>Your guide to living legally in Warsaw</h1>
 <p>Answer a few questions and receive a personalized roadmap based on your situation.</p>
 
+<div class="cta-row">
+  <a mat-flat-button color="primary" routerLink="/assessment/start">Help me choose</a>
+  <a mat-stroked-button routerLink="/procedures">Browse procedures</a>
+</div>
+
 <mat-card class="status-card">
   @switch (connectionState()) {
     @case ('checking') {

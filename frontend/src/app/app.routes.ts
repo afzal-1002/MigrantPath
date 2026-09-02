@@ -61,6 +61,23 @@ export const routes: Routes = [
       import('./features/procedures/procedure-detail/procedure-detail').then((m) => m.ProcedureDetailPage),
   },
   {
+    // Phase 5 "Help me choose" (brief §47) - authenticated-only (brief §32), same
+    // guard every other logged-in-only route uses. /start resolves/creates the
+    // caller's assessment then redirects to /assessment/:id, the real wizard route;
+    // review and completion are steps within that one component, not separate
+    // routes (brief §47's "or a simpler coherent route structure" - see
+    // PHASE_5_REPORT.md "Deviations").
+    path: 'assessment/start',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/assessment/assessment-start/assessment-start').then((m) => m.AssessmentStart),
+  },
+  {
+    path: 'assessment/:id',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/assessment/assessment-wizard/assessment-wizard').then((m) => m.AssessmentWizard),
+  },
+  {
     path: '**',
     loadComponent: () => import('./features/not-found/not-found').then((m) => m.NotFound),
   },

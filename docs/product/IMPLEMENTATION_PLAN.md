@@ -597,7 +597,14 @@ Convention used below: `—` means that column doesn't apply to the task.
 
 ---
 
-## Phase 5 — Questionnaire engine
+## Phase 5 — Questionnaire engine — ✅ COMPLETE (see [PHASE_5_REPORT.md](PHASE_5_REPORT.md))
+
+The task list below is left as originally planned for traceability; see
+[PHASE_5_REPORT.md](PHASE_5_REPORT.md)'s "Deviations" section for where the actual
+implementation diverged (most notably: a full `QuestionnaireVersion` lifecycle was added
+rather than the version-less design 5.1 originally pointed at DATABASE.md §4 for, no
+anonymous-assessment claiming flow was built, and no bulk `PATCH .../answers` endpoint
+exists — see ADR-008).
 
 #### 5.1 Migration + entities: Questionnaire, Question, QuestionOption,
 QuestionDependency

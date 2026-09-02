@@ -1,0 +1,10 @@
+package com.foreignerwarsaw.questionnaire.question;
+
+import java.util.Optional;
+import java.util.UUID;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface QuestionRepository extends JpaRepository<Question, UUID> {
+
+  Optional<Question> findByCode(String code);
+}

@@ -36,4 +36,25 @@ body {
   margin: 0;
   height: 100%;
 }
+
+// Without `@angular/animations` (deliberately not installed - see app.config.ts's own
+// comment), Angular Material's MDC form-field's internal floating label
+// (`.mat-mdc-floating-label`, the `<label>` MDC renders for the notched-outline
+// effect - NOT the `<mat-label>` content-projection element itself) never picks up
+// the pointer-events:none its floated/animated state normally carries, so a resting
+// (non-floated, i.e. an empty control's) label sits on top of its control and can
+// intercept clicks whenever the label text is long enough to reach the control's
+// center point - found via a real Playwright click failure on a long select label
+// (Phase 5's "current legal status" question), not a hypothetical. A label is
+// decorative, never itself the interactive target, so pointer-events:none is correct
+// however Material would style it.
+// !important: Material's own generated CSS sets pointer-events on this element with
+// higher specificity than a plain class selector can win against (confirmed by
+// inspecting the computed style with only the plain rule in place - it was still
+// "all"), so overriding a third-party default here needs it.
+mat-label,
+.mat-mdc-floating-label {
+  pointer-events: none !important;
+}
+
 /* You can add global styles to this file, and also import other style files */

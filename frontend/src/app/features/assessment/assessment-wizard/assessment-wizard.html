@@ -1,0 +1,74 @@
+@if (loading()) {
+  <p role="status">Loading your assessment...</p>
+} @else if (error() && !detail()) {
+  <p role="alert" class="error">{{ error() }}</p>
+} @else if (detail(); as d) {
+  @if (d.status === 'COMPLETED') {
+    <section class="completion" aria-labelledby="completion-heading">
+      <h1 id="completion-heading" tabindex="-1" #stepHeading>Your assessment is complete</h1>
+      <p>
+        Thank you for answering every question. Next, the system can analyse relevant pathways.
+      </p>
+      <p class="informational">Pathway analysis will be available in the next implementation phase.</p>
+      <button mat-stroked-button type="button" (click)="restart()">Update my answers</button>
+      <a mat-button routerLink="/dashboard">Back to dashboard</a>
+    </section>
+  } @else if (showReview()) {
+    <section class="review" aria-labelledby="review-heading">
+      <h1 id="review-heading" tabindex="-1" #stepHeading>Review your answers</h1>
+      @if (error()) {
+        <p role="alert" class="error">{{ error() }}</p>
+      }
+      @for (group of answeredSections(); track group.section.code) {
+        @if (group.questions.length > 0) {
+          <div class="review-section">
+            <div class="review-section-header">
+              <h2>{{ group.section.title }}</h2>
+              <button mat-button type="button" (click)="editSection(group.section.code)">Edit</button>
+            </div>
+            <dl>
+              @for (question of group.questions; track question.questionCode) {
+                <dt>{{ question.label }}</dt>
+                <dd>{{ question.answer?.unsure ? 'Not sure' : reviewAnswerText(question) }}</dd>
+              }
+            </dl>
+          </div>
+        }
+      }
+      <div class="wizard-actions">
+        <button mat-button type="button" (click)="editSection(d.sections[0].code)">Back to questions</button>
+        <button mat-flat-button color="primary" type="button" [disabled]="saving()" (click)="complete()">
+          Complete assessment
+        </button>
+      </div>
+    </section>
+  } @else {
+    <section class="wizard-step" aria-live="polite">
+      <mat-progress-bar mode="determinate" [value]="d.progressPercent"></mat-progress-bar>
+      @if (currentSection(); as section) {
+        <h1 tabindex="-1" #stepHeading>
+          Step {{ currentSectionIndex() + 1 }} of {{ d.sections.length }}: {{ section.title }}
+        </h1>
+      }
+      @if (error()) {
+        <p role="alert" class="error">{{ error() }}</p>
+      }
+      <form [formGroup]="formGroup()">
+        @for (question of currentSectionQuestions(); track question.questionCode) {
+          <app-question-renderer
+            [question]="question"
+            [group]="formGroup().controls[question.questionCode]"
+          ></app-question-renderer>
+        }
+      </form>
+      <div class="wizard-actions">
+        @if (currentSectionIndex() > 0) {
+          <button mat-button type="button" [disabled]="saving()" (click)="back()">Back</button>
+        }
+        <button mat-flat-button color="primary" type="button" [disabled]="saving()" (click)="next()">
+          {{ isLastSection() ? 'Review answers' : 'Next' }}
+        </button>
+      </div>
+    </section>
+  }
+}
