@@ -16,6 +16,7 @@ import com.foreignerwarsaw.user.Role;
 import com.foreignerwarsaw.user.RoleRepository;
 import com.foreignerwarsaw.user.User;
 import com.foreignerwarsaw.user.UserRepository;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -39,6 +40,7 @@ class ProcedureVersioningIntegrationTest extends AbstractIntegrationTest {
   @Autowired private UserRepository userRepository;
   @Autowired private RoleRepository roleRepository;
   @Autowired private ProcedureQueryService procedureQueryService;
+  @Autowired private Clock clock;
 
   private AppUserPrincipal editor;
   private AppUserPrincipal reviewer;
@@ -151,7 +153,12 @@ class ProcedureVersioningIntegrationTest extends AbstractIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.status").value("APPROVED"));
 
-    LocalDate today = LocalDate.now();
+    // Clock.systemUTC() (AppConfig), not the JVM's local timezone (brief §36) - this
+    // machine runs CEST (UTC+2), so a raw LocalDate.now() is already "tomorrow" relative
+    // to the server's own Active-Version Predicate for roughly two hours after local
+    // midnight, which made the GET below flakily 404 (found via a real failure, not a
+    // hypothetical - see PHASE_5_REPORT.md's "Bugs Found").
+    LocalDate today = LocalDate.now(clock);
     mockMvc
         .perform(
             post(BASE + "/procedures/" + procedureCode + "/versions/1/publish")

@@ -13,6 +13,7 @@ import com.foreignerwarsaw.user.Role;
 import com.foreignerwarsaw.user.RoleRepository;
 import com.foreignerwarsaw.user.User;
 import com.foreignerwarsaw.user.UserRepository;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -40,6 +41,7 @@ class QuestionnaireVersionImmutabilityIntegrationTest extends AbstractIntegratio
   @Autowired private AssessmentQueryService assessmentQueryService;
   @Autowired private UserRepository userRepository;
   @Autowired private RoleRepository roleRepository;
+  @Autowired private Clock clock;
 
   private User testUser() {
     User user =
@@ -53,7 +55,15 @@ class QuestionnaireVersionImmutabilityIntegrationTest extends AbstractIntegratio
 
   /**
    * A published v1 of a brand-new, test-only questionnaire, effective since well in the past - so
-   * every test method's own {@code LocalDate.now()} publish never collides with it.
+   * every test method's own publish never collides with it.
+   *
+   * <p>Every date this test constructs uses the injected {@code Clock} bean ({@code
+   * Clock.systemUTC()}, AppConfig), never a raw {@code LocalDate.now()} - this machine runs CEST
+   * (UTC+2), so a raw {@code LocalDate.now()} is already "tomorrow" relative to the server's own
+   * Active-Version Predicate (which resolves "today" via that same Clock bean) for roughly two
+   * hours after local midnight, which made {@code assessmentService.start} flakily resolve the
+   * *previous* version instead of the one this test had just published (found via a real failure,
+   * not a hypothetical - see PHASE_5_REPORT.md's "Bugs Found").
    */
   private QuestionnaireVersion newPublishedQuestionnaireV1() {
     Questionnaire questionnaire =
@@ -62,7 +72,7 @@ class QuestionnaireVersionImmutabilityIntegrationTest extends AbstractIntegratio
                 "TEST_QNR_IMMUT_" + UUID.randomUUID().toString().substring(0, 8), "Test"));
     QuestionnaireVersion v1 = QuestionnaireVersion.draft(questionnaire, 1, "V1", "V1", null);
     ReflectionTestUtils.setField(v1, "status", PublicationStatus.PUBLISHED);
-    ReflectionTestUtils.setField(v1, "effectiveFrom", LocalDate.now().minusYears(1));
+    ReflectionTestUtils.setField(v1, "effectiveFrom", LocalDate.now(clock).minusYears(1));
     return questionnaireVersionRepository.saveAndFlush(v1);
   }
 
@@ -87,7 +97,7 @@ class QuestionnaireVersionImmutabilityIntegrationTest extends AbstractIntegratio
         advanceToApproved(
             questionnaireVersionService.createDraftFrom(
                 v1, v1.getTitle(), v1.getDescription(), null));
-    questionnaireVersionService.publish(v2.getId(), null, LocalDate.now());
+    questionnaireVersionService.publish(v2.getId(), null, LocalDate.now(clock));
 
     QuestionnaireVersion nowActive =
         questionnaireQueryService.resolveActiveVersion(questionnaireCode);
@@ -112,7 +122,7 @@ class QuestionnaireVersionImmutabilityIntegrationTest extends AbstractIntegratio
         advanceToApproved(
             questionnaireVersionService.createDraftFrom(
                 v1, v1.getTitle(), v1.getDescription(), null));
-    questionnaireVersionService.publish(v2.getId(), null, LocalDate.now());
+    questionnaireVersionService.publish(v2.getId(), null, LocalDate.now(clock));
 
     Assessment freshAssessment = assessmentService.start(testUser(), questionnaireCode);
     assertThat(freshAssessment.getQuestionnaireVersion().getId()).isEqualTo(v2.getId());
