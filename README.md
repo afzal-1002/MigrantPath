@@ -4,9 +4,11 @@ A guided-eligibility and case-tracking web application for foreigners living in 
 moving to Warsaw, Poland — architected so additional Polish cities (and eventually other
 countries) can be enabled later without rewriting core logic.
 
-**Status: Phase 2 complete** (authentication + user management). Immigration
-procedures, the questionnaire engine, and every other business feature arrive in later
-phases — see [docs/product/IMPLEMENTATION_PLAN.md](docs/product/IMPLEMENTATION_PLAN.md).
+**Status: Phase 3 complete** (authentication + user management, plus public reference/
+geographic data — countries, EU/EEA/EFTA/Schengen classification, Polish regions, Warsaw
+districts, authorities and offices). Immigration procedures, the questionnaire engine,
+and every other business feature arrive in later phases — see
+[docs/product/IMPLEMENTATION_PLAN.md](docs/product/IMPLEMENTATION_PLAN.md).
 
 ## Prerequisites
 
@@ -70,6 +72,12 @@ for the full walkthrough.
 - `GET /api/v1/platform/status` — what the frontend calls to prove "API connected";
   returns `{ status, application, version }`, nothing sensitive.
 - `GET /swagger-ui.html` — API docs (local/staging only; disabled in production).
+- `GET /api/v1/reference/{countries,authorities,offices}` (+ nested regions/cities/
+  districts) — public, read-only reference data; see
+  [docs/reference/REFERENCE_DATA_SOURCES.md](docs/reference/REFERENCE_DATA_SOURCES.md).
+  http://localhost:4200/reference-demo exercises all of it through real Angular
+  components (country picker, region→city→district cascade) — a Phase 3 verification
+  page, not a product route.
 
 ## Database migrations
 

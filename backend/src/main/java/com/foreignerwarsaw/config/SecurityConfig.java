@@ -52,6 +52,12 @@ public class SecurityConfig {
     "/actuator/health/**",
     "/actuator/info",
     "/api/v1/platform/status",
+    // Read-only reference data (brief §32): populating a registration/onboarding
+    // country or district dropdown must never require a session. No write endpoint
+    // exists under this prefix at all in Phase 3 (brief §66) - admin editing is
+    // Phase 9's job - so a blanket GET-only allow here doesn't risk exposing a
+    // mutating route by accident.
+    "/api/v1/reference/**",
     "/swagger-ui.html",
     "/swagger-ui/**",
     "/v3/api-docs/**"

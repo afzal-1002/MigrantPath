@@ -42,6 +42,13 @@ export const routes: Routes = [
     loadComponent: () => import('./features/dashboard/dashboard').then((m) => m.Dashboard),
   },
   {
+    // Phase 3 verification page (docs, not a product route) - proves the reference
+    // API end to end through real components; no guard needed, same as the public
+    // reference endpoints it calls.
+    path: 'reference-demo',
+    loadComponent: () => import('./features/reference-demo/reference-demo').then((m) => m.ReferenceDemo),
+  },
+  {
     path: '**',
     loadComponent: () => import('./features/not-found/not-found').then((m) => m.NotFound),
   },

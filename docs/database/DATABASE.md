@@ -1,7 +1,7 @@
 # Database Design — Foreigner Warsaw
 
-Status: DRAFT (Phase 0)
-Last updated: 2026-09-01
+Status: DRAFT (Phase 0 design) — §2 (Geographic / reference entities) is IMPLEMENTED as of Phase 3
+Last updated: 2026-09-02
 
 Companion to [ARCHITECTURE.md](../architecture/ARCHITECTURE.md) §4/§7/§8 — this document
 is the schema-level source of truth; ARCHITECTURE.md's entity list points here for
@@ -129,6 +129,14 @@ ever needs to refer to one of those rows by name.
 
 ## 2. Geographic / reference entities
 
+**Status: IMPLEMENTED (Phase 3)** — everything in this section reflects the actual
+migrated schema (`V7`–`V17`) and JPA entities under `reference.{country,geography,authority}`,
+not the Phase 0 speculative sketch. Where Phase 3 refined or deviated from Phase 0's
+original design, that's called out explicitly below; see
+[ADR-006](../architecture/ADR/ADR-006-country-classification.md) and
+[REFERENCE_DATA_SOURCES.md](../reference/REFERENCE_DATA_SOURCES.md) for the full
+rationale and seed-data provenance.
+
 The hierarchy required — `Poland → Mazowieckie → Warsaw → district → office`, extensible
 to `Poland → Małopolskie → Kraków` — is split into two layers that are easy to conflate
 but serve different purposes:
@@ -148,48 +156,122 @@ concept must not be baked into the schema — a future German city's `Land` or F
 `région` is another `Region` row with a different `region_type`, not a new table or a
 code change. "Voivodeship" survives as data, not as structure.
 
+**A naming note that trips people up**: every table below stores its display name in a
+`canonical_name` column (not `name`) — that's the Phase 0 convention, kept for
+consistency with `Procedure`/`Rule`/etc. elsewhere in this document. The public JSON API
+(`/api/v1/reference/**`) exposes that same value under a `name` key in every response DTO
+(`CountryResponse.name`, `RegionResponse.name`, ...) — deliberately minimal and
+consistent across all six reference DTOs (brief §23), and simply a different name at the
+HTTP boundary than at the column level. Don't confuse the two when reading a migration
+next to a controller.
+
+**Reference-data temporal convention (ADR-006), different from §0's Active-Version
+Predicate**: every table below with `valid_from`/`valid_to` treats `valid_to` as
+**inclusive** (`valid_to IS NULL OR valid_to >= evaluationDate`), not the exclusive
+`effective_to` legal-content versioning uses in §0. Reference data is a plain mutable
+fact corrected over time, not append-only legal history — there is no `status` lifecycle
+and no separate identity/version split here at all.
+
 ### Country
-- `id UUID PK`, `code CHAR(2) UNIQUE NOT NULL` (ISO 3166-1 alpha-2), `name`, `created_at`.
-- **Index**: unique index on `code` (also the lookup path for classification).
-- Seeded with the full ISO 3166 list (Phase 3).
+- `id UUID PK`, `code VARCHAR(2) UNIQUE NOT NULL` (ISO 3166-1 alpha-2 — `VARCHAR`, not
+  `CHAR`: these are identifiers compared for equality, not fixed-width display fields),
+  `alpha3_code VARCHAR(3) NULL` (unique when present), `numeric_code VARCHAR(3) NULL`,
+  `canonical_name`, `active BOOLEAN NOT NULL DEFAULT true`, `display_order INT NULL`,
+  `code_standard ENUM(ISO_3166_1, USER_ASSIGNED) NOT NULL DEFAULT 'ISO_3166_1'` (V18),
+  `officially_assigned BOOLEAN NOT NULL DEFAULT true` (V18), `notes TEXT NULL` (V18),
+  `created_at`, `updated_at`.
+- **Index**: unique on `code`; unique partial index on `alpha3_code WHERE alpha3_code IS
+  NOT NULL`.
+- Seeded with all 250 entries of the ODbL-1.0 `mledoze/countries` dataset (Phase 3) — see
+  REFERENCE_DATA_SOURCES.md. **Not all 250 are officially assigned ISO 3166-1 codes**:
+  ISO 3166-1 currently has 249 officially assigned alpha-2 codes; the 250th seeded row is
+  `XK` (Kosovo), a user-assigned code the ISO 3166 Maintenance Agency has never assigned.
+  `code_standard`/`officially_assigned` (added post-Phase-3-approval, V18) make this a
+  real, queryable fact rather than something only discoverable by reading the seed
+  migration — `XK` is `USER_ASSIGNED`/`officially_assigned = false` with an explanatory
+  `notes` value; every other row is `ISO_3166_1`/`officially_assigned = true` with `notes
+  IS NULL`. Kosovo is kept, not removed, because it's operationally useful (e.g. as a
+  country of citizenship) — see REFERENCE_DATA_SOURCES.md.
 
 ### CountryGroup / CountryGroupMembership
-- **CountryGroup**: `id UUID PK`, `code UNIQUE` (`EU_MEMBER`, `EEA_EFTA`, `SCHENGEN`,
-  `UK_WITHDRAWAL_AGREEMENT`, ...), `name`, `description`.
+- **CountryGroup**: `id UUID PK`, `code UNIQUE` (`EU_MEMBER`, `EEA`, `EFTA`, `SCHENGEN`,
+  `EU_EEA_SWISS`), `name`, `description NULL`, `group_type ENUM(LEGAL, CONVENIENCE)`,
+  `active`. `group_type` distinguishes groups with independent legal meaning
+  (`EU_MEMBER`/`EEA`/`EFTA`/`SCHENGEN`) from `EU_EEA_SWISS`, a `CONVENIENCE` grouping that
+  exists only to label "the free-movement area as a whole" for display — it carries no
+  independent classification weight (see `CountryClassificationService`'s
+  `EU_EEA_SWISS_FREE_MOVEMENT_GROUPS` constant, which checks only the three `LEGAL`
+  groups `EU_MEMBER`/`EEA`/`EFTA` — deliberately excluding both `SCHENGEN`, which is
+  border-control cooperation and never a residence-rights signal, and the derived
+  `EU_EEA_SWISS` aggregate itself, to avoid circularity). **No `THIRD_COUNTRY` group and
+  no `UK_WITHDRAWAL_AGREEMENT` group are ever rows here** — both are derived/person-level
+  facts, not country-level ones — see ADR-006, including its "Why not a universal legal
+  boolean" section on why the corresponding service method is deliberately *not* named
+  after a legal term.
 - **CountryGroupMembership**: `id UUID PK`, `country_id FK → Country`,
-  `country_group_id FK → CountryGroup`, `valid_from DATE`, `valid_to DATE NULL`.
-  Membership is **time-bounded on purpose** — the UK's EU membership ending in 2020 is
-  the textbook case a static membership table would get wrong for any pre-2020
-  historical evaluation.
-- **Unique**: `(country_id, country_group_id, valid_from)`.
+  `country_group_id FK → CountryGroup`, `valid_from DATE NOT NULL`, `valid_to DATE NULL`
+  (**inclusive** — see this section's temporal-convention note above, and ADR-006),
+  `provenance_status ENUM(VERIFIED, DRAFT) NOT NULL DEFAULT 'VERIFIED'` (V19).
+  Membership is **time-bounded on purpose** — the UK's EU membership ending
+  2020-01-31 is the textbook case a static membership table would get wrong for any
+  pre-2020 historical evaluation; V11 seeds this exact row
+  (`GB, EU_MEMBER, 1973-01-01..2020-01-31`). `provenance_status` (added
+  post-Phase-3-approval, V19) is `DRAFT` for every row with `valid_from < 2000-01-01`
+  (compiled from general historical knowledge, not one authoritative per-date source —
+  V11's own original migration comment) and `VERIFIED` for everything else, making that
+  confidence level queryable rather than only a comment — see ADR-006's "Membership
+  provenance" section.
 - **Index**: `(country_group_id, valid_from, valid_to)` for "who is in the EU as of date
-  X"; `(country_id)` for "what groups is this country in."
-- This table is what derives `CitizenshipClassification` in
-  [ASSESSMENT_DECISION_TREE.md](../product/ASSESSMENT_DECISION_TREE.md) — application
-  code asks "is `country_id` a member of `EU_MEMBER` as of today," never
-  `if (country == "DE")`.
+  X"; `(country_id)` for "what groups is this country in" — both realized as the JPQL
+  queries `findActiveMembershipsForGroup`/`findActiveMembershipsForCountry`.
+- This table is what
+  `CountryClassificationService.isOutsideEuEeaSwissFreeMovementGroup(code, date)`
+  derives its answer from — application code asks "is this country a member of
+  `EU_MEMBER`/`EEA`/`EFTA` as of today," never `if (country == "DE")`. That method is a
+  narrow structural fact, not a legal "third-country national" determination — see
+  ADR-006.
 
 ### Region, City, District
 - **Region**: `id UUID PK`, `country_id FK → Country`, `code` (`MAZOWIECKIE`,
-  `MALOPOLSKIE`), `name`, `region_type` (`VOIVODESHIP`, ...). Unique `(country_id, code)`.
-- **City**: `id UUID PK`, `region_id FK → Region`, `code` (`WARSAW`, `KRAKOW`), `name`,
-  `is_active BOOLEAN NOT NULL DEFAULT false`. Unique `(region_id, code)`. **`is_active`
-  is literally how "Warsaw is the only enabled city in V1" is implemented** — enabling
-  Kraków later is `UPDATE city SET is_active = true WHERE code = 'KRAKOW'` plus seeding
-  its districts/offices, not a deployment.
-- **District**: `id UUID PK`, `city_id FK → City`, `code`, `name`. Unique `(city_id,
-  code)`. Seeded with Warsaw's official districts (Phase 3).
+  `MALOPOLSKIE`, ...), `canonical_name`, `region_type` (`VOIVODESHIP`, ...), `active
+  BOOLEAN NOT NULL DEFAULT true`, `valid_from DATE NOT NULL DEFAULT '1999-01-01'`,
+  `valid_to NULL`. Unique `(country_id, code)`. All 16 Polish voivodeships are seeded
+  (Phase 3), not just Mazowieckie — cheap, stable reference data that de-risks future
+  city expansion (brief §26).
+- **City**: `id UUID PK`, `country_id FK → Country` (denormalized from `region_id` — see
+  the column comment in `V12__create_geography.sql` for the one case this could drift),
+  `region_id FK → Region`, `code` (`WARSAW`, `KRAKOW`), `canonical_name`, `active BOOLEAN
+  NOT NULL DEFAULT false`, `valid_from`, `valid_to NULL`. Unique `(region_id, code)`.
+  **`active` defaults to `false`, the one entity in this section where the default is
+  "off"** — this is literally how "Warsaw is the only enabled city in V1" is implemented
+  (ARCHITECTURE.md §9): enabling Kraków later is flipping this flag plus seeding its
+  districts/offices, not a deployment.
+- **District**: `id UUID PK`, `city_id FK → City`, `code`, `canonical_name`, `active`,
+  `valid_from`, `valid_to NULL`. Unique `(city_id, code)`. All 18 official Warsaw
+  districts (dzielnice) are seeded, Polish diacritics preserved in `canonical_name`
+  (brief §62 — display names are never ASCII-normalized).
 
 ### Jurisdiction
 - **Purpose**: the legal/procedural scope a `Procedure`, `Rule`, or `Authority` operates
   at.
+- **Refined from Phase 0's original flat-FK sketch into a self-referencing tree** — the
+  concrete need was walking "Warsaw → its parent Mazowieckie → its parent Poland" without
+  three independent lookups, and a tree is the natural shape for that, not a modeling
+  afterthought.
 - **Key columns**: `id UUID PK`, `code UNIQUE` (`PL`, `PL_MAZOWIECKIE`,
-  `PL_MAZOWIECKIE_WARSAW`), `level ENUM(NATIONAL, REGIONAL, MUNICIPAL)`,
-  `country_id FK → Country NOT NULL`, `region_id FK → Region NULL`,
-  `city_id FK → City NULL`.
-- **Constraint**: `CHECK` — `level = NATIONAL` requires `region_id IS NULL AND city_id IS
-  NULL`; `REGIONAL` requires `region_id IS NOT NULL AND city_id IS NULL`; `MUNICIPAL`
-  requires `city_id IS NOT NULL`.
+  `PL_MAZOWIECKIE_WARSAW`), `name`, `jurisdiction_type ENUM(NATIONAL, REGIONAL,
+  MUNICIPAL)`, `parent_jurisdiction_id FK → Jurisdiction NULL` (self-referencing — `NULL`
+  only for the `NATIONAL` root), `country_id FK → Country NOT NULL`,
+  `region_id FK → Region NULL`, `city_id FK → City NULL` (`region`/`city` are still
+  carried directly, denormalized off the tree, so "find the jurisdiction for Warsaw" is a
+  plain indexed lookup rather than a recursive walk — a hybrid design, not purely one or
+  the other), `active`, `valid_from`, `valid_to NULL`.
+- **Constraint**: `CHECK` — `NATIONAL` requires `region_id IS NULL AND city_id IS NULL
+  AND parent_jurisdiction_id IS NULL`; `REGIONAL` requires `region_id IS NOT NULL AND
+  city_id IS NULL AND parent_jurisdiction_id IS NOT NULL`; `MUNICIPAL` requires
+  `city_id IS NOT NULL AND parent_jurisdiction_id IS NOT NULL`.
+- Seeded chain: `PL` (NATIONAL, no parent) → `PL_MAZOWIECKIE` (REGIONAL, parent `PL`) →
+  `PL_MAZOWIECKIE_WARSAW` (MUNICIPAL, parent `PL_MAZOWIECKIE`).
 - Most immigration-eligibility `Procedure`s are `NATIONAL` even though *processing*
   happens at the Mazowieckie voivodeship office — see §7's example of composing a
   National rule with Regional and Municipal presentation data on the same page.
@@ -199,28 +281,54 @@ code change. "Voivodeship" survives as data, not as structure.
   Office, City of Warsaw), as opposed to `Office`, which is a physical place that
   institution operates.
 - `id UUID PK`, `code UNIQUE` (`UDSC`, `MAZOWIECKIE_VOIVODESHIP_OFFICE`,
-  `WARSAW_CITY_HALL`), `name`, `jurisdiction_id FK → Jurisdiction`, `website`.
+  `WARSAW_CITY_HALL`), `canonical_name`, `authority_type VARCHAR(50)` (free-form, not an
+  enum — the brief gave no fixed vocabulary, and inventing one prematurely risks being
+  wrong for a future country's institutional structure), `jurisdiction_id FK →
+  Jurisdiction NOT NULL`, `parent_authority_id FK → Authority NULL` (self-referencing,
+  for a future sub-office hierarchy — `NULL` for every Phase 3 seed row, no concrete
+  example verified yet), `official_website NULL`, `active`, `valid_from`, `valid_to
+  NULL`. Seeded: one `NATIONAL_AGENCY` (UDSC), one `REGIONAL_OFFICE` (Mazowieckie
+  Voivodeship Office), one `MUNICIPAL_GOVERNMENT` (Warsaw City Hall) — one per
+  jurisdiction level, deliberately.
 
-### Office / OfficeService / ProcedureOffice
-- **Office**: `id UUID PK`, `authority_id FK → Authority`, `name`, `street`,
-  `postal_code`, `city_id FK → City`, `district_id FK → District NULL`,
-  `latitude/longitude NULL`, `phone`, `email`, `website`,
-  `opening_hours JSONB` (genuinely irregular per-office schedules — a justified JSONB
-  use, see §6), `appointment_required BOOLEAN`, `booking_url`, `notes`,
-  `valid_from`, `valid_to NULL`, `source_id FK → OfficialSource`, `updated_at`.
-  Deliberately **not** a full identity+version entity like Procedure/Rule: an office's
-  address is an operational fact admins correct, not a legal position that needs
-  DRAFT→PUBLISHED review — `valid_from`/`valid_to` plus a source is enough to know "when
-  did we believe this was the address," without the heavier workflow (§0's delete/version
-  conventions).
-- **OfficeService**: `office_id FK`, `service_code` (`PESEL`, `MELDUNEK`,
-  `DRIVING_LICENCE_EXCHANGE`, ...) — generic "this office handles X" tagging used for
-  routing when no procedure-specific mapping exists. `PK(office_id, service_code)`.
-- **ProcedureOffice**: `procedure_id FK → Procedure`, `office_id FK → Office`,
-  `valid_from`, `valid_to NULL`, `notes` — explicit "this office handles this specific
-  procedure" mapping (e.g. Śródmieście district office for PESEL applicants without a
-  registerable address). References the `Procedure` identity, not a specific
-  `ProcedureVersion` — office routing is administrative, not legal content.
+### Office / OfficeService (ServiceType) / ProcedureOffice
+- **Office**: `id UUID PK`, `authority_id FK → Authority NOT NULL`, `canonical_name`,
+  `street NULL`, `building_number NULL`, `postal_code NULL`, `city_id FK → City NOT
+  NULL`, `district_id FK → District NULL`, `phone NULL`, `email NULL`, `website NULL`,
+  `opening_hours JSONB NULL` (genuinely irregular per-office schedules — a justified
+  JSONB use, see §6 — **deliberately unpopulated in Phase 3**: no source was verified
+  specifically for current hours, only for address/contact facts), `appointment_required
+  BOOLEAN NULL`, `booking_url NULL`, `source_url NULL`, `last_verified_at NULL`, `notes
+  TEXT NULL`, `active`, `valid_from`, `valid_to NULL`. No `latitude`/`longitude` columns
+  yet (deferred — no map-based feature consumes them yet). Deliberately **not** a full
+  identity+version entity like Procedure/Rule: an office's address is an operational fact
+  admins correct, not a legal position that needs DRAFT→PUBLISHED review —
+  `valid_from`/`valid_to` plus `source_url`/`last_verified_at` is enough to know "when
+  did we believe this was the address, and against what," without the heavier workflow
+  (§0's delete/version conventions). **Seeded conservatively: exactly one office record**
+  (the Mazowieckie Wydział Spraw Cudzoziemców, re-verified directly against its primary
+  source on 2026-09-02) — seeding fewer, verified records rather than inventing
+  plausible-looking ones for offices not actually checked (brief's own instruction).
+- **ServiceType**: `id UUID PK`, `code UNIQUE` (`PESEL`, `MELDUNEK`, `DRIVING_LICENCE`,
+  `IMMIGRATION_INFORMATION`), `name`, `description NULL`, `active`. **A genuine deviation
+  from Phase 0's sketch**, which embedded `service_code` directly on the join row —
+  Phase 3 promotes it to its own reference entity so a service's `name`/`description` has
+  one place to live, not one per office that happens to offer it.
+- **OfficeService**: pure join row, composite key — `office_id FK`, `service_type_id
+  FK`, `PRIMARY KEY(office_id, service_type_id)`, `active`, `notes NULL`. Modeled as a
+  JPA `@EmbeddedId` entity (not a derived `@ManyToMany`) specifically so `active`/`notes`
+  have somewhere to live per pairing. Named `OfficeService` per this phase's own brief
+  (§14) despite the collision risk with a hypothetical "office lookup" application
+  service class — the corresponding Spring `@Service` is named `OfficeLookupService`
+  precisely to avoid that collision.
+- **ProcedureOffice**: not yet implemented — deferred to Phase 4+, when a `Procedure`
+  identity exists for it to reference. Design intent unchanged from Phase 0's original
+  sketch (below).
+  - *(Phase 0 design, unimplemented)*: `procedure_id FK → Procedure`, `office_id FK →
+    Office`, `valid_from`, `valid_to NULL`, `notes` — explicit "this office handles this
+    specific procedure" mapping (e.g. Śródmieście district office for PESEL applicants
+    without a registerable address). References the `Procedure` identity, not a specific
+    `ProcedureVersion` — office routing is administrative, not legal content.
 
 ---
 
@@ -625,10 +733,14 @@ erDiagram
     COUNTRY ||--o{ JURISDICTION : scopes
     REGION ||--o{ JURISDICTION : scopes
     CITY ||--o{ JURISDICTION : scopes
+    JURISDICTION ||--o{ JURISDICTION : "parent of (NATIONAL->REGIONAL->MUNICIPAL)"
     JURISDICTION ||--o{ AUTHORITY : operates_at
+    AUTHORITY ||--o{ AUTHORITY : "parent of (unused in Phase 3)"
     AUTHORITY ||--o{ OFFICE : operates
     CITY ||--o{ OFFICE : located_in
+    DISTRICT ||--o{ OFFICE : located_in
     OFFICE ||--o{ OFFICE_SERVICE : provides
+    SERVICE_TYPE ||--o{ OFFICE_SERVICE : "provided via"
 ```
 
 ### 10.2 Procedure content, rules, sources

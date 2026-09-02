@@ -279,7 +279,7 @@ Convention used below: `—` means that column doesn't apply to the task.
 
 ---
 
-## Phase 3 — Reference / geographic data
+## Phase 3 — Reference / geographic data — ✅ COMPLETE (see [PHASE_3_REPORT.md](PHASE_3_REPORT.md))
 
 #### 3.1 Migration + entity: Country
 - **Goal:** `Country` table per DATABASE.md §2.
@@ -310,6 +310,12 @@ Convention used below: `—` means that column doesn't apply to the task.
 - **Goal:** `EU_MEMBER`, `EEA_EFTA`, `SCHENGEN`, `UK_WITHDRAWAL_AGREEMENT` groups seeded
   with correct current membership (and, where cheap to include, historical boundaries —
   UK's EU membership end date at minimum).
+  - **Actual (see ADR-006):** `EU_MEMBER`, `EEA`, `EFTA`, `SCHENGEN` (split, not merged as
+    `EEA_EFTA`) plus `EU_EEA_SWISS` (a `CONVENIENCE`-type aggregate). No
+    `UK_WITHDRAWAL_AGREEMENT` group — that fact is person-level (an individual's
+    residence-rights status), not country-level, so it can't be a `CountryGroup`
+    membership at all; it stays a documented open question for whichever future entity
+    models individual immigration status.
 - **Database:** seed migration.
 - **Tests:** "is Germany an EU member today" / "was the UK an EU member in 2026"
   service-level tests.
@@ -361,6 +367,10 @@ Convention used below: `—` means that column doesn't apply to the task.
 - **DoD:** schema in place (data seeded next, 3.10).
 - **Depends on:** 3.8
 - **Risk:** Low
+- **Actual:** `Authority`/`Office`/`OfficeService` implemented (plus a promoted
+  `ServiceType` reference entity `OfficeService` joins against — see DATABASE.md §2).
+  `ProcedureOffice` deferred to Phase 4+, when a `Procedure` identity exists for it to
+  reference.
 
 #### 3.10 Seed Mazowieckie Voivodeship Office + known Warsaw offices
 - **Goal:** Real office data for the offices the MVP procedures route to.
@@ -371,6 +381,11 @@ Convention used below: `—` means that column doesn't apply to the task.
   district Administration & Resident Services delegation exist.
 - **Depends on:** 3.9
 - **Risk:** Low (content risk, not technical — tracked as a Phase 10 follow-up)
+- **Actual:** Only the Mazowieckie Dept. for Foreigners' Affairs office was seeded — the
+  brief's own "seed fewer records rather than inventing data" instruction took priority
+  over this DoD's second office once no Warsaw district delegation address could be
+  independently re-verified in this pass. Tracked as a Phase 10 follow-up alongside the
+  district-level PESEL/meldunek/driving-licence routing this task's original DoD implied.
 
 #### 3.11 Reference REST endpoints
 - **Goal:** `GET /api/v1/reference/countries` (+ regions/cities/districts/authorities/

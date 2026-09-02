@@ -1,0 +1,35 @@
+<mat-card class="reference-demo-card">
+  <h1>Reference data (Phase 3)</h1>
+  <p>Country, region, city and district selects below are all backed by the real reference API - nothing here is hardcoded.</p>
+
+  <app-country-select [formControl]="countryControl" label="Country of citizenship" />
+
+  <form [formGroup]="geographyForm">
+    <mat-form-field appearance="outline">
+      <mat-label>Region</mat-label>
+      <mat-select formControlName="region">
+        @for (region of regions(); track region.code) {
+          <mat-option [value]="region.code">{{ region.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>City</mat-label>
+      <mat-select formControlName="city">
+        @for (city of cities(); track city.code) {
+          <mat-option [value]="city.code">{{ city.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>District</mat-label>
+      <mat-select formControlName="district">
+        @for (district of districts(); track district.code) {
+          <mat-option [value]="district.code">{{ district.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  </form>
+</mat-card>

@@ -1,0 +1,15 @@
+.reference-demo-card {
+  max-width: 480px;
+  margin: 32px auto;
+  padding: 24px;
+
+  form {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  mat-form-field {
+    width: 100%;
+  }
+}
