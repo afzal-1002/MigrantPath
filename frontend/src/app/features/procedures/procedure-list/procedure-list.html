@@ -1,0 +1,33 @@
+<main class="procedure-list-page">
+  <h1>Browse procedures</h1>
+  <p class="disclaimer">Informational guidance based on official sources. Requirements may change.</p>
+
+  @if (loading()) {
+    <mat-spinner diameter="32" />
+  } @else if (error()) {
+    <p class="error-state">Something went wrong loading procedures. Please try again later.</p>
+  } @else if (procedures().length === 0) {
+    <p class="empty-state">No procedures are published yet. Check back soon.</p>
+  } @else {
+    <div class="procedure-grid">
+      @for (procedure of procedures(); track procedure.code) {
+        <a class="procedure-card-link" [routerLink]="['/procedures', procedure.code]">
+          <mat-card>
+            <mat-card-header>
+              <mat-card-title>{{ procedure.name }}</mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              <mat-chip-set>
+                <mat-chip>{{ procedure.category }}</mat-chip>
+                <mat-chip>{{ procedure.jurisdictionScope }}</mat-chip>
+              </mat-chip-set>
+              @if (procedure.summary) {
+                <p>{{ procedure.summary }}</p>
+              }
+            </mat-card-content>
+          </mat-card>
+        </a>
+      }
+    </div>
+  }
+</main>

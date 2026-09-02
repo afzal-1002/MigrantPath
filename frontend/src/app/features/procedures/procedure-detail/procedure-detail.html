@@ -1,0 +1,114 @@
+<main class="procedure-detail-page">
+  <a routerLink="/procedures">&larr; Back to all procedures</a>
+
+  @if (loading()) {
+    <mat-spinner diameter="32" />
+  } @else if (notFound()) {
+    <p class="empty-state">This procedure could not be found.</p>
+  } @else if (procedure(); as p) {
+    <h1>{{ p.name }}</h1>
+    <mat-chip-set>
+      <mat-chip>{{ p.category }}</mat-chip>
+      <mat-chip>{{ p.jurisdictionScope }}</mat-chip>
+    </mat-chip-set>
+
+    <section class="overview">
+      @if (p.summary) {
+        <p class="summary">{{ p.summary }}</p>
+      }
+      @if (p.description) {
+        <p>{{ p.description }}</p>
+      }
+    </section>
+
+    @if (p.steps.length > 0) {
+      <mat-divider />
+      <section>
+        <h2>Steps</h2>
+        <ol class="step-list">
+          @for (step of p.steps; track step.code) {
+            <li>
+              <strong>{{ step.title }}</strong>
+              @if (step.description) {
+                <p>{{ step.description }}</p>
+              }
+              @if (!step.mandatory) {
+                <span class="tag">Optional</span>
+              }
+            </li>
+          }
+        </ol>
+      </section>
+    }
+
+    @if (p.documents.length > 0) {
+      <mat-divider />
+      <section>
+        <h2>Documents</h2>
+        <ul class="document-list">
+          @for (document of p.documents; track document.code) {
+            <li>
+              <strong>{{ document.name }}</strong>
+              <span class="tag" [class.tag-conditional]="document.requirementType === 'CONDITIONAL'">
+                {{ requirementTypeLabel(document.requirementType) }}
+              </span>
+              @if (document.description) {
+                <p>{{ document.description }}</p>
+              }
+            </li>
+          }
+        </ul>
+      </section>
+    }
+
+    @if (p.fees.length > 0) {
+      <mat-divider />
+      <section>
+        <h2>Fees</h2>
+        <ul class="fee-list">
+          @for (fee of p.fees; track fee.code) {
+            <li>{{ fee.amount }} {{ fee.currency }} <span class="tag">{{ fee.feeType }}</span></li>
+          }
+        </ul>
+      </section>
+    }
+
+    @if (p.authorities.length > 0 || p.offices.length > 0) {
+      <mat-divider />
+      <section>
+        <h2>Where to go</h2>
+        @for (authority of p.authorities; track authority.code) {
+          <p>{{ authority.name }}</p>
+        }
+        @for (office of p.offices; track office.code) {
+          <p>{{ office.name }}@if (office.street) {, {{ office.street }} {{ office.buildingNumber }}}</p>
+        }
+      </section>
+    }
+
+    @if (p.sources.length > 0) {
+      <mat-divider />
+      <section>
+        <h2>Official sources</h2>
+        <ul class="source-list">
+          @for (source of p.sources; track source.url) {
+            <li>
+              <a [href]="source.url" target="_blank" rel="noopener">{{ source.title }}</a>
+              @if (source.authority) {
+                <span> &mdash; {{ source.authority }}</span>
+              }
+            </li>
+          }
+        </ul>
+      </section>
+    }
+
+    <mat-divider />
+    <footer class="review-footer">
+      @if (p.contentReviewedAt) {
+        <p>Last reviewed: {{ p.contentReviewedAt | date: 'longDate' }}</p>
+      }
+      <p class="disclaimer">Informational guidance based on official sources. Requirements may change.</p>
+    </footer>
+  }
+</main>

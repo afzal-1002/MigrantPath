@@ -1,6 +1,6 @@
 # Database Design — Foreigner Warsaw
 
-Status: DRAFT (Phase 0 design) — §2 (Geographic / reference entities) is IMPLEMENTED as of Phase 3
+Status: DRAFT (Phase 0 design) — §2 (Geographic / reference entities) IMPLEMENTED as of Phase 3; §3 (Procedure / content entities) IMPLEMENTED as of Phase 4
 Last updated: 2026-09-02
 
 Companion to [ARCHITECTURE.md](../architecture/ARCHITECTURE.md) §4/§7/§8 — this document
@@ -334,94 +334,191 @@ and no separate identity/version split here at all.
 
 ## 3. Procedure / content entities
 
+**Status: IMPLEMENTED (Phase 4)** — this section reflects the actual migrated schema
+(`V20`–`V34`) and JPA entities under `procedure.{category,core,step,document,fee,
+threshold,source,authority}`, not the Phase 0 speculative sketch. See
+[ADR-007](../architecture/ADR/ADR-007-versioned-procedure-content.md) for the identity+
+version rationale,
+[CONTENT_PUBLISHING_WORKFLOW.md](../product/CONTENT_PUBLISHING_WORKFLOW.md) for the
+publish state machine and validation, and
+[SOURCE_VERIFICATION_POLICY.md](../legal-sources/SOURCE_VERIFICATION_POLICY.md) for
+source provenance policy.
+
 ### ProcedureCategory
-- `id UUID PK`, `code UNIQUE` (`RESIDENCE`, `WORK`, `STUDY`, `FAMILY`, `DRIVING`,
-  `ADMINISTRATIVE`, `BUSINESS`, `LONG_TERM_STAY`), `parent_category_id FK →
-  ProcedureCategory NULL` (self-referencing, for "Residence → Temporary Residence →
-  Work"), `name`, `display_order`.
+- `id UUID PK`, `code UNIQUE` (`RESIDENCE`, `EU_FREE_MOVEMENT`, `WORK`, `STUDY`,
+  `FAMILY`, `LONG_TERM_RESIDENCE`, `PROTECTION`, `IDENTITY_REGISTRATION`, `DRIVING`,
+  `BUSINESS`, `OTHER`), `canonical_name`, `description NULL`, `display_order`, `active`.
+  **Deliberately flat, no `parent_category_id`** (a deviation from the Phase 0 sketch) —
+  a hierarchy isn't needed by anything yet and can be added later without changing this
+  table's shape (brief §5: design for multi-category tagging without prematurely
+  implementing it).
 
 ### Procedure (identity)
 - `id UUID PK`, `code UNIQUE` (`TEMP_RESIDENCE_WORK`), `category_id FK →
-  ProcedureCategory`, `jurisdiction_id FK → Jurisdiction`, `is_active BOOLEAN`,
-  `created_at`.
+  ProcedureCategory NOT NULL`, `canonical_name`, `short_description NULL`,
+  `procedure_type VARCHAR(50) NULL` (free-form, no fixed vocabulary given - same
+  reasoning as `Authority.authority_type`), `jurisdiction_scope
+  ENUM(NATIONAL, REGIONAL, MUNICIPAL, MIXED)`, `active`, `created_at`, `updated_at`.
+  **No `jurisdiction_id` FK here** (a deviation from the Phase 0 sketch, which had one) —
+  `jurisdiction_scope` is the procedure's own descriptive classification;
+  `ProcedureVersion.jurisdiction_id` (below) is the actual anchor jurisdiction, since
+  which specific jurisdiction row applies is a fact about a version's content, not the
+  bare identity.
 
 ### ProcedureVersion
-- `id UUID PK`, `procedure_id FK → Procedure`, `version_number INT`,
-  `status ENUM(DRAFT, IN_REVIEW, APPROVED, PUBLISHED, ARCHIVED)`,
-  `effective_from DATE`, `effective_to DATE NULL`, `title`, `summary`,
-  `eligibility_rule_id FK → Rule`, `source_id FK → OfficialSource`,
-  `created_by/created_at`, `approved_by/approved_at NULL`, `published_at NULL`.
+- `id UUID PK`, `procedure_id FK → Procedure NOT NULL`, `version_number INT`, `title`,
+  `summary NULL`, `description NULL`, `status ENUM(DRAFT, IN_REVIEW, APPROVED,
+  PUBLISHED, ARCHIVED)` (shared `PublicationStatus` enum, not procedure-specific),
+  `effective_from DATE NULL` (nullable at DRAFT; required by application validation
+  before PUBLISHED), `effective_to DATE NULL`, `jurisdiction_id FK → Jurisdiction NULL`,
+  `change_summary NULL`, `created_by/submitted_by/approved_by/published_by FK → User
+  NULL` (`ON DELETE SET NULL` — a departed admin's history is kept, not cascaded away),
+  `submitted_at/approved_at/published_at NULL`, `created_at`, `updated_at`,
+  `lock_version BIGINT` (Hibernate `@Version` optimistic-lock counter — a different
+  concept from `version_number`, the business-visible "Version 1/2/3").
+  **No `eligibility_rule_id` or `source_id` column** (deviations from the Phase 0
+  sketch): the former doesn't exist because Phase 6's `Rule` table doesn't exist yet
+  (brief §16's "avoid speculative foreign keys"); the latter is replaced by the
+  many-to-many `procedure_version_sources` association below (brief §26: "a legal
+  requirement may have more than one source").
 - **Unique**: `(procedure_id, version_number)`.
 - **Integrity beyond a plain unique constraint**: published versions of the same
-  procedure must not have overlapping effective ranges (§0's Active-Version Predicate
-  depends on at most one `PUBLISHED` row matching any given date). Enforced with a
-  PostgreSQL exclusion constraint using the `btree_gist` extension:
-  `EXCLUDE USING gist (procedure_id WITH =, daterange(effective_from, effective_to) WITH
-  &&) WHERE (status = 'PUBLISHED')`.
-- **Index**: `(procedure_id, status, effective_from, effective_to)` — the Active-Version
-  Predicate's lookup path.
+  procedure must not have overlapping effective ranges (§0's Active-Version Predicate —
+  here using the same **exclusive** `effective_to` convention as every other
+  legal-content table, deliberately different from reference data's inclusive
+  `valid_to`, ADR-006). Enforced with a PostgreSQL exclusion constraint using the
+  `btree_gist` extension: `EXCLUDE USING gist (procedure_id WITH =,
+  daterange(effective_from, effective_to) WITH &&) WHERE (status = 'PUBLISHED')`.
+  Postgres's `daterange` defaults to `[)` (lower-inclusive, upper-exclusive), which
+  matches this exact convention with no explicit bound argument needed.
+- **Index**: `(procedure_id, status)`, `(effective_from, effective_to)` — the
+  Active-Version Predicate's lookup path.
+- **Found the hard way**: publishing a new version must close the previously-active
+  version's `effective_to` *and flush that write* before the new version's own
+  PUBLISHED update, or Hibernate's flush ordering can send the two in the wrong order
+  and the exclusion constraint rejects the new version against the *old*, still
+  open-ended range - see `ProcedurePublishingService#publish`'s Javadoc.
 
 ### ProcedureStep (identity) / StepVersion
-- **ProcedureStep**: `id UUID PK`, `procedure_id FK → Procedure`, `code`
-  (`STEP_PREPARE_EMPLOYMENT_DOCS`), `default_order INT`.
-- **StepVersion**: `id UUID PK`, `procedure_step_id FK → ProcedureStep`,
-  `procedure_version_id FK → ProcedureVersion`, `order_index INT`, `title`,
-  `description`, `is_online_available BOOLEAN`, `source_id FK → OfficialSource`,
-  `status` (mirrors the parent `ProcedureVersion`'s lifecycle — a `StepVersion` is only
-  ever created as part of drafting a `ProcedureVersion` and moves through the same
-  publish workflow together with it, so it does not carry independent
-  `effective_from`/`effective_to`).
-- **Unique**: `(procedure_version_id, procedure_step_id)`.
+- **ProcedureStep**: `id UUID PK`, `procedure_id FK → Procedure NOT NULL`,
+  `stable_code`, `created_at`. Unique `(procedure_id, stable_code)`.
+- **StepVersion**: `id UUID PK`, `procedure_step_id FK → ProcedureStep NOT NULL`,
+  `procedure_version_id FK → ProcedureVersion NOT NULL`, `title`, `description NULL`,
+  `detailed_instructions NULL`, `step_type ENUM(INFORMATION, PREPARATION, DOCUMENT,
+  PAYMENT, ONLINE_SUBMISSION, IN_PERSON_SUBMISSION, APPOINTMENT, BIOMETRICS, WAITING,
+  ADDITIONAL_DOCUMENTS, DECISION, COLLECTION, OTHER)`, `sort_order INT`, `mandatory
+  BOOLEAN`, `online_available BOOLEAN NULL`, `requires_appointment BOOLEAN NULL`,
+  `expected_user_action NULL`, `jurisdiction_id FK → Jurisdiction NULL` (content-overlay
+  hook, brief §112-114 — `NULL` inherits the parent version's own jurisdiction; set only
+  when a step's content genuinely belongs to a narrower jurisdiction). No independent
+  `status` column — mirrors the parent `ProcedureVersion`'s lifecycle, as Phase 0
+  originally sketched.
+- **Unique**: `(procedure_version_id, procedure_step_id)` (a new version structurally
+  requires its own `StepVersion` rows — no silent fallback to a prior version's steps)
+  and `(procedure_version_id, sort_order)` (deterministic ordering, brief §14).
 
-### DocumentRequirement (identity) / DocumentRequirementVersion
-- **DocumentRequirement**: `id UUID PK`, `procedure_id FK → Procedure`, `code`
-  (`DOC_EMPLOYMENT_CONTRACT`), `name`.
-- **DocumentRequirementVersion**: `id UUID PK`,
-  `document_requirement_id FK → DocumentRequirement`,
-  `procedure_version_id FK → ProcedureVersion`, `required BOOLEAN`,
-  `conditional BOOLEAN`, `condition_rule_id FK → Rule NULL` (e.g. "only if
-  `Q_HIGHLY_QUALIFIED = true`"), `translation_required`, `sworn_translation_required`,
-  `apostille_required`, `legalisation_required`, `validity_period`,
-  `number_of_copies`, `notes`, `source_id FK → OfficialSource`, `status`
-  (mirrors parent version, as with `StepVersion`).
+### DocumentType / DocumentRequirement (identity) / DocumentRequirementVersion
+- **DocumentType** (new in Phase 4, not in the Phase 0 sketch — brief §18): `id UUID
+  PK`, `code UNIQUE` (`PASSPORT`, `PHOTO`, `EMPLOYMENT_CONTRACT`, ...), `canonical_name`,
+  `description NULL`, `active`. A reusable document *concept*, distinct from a
+  procedure-specific requirement.
+- **DocumentRequirement**: `id UUID PK`, `procedure_id FK → Procedure NOT NULL`,
+  `stable_code`, `document_type_id FK → DocumentType NULL`, `created_at`. Unique
+  `(procedure_id, stable_code)`.
+- **DocumentRequirementVersion**: `id UUID PK`, `document_requirement_id FK →
+  DocumentRequirement NOT NULL`, `procedure_version_id FK → ProcedureVersion NOT NULL`,
+  `name`, `description NULL`, `requirement_type ENUM(DEFAULT_REQUIRED, CONDITIONAL,
+  INFORMATIONAL)` (replaces the Phase 0 sketch's `required`/`conditional` booleans plus
+  a `condition_rule_id FK → Rule` — brief §16 explicitly forbids a speculative FK to a
+  table that doesn't exist yet; `CONDITIONAL` alone carries the forward-compatible
+  signal), `required_by_default BOOLEAN`, `number_of_copies INT NULL`,
+  `original_required/copy_required/translation_required/sworn_translation_required/
+  apostille_required/legalisation_required BOOLEAN NULL`,
+  `validity_period_description VARCHAR(300) NULL` (free text, not a structured
+  duration — brief §17: "do not convert complex legal statements into oversimplified
+  booleans if that loses meaning"), `notes NULL`, `sort_order INT`. No independent
+  `status` — mirrors the parent version, as with `StepVersion`.
 - **Unique**: `(procedure_version_id, document_requirement_id)`.
 
 ### Fee (identity) / FeeVersion
-- **Fee**: `id UUID PK`, `procedure_id FK → Procedure`, `code`
-  (`FEE_TEMP_RESIDENCE_PERMIT`), `name`.
-- **FeeVersion**: `id UUID PK`, `fee_id FK → Fee`, `procedure_version_id FK →
-  ProcedureVersion`, `amount NUMERIC(10,2)`, `currency CHAR(3)`, `fee_type`,
-  `payment_instructions`, `source_id FK → OfficialSource`, `status`.
+- **Fee**: `id UUID PK`, `procedure_id FK → Procedure NOT NULL`, `stable_code`,
+  `fee_type ENUM(APPLICATION, STAMP_DUTY, RESIDENCE_CARD, DOCUMENT_ISSUANCE, OTHER)`,
+  `created_at`. Unique `(procedure_id, stable_code)`.
+- **FeeVersion**: `id UUID PK`, `fee_id FK → Fee NOT NULL`, `procedure_version_id FK →
+  ProcedureVersion NOT NULL`, `amount NUMERIC(10,2)` (`BigDecimal`, never
+  float/double, brief §104), `currency VARCHAR(3)`, `description NULL`,
+  `payment_instructions NULL`, `refundable BOOLEAN NULL`. **Snapshotted per
+  `ProcedureVersion`, not independently versioned** (brief §20's choice, matching
+  DATABASE.md's original design) — a fee's temporal validity is then identical to its
+  parent version's, so no separate exclusion constraint or `status` column is needed;
+  "the fee that applied on date X" is just "the `FeeVersion` belonging to the
+  `ProcedureVersion` active on date X" (brief §49's snapshot-readiness, for free).
 - **Unique**: `(procedure_version_id, fee_id)`.
 
 ### Threshold (identity) / ThresholdVersion
-- **Threshold**: `id UUID PK`, `code UNIQUE` (`BLUE_CARD_MIN_SALARY`,
-  `TR_WORK_MIN_SALARY`), `name`, `unit` (`PLN_PER_MONTH`).
-- **ThresholdVersion**: `id UUID PK`, `threshold_id FK → Threshold`,
-  `value NUMERIC(12,2)`, `effective_from DATE`, `effective_to DATE NULL`,
-  `status ENUM(DRAFT, IN_REVIEW, APPROVED, PUBLISHED, ARCHIVED)`,
-  `source_id FK → OfficialSource`. This is the entity a `RuleCondition` points at instead
-  of embedding a number — e.g. GUS's annual Blue Card salary announcement becomes a new
-  `ThresholdVersion` row, not a Java constant or a rule edit.
-- **Same exclusion-constraint pattern as ProcedureVersion**, keyed on `threshold_id`
-  instead of `procedure_id`, to guarantee at most one `PUBLISHED` value applies on any
-  given date.
-- **Index**: `(threshold_id, status, effective_from, effective_to)`.
+- **Threshold**: `id UUID PK`, `code UNIQUE` (e.g. a future `BLUE_CARD_MIN_SALARY`),
+  `canonical_name`, `value_type ENUM(DECIMAL, INTEGER, PERCENTAGE, DURATION, MONEY,
+  TEXT)`, `unit NULL`, `currency NULL`, `active`.
+- **ThresholdVersion**: `id UUID PK`, `threshold_id FK → Threshold NOT NULL`,
+  `value NUMERIC(18,4) NULL`, `value_text NULL` (exactly one of the two populated,
+  per `value_type` — two nullable columns, not a fully generic EAV design, brief §21),
+  `status`/`effective_from`/`effective_to`/actor+timestamp columns/`lock_version` —
+  the identical independent identity+version+exclusion-constraint pattern as
+  `ProcedureVersion`, since a `Threshold` (unlike `Fee`) isn't owned by any one
+  procedure. **No rows are seeded** (brief §21/§53 — never seed unverified legal
+  numeric thresholds); this migration only builds the engine, ready for Phase 6.
+  **Not yet exposed through a dedicated internal HTTP API** (brief §43's "defer UI/API
+  breadth" — no threshold value exists yet for an admin to manage through one); proven
+  at the service/repository layer instead (`ThresholdVersionRepositoryTest`,
+  `ThresholdService`).
 
 ### OfficialSource / SourceVerification
-- **OfficialSource**: `id UUID PK`, `authority`, `title`, `source_url`,
-  `jurisdiction_id FK → Jurisdiction`, `language`, `source_type`, `published_date`,
-  `effective_from`, `effective_to NULL`, `last_checked_at`, `last_verified_at`,
-  `status ENUM(DRAFT, VERIFIED, NEEDS_REVIEW, OUTDATED, ARCHIVED)`, `notes`,
-  `content_hash` (hash of the fetched page content, so a re-check can detect "did this
-  page actually change" automatically even before full re-review).
-- **Delete**: never — protected by FK from every `*Version` table that references it
-  (`ON DELETE RESTRICT`); an `OfficialSource` referenced by a `PUBLISHED` version cannot
-  be deleted (brief §93/§94).
-- **SourceVerification**: `id UUID PK`, `source_id FK → OfficialSource`,
-  `verified_by FK → User`, `verified_at`, `result ENUM(CONFIRMED_CURRENT,
-  CONTENT_CHANGED, SOURCE_UNAVAILABLE)`, `notes` — the append-only log behind
-  `last_verified_at`/freshness reporting (ARCHITECTURE.md §8, Source freshness).
+- **OfficialSource**: `id UUID PK`, `authority_id FK → Authority NULL`, `title`,
+  `source_url VARCHAR(500)` (`CHECK` constraint requiring `http(s)://`, brief §61),
+  `jurisdiction_id FK → Jurisdiction NULL`, `language VARCHAR(5) NULL`,
+  `source_type ENUM(LEGISLATION, GOVERNMENT_GUIDANCE, OFFICIAL_SERVICE_PAGE,
+  OFFICIAL_FORM, OFFICIAL_FEE_SCHEDULE, OFFICIAL_NOTICE, OTHER_OFFICIAL)` (brief §23 —
+  never `BLOG`/`REDDIT`/`LAW_FIRM`), `publication_date/effective_from/effective_to
+  DATE NULL`, `last_checked_at/last_verified_at TIMESTAMPTZ NULL`,
+  `verification_status ENUM(DRAFT, VERIFIED, NEEDS_REVIEW, OUTDATED, ARCHIVED)`,
+  `content_hash VARCHAR(128) NULL` (change-detection metadata only, brief §50 — never
+  itself evidence of verification), `notes NULL`, `active`, `created_at`, `updated_at`.
+  See [SOURCE_VERIFICATION_POLICY.md](../legal-sources/SOURCE_VERIFICATION_POLICY.md)
+  for the full policy.
+- **SourceVerification**: `id UUID PK`, `official_source_id FK → OfficialSource NOT
+  NULL` (`ON DELETE CASCADE` — a verification record has no meaning without its
+  source), `checked_at TIMESTAMPTZ`, `checked_by FK → User NULL`,
+  `status` (same `VerificationStatus` vocabulary), `notes NULL`,
+  `observed_hash VARCHAR(128) NULL`, `change_detected BOOLEAN`,
+  `previous_verification_id FK → SourceVerification NULL` — the append-only log behind
+  `OfficialSource.last_verified_at`.
+
+### Content → source provenance associations
+Five small, real-FK join tables (brief §25's "maintainability over clever polymorphic
+SQL" — a deliberate departure from a single polymorphic `content_type`/`content_id`
+association table): `procedure_version_sources`, `step_version_sources`,
+`document_requirement_version_sources`, `fee_version_sources`,
+`threshold_version_sources`. Each: `(<content>_id, official_source_id)` composite PK,
+`role ENUM(PRIMARY, SUPPORTING, OPERATIONAL)` (brief §26 — a requirement may cite
+legislation as `PRIMARY` plus a government explanatory page as `SUPPORTING`). Modeled as
+JPA `@EmbeddedId` join entities, the same pattern as Phase 3's `OfficeService`.
+
+### ProcedureAuthority / ProcedureVersionOffice
+- **ProcedureAuthority** (new in Phase 4, brief §30): `procedure_id FK → Procedure`,
+  `authority_id FK → Authority`, `role ENUM(LEGAL_AUTHORITY, PROCESSING_AUTHORITY,
+  MUNICIPAL_AUTHORITY, INFORMATION_AUTHORITY)`, `notes NULL`. Composite PK includes
+  `role`, so the same authority can hold more than one role. Kept at the `Procedure`
+  identity level (not per-version) — which authorities are involved changes rarely,
+  never as a side effect of ordinary content edits.
+- **ProcedureVersionOffice** (brief §31 — Phase 3 deliberately deferred this):
+  `procedure_version_id FK → ProcedureVersion`, `office_id FK → Office`, `notes NULL`.
+  Expresses only "this office can participate in this procedure," never "this specific
+  user must go to this office" — routing by district/circumstances is a future phase's
+  job. Tied to the version (not the bare procedure) since participating offices can
+  genuinely change alongside a content update.
+- **`ProcedureOffice` from the Phase 0 sketch is superseded by `ProcedureVersionOffice`**
+  above — the name changed to make explicit that office participation is a fact about a
+  specific version's content, not the procedure's bare identity.
 
 ---
 
@@ -743,33 +840,45 @@ erDiagram
     SERVICE_TYPE ||--o{ OFFICE_SERVICE : "provided via"
 ```
 
-### 10.2 Procedure content, rules, sources
+### 10.2 Procedure content, sources (IMPLEMENTED, Phase 4)
+
+`RULE`/`RULE_VERSION`/`RULE_THRESHOLD_REFERENCE` are Phase 6, not yet built — this
+diagram shows only what actually exists today; `THRESHOLD`/`THRESHOLD_VERSION` exist as
+a standalone engine (IMPLEMENTATION_PLAN.md 4.6) with no rows seeded and no `Rule` to
+reference them yet.
 
 ```mermaid
 erDiagram
     PROCEDURE_CATEGORY ||--o{ PROCEDURE : contains
-    JURISDICTION ||--o{ PROCEDURE : scopes
     PROCEDURE ||--o{ PROCEDURE_VERSION : has
-    PROCEDURE_VERSION }o--|| RULE : "eligibility_rule"
-    RULE ||--o{ RULE_VERSION : has
-    RULE_VERSION ||--o{ RULE_THRESHOLD_REFERENCE : references
-    THRESHOLD ||--o{ RULE_THRESHOLD_REFERENCE : referenced_by
-    THRESHOLD ||--o{ THRESHOLD_VERSION : has
+    JURISDICTION ||--o{ PROCEDURE_VERSION : scopes
     PROCEDURE ||--o{ PROCEDURE_STEP : has
     PROCEDURE_STEP ||--o{ STEP_VERSION : has
     PROCEDURE_VERSION ||--o{ STEP_VERSION : snapshots
+    DOCUMENT_TYPE ||--o{ DOCUMENT_REQUIREMENT : "typed as"
     PROCEDURE ||--o{ DOCUMENT_REQUIREMENT : has
     DOCUMENT_REQUIREMENT ||--o{ DOCUMENT_REQUIREMENT_VERSION : has
     PROCEDURE_VERSION ||--o{ DOCUMENT_REQUIREMENT_VERSION : snapshots
     PROCEDURE ||--o{ FEE : has
     FEE ||--o{ FEE_VERSION : has
     PROCEDURE_VERSION ||--o{ FEE_VERSION : snapshots
-    OFFICIAL_SOURCE ||--o{ PROCEDURE_VERSION : sources
-    OFFICIAL_SOURCE ||--o{ RULE_VERSION : sources
-    OFFICIAL_SOURCE ||--o{ THRESHOLD_VERSION : sources
-    OFFICIAL_SOURCE ||--o{ DOCUMENT_REQUIREMENT_VERSION : sources
-    OFFICIAL_SOURCE ||--o{ FEE_VERSION : sources
+    THRESHOLD ||--o{ THRESHOLD_VERSION : has
+    PROCEDURE ||--o{ PROCEDURE_AUTHORITY : involves
+    AUTHORITY ||--o{ PROCEDURE_AUTHORITY : "involved in"
+    PROCEDURE_VERSION ||--o{ PROCEDURE_VERSION_OFFICE : "can use"
+    OFFICE ||--o{ PROCEDURE_VERSION_OFFICE : "participates in"
+    OFFICIAL_SOURCE ||--o{ PROCEDURE_VERSION_SOURCE : cites
+    PROCEDURE_VERSION ||--o{ PROCEDURE_VERSION_SOURCE : "backed by"
+    OFFICIAL_SOURCE ||--o{ STEP_VERSION_SOURCE : cites
+    STEP_VERSION ||--o{ STEP_VERSION_SOURCE : "backed by"
+    OFFICIAL_SOURCE ||--o{ DOCUMENT_REQUIREMENT_VERSION_SOURCE : cites
+    DOCUMENT_REQUIREMENT_VERSION ||--o{ DOCUMENT_REQUIREMENT_VERSION_SOURCE : "backed by"
+    OFFICIAL_SOURCE ||--o{ FEE_VERSION_SOURCE : cites
+    FEE_VERSION ||--o{ FEE_VERSION_SOURCE : "backed by"
+    OFFICIAL_SOURCE ||--o{ THRESHOLD_VERSION_SOURCE : cites
+    THRESHOLD_VERSION ||--o{ THRESHOLD_VERSION_SOURCE : "backed by"
     OFFICIAL_SOURCE ||--o{ SOURCE_VERIFICATION : "verified via"
+    AUTHORITY ||--o{ OFFICIAL_SOURCE : "published by"
 ```
 
 ### 10.3 Assessment → recommendation → case

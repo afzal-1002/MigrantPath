@@ -1,0 +1,47 @@
+.procedure-detail-page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 24px;
+
+  section {
+    margin: 16px 0;
+  }
+
+  .summary {
+    font-size: 1.1rem;
+  }
+
+  .step-list,
+  .document-list,
+  .fee-list,
+  .source-list {
+    padding-left: 20px;
+
+    li {
+      margin-bottom: 12px;
+    }
+  }
+
+  .tag {
+    display: inline-block;
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    border-radius: 12px;
+    background: var(--mat-sys-surface-variant, #eee);
+    margin-left: 8px;
+  }
+
+  .tag-conditional {
+    background: var(--mat-sys-tertiary-container, #fff3cd);
+  }
+
+  .review-footer {
+    color: var(--mat-sys-on-surface-variant, #666);
+    font-size: 0.85rem;
+  }
+
+  .empty-state {
+    margin-top: 24px;
+    color: var(--mat-sys-on-surface-variant, #666);
+  }
+}

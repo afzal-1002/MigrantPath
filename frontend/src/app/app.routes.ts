@@ -49,6 +49,18 @@ export const routes: Routes = [
     loadComponent: () => import('./features/reference-demo/reference-demo').then((m) => m.ReferenceDemo),
   },
   {
+    // Phase 4 "Browse procedures" - the product's "I know what I need" journey
+    // (brief §69), public and unauthenticated like the reference routes above. The
+    // "Help me choose" questionnaire is a separate route arriving in Phase 5-7.
+    path: 'procedures',
+    loadComponent: () => import('./features/procedures/procedure-list/procedure-list').then((m) => m.ProcedureList),
+  },
+  {
+    path: 'procedures/:code',
+    loadComponent: () =>
+      import('./features/procedures/procedure-detail/procedure-detail').then((m) => m.ProcedureDetailPage),
+  },
+  {
     path: '**',
     loadComponent: () => import('./features/not-found/not-found').then((m) => m.NotFound),
   },

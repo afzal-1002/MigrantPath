@@ -1,7 +1,7 @@
 # Architecture — Foreigner Warsaw
 
-Status: DRAFT (Phase 0)
-Last updated: 2026-09-01
+Status: DRAFT (Phase 0 design) — §1/§4's `reference` and `procedure` module layouts are IMPLEMENTED (Phase 3, Phase 4 respectively)
+Last updated: 2026-09-02
 
 This document is the system-level design companion to
 [PRODUCT_REQUIREMENTS.md](../product/PRODUCT_REQUIREMENTS.md),
@@ -19,19 +19,33 @@ ever needed) has clean seams:
 
 ```
 com.foreignerwarsaw
-├── auth            registration, login, sessions, password reset, roles
-├── user            account + UserProfile
-├── reference       Country, CountryGroup, Jurisdiction, City, District, Authority, Office
-├── assessment      Questionnaire, Question, QuestionDependency, Assessment, AssessmentAnswer
-├── recommendation  RecommendationResult assembly on top of the rules engine output
-├── rules           Rule, RuleVersion, RuleCondition, RuleOutcome, Threshold, evaluation engine
-├── procedure       ProcedureCategory, Procedure, ProcedureVersion, ProcedureStep, DocumentRequirement, Fee
-├── case            UserCase, UserCaseStep, UserCaseDocument, UserCaseEvent
-├── source          OfficialSource, SourceVerification
-├── notification    Notification, preferences
-├── admin           publishing workflow orchestration across the above modules
-├── audit           AuditLog
-└── common          shared error handling, base entities, API envelope
+├── auth                registration, login, sessions, password reset, roles
+├── user                account + UserProfile
+├── reference           (IMPLEMENTED, Phase 3) sub-packaged by feature, not flat:
+│   ├── country             Country, CountryGroup, CountryGroupMembership, classification
+│   ├── geography           Region, City, District, Jurisdiction
+│   └── authority           Authority, Office, ServiceType, OfficeService
+├── procedure           (IMPLEMENTED, Phase 4) sub-packaged by feature, not flat:
+│   ├── category            ProcedureCategory
+│   ├── core                Procedure, ProcedureVersion, publish/query services, public API
+│   ├── step                ProcedureStep, StepVersion
+│   ├── document            DocumentType, DocumentRequirement, DocumentRequirementVersion
+│   ├── fee                 Fee, FeeVersion
+│   ├── threshold           Threshold, ThresholdVersion (standalone engine, no rows yet)
+│   ├── source              OfficialSource, SourceVerification (moved here from a
+│   │                       top-level `source` module - provenance is procedure-content-
+│   │                       specific enough in practice to not warrant its own module yet)
+│   ├── authority           ProcedureAuthority, ProcedureVersionOffice
+│   └── admin               the internal content-management API (brief §43's minimal
+│                           surface, not a full admin module)
+├── assessment          Questionnaire, Question, QuestionDependency, Assessment, AssessmentAnswer
+├── recommendation      RecommendationResult assembly on top of the rules engine output
+├── rules               Rule, RuleVersion, RuleCondition, RuleOutcome, evaluation engine
+├── case                UserCase, UserCaseStep, UserCaseDocument, UserCaseEvent
+├── notification        Notification, preferences
+├── admin               publishing workflow orchestration across the above modules
+├── audit               AuditLog
+└── common              shared error handling, base entities, API envelope
 ```
 
 Each module owns its own `controller` / `service` / `domain` / `repository` / `dto` /
@@ -96,20 +110,26 @@ Grouped by module, matching §1. This is the entity inventory to design migratio
 against in Phase 3+; exact columns are worked out per-migration, not frozen here.
 
 - **auth/user**: `User`, `Role`, `UserRole`, `UserProfile`
-- **reference**: `Country` (ISO 3166), `CountryGroup`, `CountryGroupMembership`,
-  `Jurisdiction`, `City`, `District`, `Authority`, `Office`, `OfficeService`,
-  `ProcedureOffice`
+- **reference** (IMPLEMENTED, Phase 3): `Country` (ISO 3166), `CountryGroup`,
+  `CountryGroupMembership`, `Jurisdiction`, `Region`, `City`, `District`, `Authority`,
+  `Office`, `ServiceType`, `OfficeService`
 - **assessment**: `Questionnaire`, `Question`, `QuestionOption`, `QuestionDependency`,
   `Assessment`, `AssessmentAnswer`
-- **rules**: `Rule`, `RuleVersion`, `RuleCondition`, `RuleOutcome`, `Threshold`,
-  `ThresholdVersion`, `CountrySpecificRule`, `DocumentLegalisationRule`,
-  `DrivingLicenceRecognitionRule`, `VisaRequirementRule`
+- **rules**: `Rule`, `RuleVersion`, `RuleCondition`, `RuleOutcome`,
+  `CountrySpecificRule`, `DocumentLegalisationRule`, `DrivingLicenceRecognitionRule`,
+  `VisaRequirementRule` — `Threshold`/`ThresholdVersion` moved to **procedure** below
+  (implemented in Phase 4 as a standalone engine, ahead of Phase 6's `Rule` existing to
+  reference them).
 - **recommendation**: `Recommendation`, `RecommendationReason`
-- **procedure**: `ProcedureCategory`, `Procedure`, `ProcedureVersion`, `ProcedureStep`,
-  `StepVersion`, `DocumentRequirement`, `DocumentRequirementVersion`, `Fee`,
-  `FeeVersion`
+- **procedure** (IMPLEMENTED, Phase 4 — see DATABASE.md §3 for full detail):
+  `ProcedureCategory`, `Procedure`, `ProcedureVersion`, `ProcedureStep`, `StepVersion`,
+  `DocumentType`, `DocumentRequirement`, `DocumentRequirementVersion`, `Fee`,
+  `FeeVersion`, `Threshold`, `ThresholdVersion`, `ProcedureAuthority`,
+  `ProcedureVersionOffice` (supersedes the `ProcedureOffice` name used above in earlier
+  drafts of this section), and five `*VersionSource` provenance join entities.
 - **case**: `UserCase`, `UserCaseStep`, `UserCaseDocument`, `UserCaseEvent`
-- **source**: `OfficialSource`, `SourceVerification`
+- **source** (IMPLEMENTED, Phase 4, under the **procedure** module rather than a
+  top-level one): `OfficialSource`, `SourceVerification`
 - **notification**: `Notification` (+ per-user preferences)
 - **admin/audit**: `AuditLog`, `AdminReview`
 - **i18n**: `Translation`

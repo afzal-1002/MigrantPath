@@ -58,6 +58,10 @@ public class SecurityConfig {
     // Phase 9's job - so a blanket GET-only allow here doesn't risk exposing a
     // mutating route by accident.
     "/api/v1/reference/**",
+    // Public, read-only procedure content (Phase 4, brief §36-38): only ever resolves
+    // to currently active PUBLISHED versions (ProcedureQueryService) - no write
+    // endpoint exists under this prefix, same reasoning as /reference/** above.
+    "/api/v1/procedures/**",
     "/swagger-ui.html",
     "/swagger-ui/**",
     "/v3/api-docs/**"
@@ -98,6 +102,31 @@ public class SecurityConfig {
                     .permitAll()
                     .requestMatchers(HttpMethod.POST, PUBLIC_POST_ENDPOINTS)
                     .permitAll()
+                    // Phase 4 internal content-management API (brief §44) - most
+                    // specific action first, since Spring Security's
+                    // authorizeHttpRequests evaluates matchers in registration order
+                    // and stops at the first match. Each matcher reflects brief §44's
+                    // own CONTENT_EDITOR/LEGAL_REVIEWER/ADMIN responsibility split -
+                    // never a single blanket role check on the whole prefix.
+                    .requestMatchers(
+                        HttpMethod.POST, "/api/v1/internal/content/procedures/*/versions/*/publish")
+                    .hasRole("ADMIN")
+                    .requestMatchers(
+                        HttpMethod.POST, "/api/v1/internal/content/procedures/*/versions/*/archive")
+                    .hasRole("ADMIN")
+                    .requestMatchers(
+                        HttpMethod.POST, "/api/v1/internal/content/procedures/*/versions/*/approve")
+                    .hasAnyRole("LEGAL_REVIEWER", "ADMIN")
+                    .requestMatchers(HttpMethod.POST, "/api/v1/internal/content/sources/*/verify")
+                    .hasAnyRole("LEGAL_REVIEWER", "ADMIN")
+                    // Everything else under the prefix (create procedure/version, add
+                    // step/document, create/attach source, submit) is CONTENT_EDITOR's
+                    // own responsibility (brief §44) - ADMIN has "broader control" per
+                    // the same section, so is included too; LEGAL_REVIEWER is
+                    // deliberately NOT included here (their role is review/approve
+                    // only, per brief §44's own responsibility split).
+                    .requestMatchers("/api/v1/internal/content/**")
+                    .hasAnyRole("CONTENT_EDITOR", "ADMIN")
                     .anyRequest()
                     .authenticated())
         .logout(

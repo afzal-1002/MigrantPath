@@ -416,7 +416,7 @@ Convention used below: `—` means that column doesn't apply to the task.
 
 ---
 
-## Phase 4 — Procedure / content management
+## Phase 4 — Procedure / content management — ✅ COMPLETE (see [PHASE_4_REPORT.md](PHASE_4_REPORT.md))
 
 #### 4.1 Migration + entities: ProcedureCategory, Procedure
 - **Database/Backend:** per DATABASE.md §3.
@@ -425,6 +425,9 @@ Convention used below: `—` means that column doesn't apply to the task.
   Family, Driving, Administrative, Business, Long-Term Stay).
 - **Depends on:** 3.8 (needs `Jurisdiction`)
 - **Risk:** Low
+- **Actual:** 11 categories seeded (the catalogue's actual category set is finer-grained
+  than this task's illustrative 8-item list); 8 MVP procedure identities seeded with
+  real jurisdiction tags from PROCEDURE_CATALOGUE.md (5×NATIONAL, 3×MUNICIPAL).
 
 #### 4.2 Migration + entity: ProcedureVersion (with exclusion constraint)
 - **Goal:** Versioned procedure content with non-overlapping published ranges.
@@ -438,6 +441,15 @@ Convention used below: `—` means that column doesn't apply to the task.
 - **Depends on:** 4.1
 - **Risk:** Medium (exclusion constraints are the least-familiar Postgres feature on
   the team — budget review time)
+- **Actual:** implemented with the Active-Version Predicate's established *exclusive*
+  `effective_to` convention (`effective_from <= evaluationDate AND (effective_to IS
+  NULL OR effective_to > evaluationDate)`) rather than an inclusive comparison, matching
+  DATABASE.md §0 and Postgres's default half-open `[)` range semantics — this is a
+  restatement of the one existing convention, not a second one. The publish workflow
+  also required an explicit `saveAndFlush()` when closing a superseded version's
+  `effective_to` immediately before publishing the new one, since Hibernate's automatic
+  flush ordering does not guarantee the DB sees that close before the EXCLUDE
+  constraint evaluates the new row.
 
 #### 4.3 Migration + entities: ProcedureStep, StepVersion
 - **Database/Backend:** per DATABASE.md §3 (identity + per-version snapshot pattern).
@@ -455,6 +467,12 @@ Convention used below: `—` means that column doesn't apply to the task.
 - **DoD:** covered by test.
 - **Depends on:** 4.2
 - **Risk:** Low
+- **Actual:** `condition_rule_id` deliberately omitted rather than added as a
+  speculative FK to a not-yet-existing `Rule` table — the brief's own "avoid
+  speculative foreign keys" instruction took priority over this task's original
+  wording. `DocumentType` was added as a new reusable identity entity (9 seeded codes)
+  that `DocumentRequirement` references, so document kinds aren't duplicated free text
+  across requirements.
 
 #### 4.5 Migration + entities: Fee, FeeVersion
 - **Database/Backend:** per DATABASE.md §3.
@@ -462,6 +480,15 @@ Convention used below: `—` means that column doesn't apply to the task.
 - **DoD:** covered by test.
 - **Depends on:** 4.2
 - **Risk:** Low
+- **Actual:** implemented as its own identity+version pair (`Fee`/`FeeVersion`,
+  matching Phase 0's suggested independent design) rather than folding fee fields
+  directly onto `ProcedureVersion`, but each `FeeVersion` is scoped to (and published
+  alongside) one specific `ProcedureVersion` rather than being independently
+  active-resolved on its own timeline the way `Threshold` is — a fee only ever makes
+  sense in the context of the procedure version that quotes it, so a second, parallel
+  publication lifecycle for fees would have added complexity (a second Active-Version
+  Predicate call site, a second set of publish-state edge cases) without a real
+  independent-evolution benefit in this dataset.
 
 #### 4.6 Migration + entities: Threshold, ThresholdVersion (with exclusion constraint)
 - **Database/Backend:** per DATABASE.md §3, same exclusion-constraint pattern as 4.2.
@@ -470,6 +497,13 @@ Convention used below: `—` means that column doesn't apply to the task.
 - **DoD:** covered by test.
 - **Depends on:** 4.1
 - **Risk:** Medium (same constraint-family risk as 4.2)
+- **Actual:** `Threshold`/`ThresholdVersion` implemented with its own independent
+  publish lifecycle and EXCLUDE constraint (unlike `Fee`, see 4.5), including its own
+  `PublicationStateMachine`-driven service. No numeric threshold values were seeded —
+  no verified figure like `BLUE_CARD_MIN_SALARY` exists in PROCEDURE_CATALOGUE.md yet,
+  and the brief instructed against seeding unverified numbers — so this task is
+  schema-and-service-complete but has zero rows. Not exposed via a dedicated public or
+  internal HTTP endpoint in Phase 4 (no consumer needs it yet; Phase 6/7 will).
 
 #### 4.7 Migration + entities: OfficialSource, SourceVerification
 - **Database/Backend:** per DATABASE.md §3, `ON DELETE RESTRICT` from every `*Version`
@@ -479,6 +513,16 @@ Convention used below: `—` means that column doesn't apply to the task.
 - **DoD:** covered by test.
 - **Depends on:** 3.8
 - **Risk:** Low
+- **Actual:** `OfficialSource`/`SourceVerification` support multiple sources per
+  content item via PRIMARY/SUPPORTING/OPERATIONAL roles (five join tables, one per
+  versioned content type), not a single source FK per version. Also implemented here
+  (not called out as a separate numbered task, but required to close the gap 3.9 left
+  open): `ProcedureAuthority` (procedure ↔ authority, with a role) and
+  `ProcedureVersionOffice` — the latter is the `ProcedureOffice` association deferred
+  from task 3.9, renamed and scoped to `ProcedureVersion` rather than bare `Procedure`,
+  since which office handles a procedure can itself change between versions. Three new
+  roles (`CONTENT_EDITOR`, `LEGAL_REVIEWER`, `ADMIN`) were seeded with no grants to any
+  existing user (no self-escalation).
 
 #### 4.8 Publish workflow service + validation
 - **Goal:** `DRAFT → IN_REVIEW → APPROVED → PUBLISHED → ARCHIVED` transitions with the
@@ -493,6 +537,17 @@ Convention used below: `—` means that column doesn't apply to the task.
   error, not a generic 500.
 - **Depends on:** 4.2, 4.4, 4.5, 4.6, 4.7
 - **Risk:** Medium
+- **Actual:** transition validation is centralized in `PublicationStateMachine`
+  (shared by `ProcedureVersion` and `ThresholdVersion`), and publish-readiness checks
+  (source present, effective dates sane, no overlapping published range) live in
+  `ProcedurePublishingService`/`ThresholdService` rather than one single cross-entity
+  `PublishValidationService` — with only two entities carrying an independent publish
+  lifecycle in Phase 4 (`Fee`/`DocumentRequirement` versions are snapshotted with their
+  parent `ProcedureVersion`, see 4.5), a shared abstraction would have added an
+  interface layer over two call sites without yet proving out a third. Revisit if Rule
+  versions (Phase 6) need the same lifecycle. A real bug was found and fixed here:
+  passing a detached entity between separate `@Transactional` service methods silently
+  dropped a status-transition write (see PHASE_4_REPORT.md).
 
 #### 4.9 Active-Version Predicate repository methods
 - **Goal:** One well-tested "get the active version as of date X" query per versioned
@@ -516,6 +571,12 @@ Convention used below: `—` means that column doesn't apply to the task.
 - **DoD:** OpenAPI-documented.
 - **Depends on:** 4.9
 - **Risk:** Low
+- **Actual:** public read endpoints implemented (`ProcedureController`), plus a
+  minimal internal content-management API (`ProcedureAdminController` under
+  `/api/v1/internal/content/**`, role-gated by CONTENT_EDITOR/LEGAL_REVIEWER/ADMIN) to
+  actually drive a version through DRAFT→IN_REVIEW→APPROVED→PUBLISHED→ARCHIVED —
+  necessary to have anything to test against 4.9/4.12, but intentionally minimal, not
+  the full Phase 9 admin UI/API.
 
 #### 4.11 Angular procedure browser
 - **Goal:** "Browse procedures" category tree + procedure detail page (Product

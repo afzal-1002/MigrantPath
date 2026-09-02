@@ -4,10 +4,12 @@ A guided-eligibility and case-tracking web application for foreigners living in 
 moving to Warsaw, Poland — architected so additional Polish cities (and eventually other
 countries) can be enabled later without rewriting core logic.
 
-**Status: Phase 3 complete** (authentication + user management, plus public reference/
+**Status: Phase 4 complete** (authentication + user management; public reference/
 geographic data — countries, EU/EEA/EFTA/Schengen classification, Polish regions, Warsaw
-districts, authorities and offices). Immigration procedures, the questionnaire engine,
-and every other business feature arrive in later phases — see
+districts, authorities and offices; and versioned, sourced immigration-procedure
+content — procedures, steps, document requirements, fees, thresholds — with a
+DRAFT→IN_REVIEW→APPROVED→PUBLISHED→ARCHIVED publishing workflow). The questionnaire
+engine, rules engine, recommendations, and case tracking arrive in later phases — see
 [docs/product/IMPLEMENTATION_PLAN.md](docs/product/IMPLEMENTATION_PLAN.md).
 
 ## Prerequisites
@@ -78,6 +80,12 @@ for the full walkthrough.
   http://localhost:4200/reference-demo exercises all of it through real Angular
   components (country picker, region→city→district cascade) — a Phase 3 verification
   page, not a product route.
+- `GET /api/v1/procedures` / `GET /api/v1/procedures/{code}` — public, read-only
+  procedure content, resolved through the Active-Version Predicate (only currently
+  published content is ever returned). http://localhost:4200/procedures is the Angular
+  "Browse procedures" page. Content management (draft → published) is behind the
+  internal `/api/v1/internal/content/**` API, gated to CONTENT_EDITOR/LEGAL_REVIEWER/
+  ADMIN roles — no dedicated admin UI yet (Phase 9).
 
 ## Database migrations
 
