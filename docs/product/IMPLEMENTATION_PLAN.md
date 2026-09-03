@@ -698,7 +698,23 @@ QuestionDependency
 
 ---
 
-## Phase 6 — Rules engine
+## Phase 6 — Rules engine — ✅ COMPLETE (see [PHASE_6_REPORT.md](PHASE_6_REPORT.md))
+
+The task list below is left as originally planned for traceability; see
+[PHASE_6_REPORT.md](PHASE_6_REPORT.md)'s "Deviations" section for where the actual
+implementation diverged (most notably: `RuleTargetType` is broader than 6.1 sketched
+— `PROCEDURE`/`DOCUMENT_REQUIREMENT`/`STEP`/`FEE`/`THRESHOLD_APPLICABILITY`/`ROUTING`
+declared, only `PROCEDURE` evaluated; 6.2's "JSON Schema validation" became a
+hand-written structural parser plus a database-backed semantic validator rather than a
+JSON Schema document, since the semantic half — unknown fact/threshold/country-group —
+needs live repository access a static schema can't express; `NOT` nodes and the
+`IS_MEMBER_OF_COUNTRY_GROUP`/`IS_NOT_MEMBER_OF_COUNTRY_GROUP` operators were added beyond
+6.4's original scope per the approved Phase 6 brief; 6.8's admin preview endpoint was
+implemented as a service method (`RuleEvaluationService.previewEvaluate` /
+`RuleEvaluator.previewEvaluate`) rather than an HTTP endpoint — no admin HTTP surface
+exists for Rule management at all yet, matching Phase 4's `ThresholdService` precedent of
+shipping zero controller until real content needs managing; `RULE_ENGINE_VERSION` was
+implemented as `RuleEvaluator.ENGINE_VERSION`).
 
 #### 6.1 Migration + entities: Rule, RuleVersion (JSONB, with exclusion constraint)
 - **Database/Backend:** per DATABASE.md §5.

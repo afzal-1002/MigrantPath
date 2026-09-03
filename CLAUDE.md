@@ -16,14 +16,17 @@ expansion). Read these before making changes, in this order:
 6. [docs/product/IMPLEMENTATION_PLAN.md](docs/product/IMPLEMENTATION_PLAN.md) — the full phase-by-phase task breakdown; find the next task here before starting new work
 7. [docs/architecture/ADR/](docs/architecture/ADR/) — the "why" behind the foundational decisions
 
-**Current status: Phase 5 (dynamic questionnaire + assessment engine) complete** — see
-[docs/product/PHASE_5_REPORT.md](docs/product/PHASE_5_REPORT.md). Auth (Phase 2),
-reference data (Phase 3), and versioned procedure content (Phase 4, see
-[PHASE_4_REPORT.md](docs/product/PHASE_4_REPORT.md)) all work end to end; the
-questionnaire engine now collects structured assessment facts (authenticated-only,
-branching, resumable) but decides no eligibility itself. Rules engine, recommendations,
-cases, and admin are still later phases per IMPLEMENTATION_PLAN.md. Work through
-IMPLEMENTATION_PLAN.md's tasks in order starting at Phase 3.
+**Current status: Phase 6 (versioned deterministic rules engine) complete** — see
+[docs/product/PHASE_6_REPORT.md](docs/product/PHASE_6_REPORT.md). Auth (Phase 2),
+reference data (Phase 3), versioned procedure content (Phase 4, see
+[PHASE_4_REPORT.md](docs/product/PHASE_4_REPORT.md)), and the questionnaire/assessment
+engine (Phase 5, see [PHASE_5_REPORT.md](docs/product/PHASE_5_REPORT.md)) all work end to
+end; the rules engine now evaluates versioned `Rule`/`RuleVersion` condition trees
+against completed assessment facts (deterministic, JSONB-tree-based — see
+[ADR-009](docs/architecture/ADR/ADR-009-deterministic-condition-tree-engine.md) and
+[docs/rules/](docs/rules/)) but decides no final user-facing recommendation ranking.
+Recommendations, cases, and admin are still later phases per IMPLEMENTATION_PLAN.md.
+Work through IMPLEMENTATION_PLAN.md's tasks in order starting at Phase 7.
 
 ## Commands
 

@@ -615,7 +615,11 @@ neither had been built yet when Phase 5's brief specified the opposite on both p
 
 ---
 
-## 5. Rule-engine entities
+## 5. Rule-engine entities (IMPLEMENTED, Phase 6 — see ADR-009)
+
+The design below is largely as originally sketched; differences from the Phase 0 draft
+are called out inline. See [PHASE_6_REPORT.md](../product/PHASE_6_REPORT.md) for the full
+implementation report.
 
 ### Design decision: JSONB condition tree, not fully normalized condition rows
 
@@ -646,45 +650,75 @@ than by normalizing the whole tree:
 `reference` value. Gives the admin UI "these N rules reference `BLUE_CARD_MIN_SALARY`"
 as a plain indexed query, without parsing JSON at query time.
 
-Condition tree shape (validated by JSON Schema, not by the database):
+Condition tree shape (structurally validated by `ConditionTreeParser`, semantically by
+`ConditionTreeValidator` — never by a database constraint):
 
 ```json
 {
   "all": [
-    { "field": "citizenshipGroup", "operator": "EQUALS", "value": "THIRD_COUNTRY" },
-    { "field": "purpose", "operator": "IN", "value": ["WORK", "HIGHLY_QUALIFIED_WORK"] },
-    { "field": "monthlyGrossSalary", "operator": "GREATER_THAN_OR_EQUAL", "reference": "BLUE_CARD_MIN_SALARY" }
+    { "fact": "CITIZENSHIP_COUNTRY", "operator": "IS_NOT_MEMBER_OF_COUNTRY_GROUP", "value": "EU_MEMBER" },
+    { "fact": "GOALS", "operator": "CONTAINS", "value": "WORK" },
+    { "fact": "MONTHLY_GROSS_SALARY", "operator": "GREATER_THAN_OR_EQUAL", "threshold": "BLUE_CARD_MIN_SALARY" }
   ]
 }
 ```
 
-Operator vocabulary (fixed, shared with `QuestionDependency`, §4): `EQUALS`,
-`NOT_EQUALS`, `IN`, `NOT_IN`, `EXISTS`, `NOT_EXISTS`, `GREATER_THAN`,
-`GREATER_THAN_OR_EQUAL`, `LESS_THAN`, `LESS_THAN_OR_EQUAL`, `BETWEEN`, `DATE_BEFORE`,
-`DATE_AFTER`, `DURATION_GREATER_THAN`, `ALL`, `ANY`.
+Renamed from the Phase 0 sketch's `field`/`reference` to `fact`/`threshold` to match the
+Fact Registry (§ below) and Phase 5's `QuestionDependency` vocabulary exactly — one
+naming convention, not two. A `NOT` node was added (Phase 0 only listed `ALL`/`ANY`).
+
+Operator vocabulary (fixed; `ComparisonOperator`, shared with `QuestionDependency`, §4):
+`EQUALS`, `NOT_EQUALS`, `IN`, `NOT_IN`, `CONTAINS`, `NOT_CONTAINS`, `EXISTS`,
+`NOT_EXISTS`, `GREATER_THAN`, `GREATER_THAN_OR_EQUAL`, `LESS_THAN`,
+`LESS_THAN_OR_EQUAL`, `BETWEEN`, `DATE_BEFORE`, `DATE_BEFORE_OR_EQUAL`, `DATE_AFTER`,
+`DATE_AFTER_OR_EQUAL`, `IS_MEMBER_OF_COUNTRY_GROUP`, `IS_NOT_MEMBER_OF_COUNTRY_GROUP`.
+`DURATION_*` was deliberately dropped from the Phase 0 sketch — no fact needs it yet
+(brief §45); see [OPERATOR_SEMANTICS.md](../rules/OPERATOR_SEMANTICS.md) for exact PASS/
+FAIL/MISSING/ERROR semantics per operator and per node type.
 
 ### Rule (identity) / RuleVersion
-- **Rule**: `id UUID PK`, `code UNIQUE` (`TR_WORK_BASE_ELIGIBILITY`),
-  `jurisdiction_id FK → Jurisdiction NULL`, `name`, `description`, `is_active`.
+- **Rule**: `id UUID PK`, `code UNIQUE` (e.g. a future `TR_WORK_BASE_ELIGIBILITY`),
+  `canonical_name`, `rule_type ENUM(ELIGIBILITY, APPLICABILITY, EXCLUSION, REQUIREMENT,
+  INFORMATION_REQUIRED)`, `target_type ENUM(PROCEDURE, DOCUMENT_REQUIREMENT, STEP, FEE,
+  THRESHOLD_APPLICABILITY, ROUTING)`, `target_code`, `jurisdiction_id FK → Jurisdiction
+  NULL`, `active`. `rule_type`/`target_type` were added beyond the Phase 0 sketch (brief
+  §6/§7) — only `PROCEDURE` is actually evaluated by Phase 6; the rest are declared so a
+  later target needs no migration.
 - **RuleVersion**: `id UUID PK`, `rule_id FK → Rule`, `version_number INT`,
-  `status ENUM(DRAFT, IN_REVIEW, APPROVED, PUBLISHED, ARCHIVED)`, `effective_from DATE`,
-  `effective_to DATE NULL`, `condition_tree JSONB`, `source_id FK → OfficialSource`,
-  `created_by/created_at`, `approved_by/approved_at NULL`, `published_at NULL`.
+  `status ENUM(DRAFT, IN_REVIEW, APPROVED, PUBLISHED, ARCHIVED)` (reuses
+  `PublicationStatus`/`PublicationStateMachine`, same as `QuestionnaireVersion`),
+  `effective_from DATE`, `effective_to DATE NULL`, `condition_tree JSONB`,
+  `condition_schema_version INT DEFAULT 1`, `explanation_key`, `change_summary`,
+  `created_by/submitted_by/approved_by/published_by FK → User`,
+  `submitted_at/approved_at/published_at`, `lock_version` (optimistic locking on the
+  mutable DRAFT). Sources are a **many-to-many** `RuleVersionSource` join (below), not the
+  Phase 0 sketch's single `source_id FK` — matches `ProcedureVersionSource`/
+  `ThresholdVersionSource` exactly and lets a rule cite both its `LEGAL_BASIS` statute and
+  a `PRIMARY` operational guidance page.
+- **RuleVersionSource**: `(rule_version_id, official_source_id) PK`, `role ENUM(PRIMARY,
+  SUPPORTING, LEGAL_BASIS, OPERATIONAL)` — `LEGAL_BASIS` is new versus the other four
+  `*_version_sources` tables (brief §22), meaningful specifically for a rule's underlying
+  statute/regulation.
 - **Unique**: `(rule_id, version_number)`. Same non-overlapping-published-range exclusion
-  constraint as `ProcedureVersion`/`ThresholdVersion`.
+  constraint (`btree_gist`) as `ProcedureVersion`/`ThresholdVersion`.
 - **Index**: `(rule_id, status, effective_from, effective_to)` (Active-Version Predicate);
-  GIN index on `condition_tree` if/when admin search needs to query inside it directly
-  (not required for MVP evaluation, which loads the whole tree per rule).
+  no GIN index on `condition_tree` — not required for MVP evaluation, which loads the
+  whole tree per rule and walks it in memory (brief §72).
 
-### RuleOutcome
-- **Purpose**: forward-looking extension point for rule composition/reuse (e.g. a
-  reusable sub-rule `IS_HIGHLY_QUALIFIED_WORKER` whose boolean outcome other rules
-  reference), **not required for MVP's evaluation model**, where each
-  `ProcedureVersion.eligibility_rule_id` points at one top-level rule and "matched" is
-  the only outcome that matters. Modeled minimally now rather than left undesigned:
-  `id UUID PK`, `rule_version_id FK → RuleVersion`, `outcome_code`, `description`.
-  Expand only when a concrete composable-rule need arises in Phase 6+ — avoid
-  building outcome composition machinery MVP doesn't exercise.
+### RuleThresholdReference (IMPLEMENTED as sketched)
+`(rule_version_id, threshold_code) PK`, `rule_version_id FK → RuleVersion ON DELETE
+CASCADE`, `threshold_code FK → Threshold(code) ON DELETE RESTRICT`. Rebuilt from scratch
+by `RulePublishingService` every time a version is published (never hand-maintained), so
+the JSONB tree and this table can never drift (brief §21).
+
+### RuleOutcome (modeled, unused — as anticipated)
+Exactly the placeholder the Phase 0 sketch anticipated: `id UUID PK`, `rule_version_id FK
+→ RuleVersion`, `outcome_code`, `description`, `UNIQUE(rule_version_id, outcome_code)`.
+No repository or service references it — Phase 6's evaluation model needs only one
+outcome (`RuleEvaluationStatus`) per rule version, not composable named outcomes. Left
+for a genuine rule-composition need per brief §24 ("avoid a generic dependency graph just
+because it sounds powerful") — Phase 6 deliberately does not implement rule-to-rule
+composition.
 
 ---
 

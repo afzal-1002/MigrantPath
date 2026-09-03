@@ -137,4 +137,79 @@ class ConditionEvaluatorTest {
                 ComparisonOperator.DATE_AFTER, LocalDate.of(2030, 1, 1), json("\"2025-01-01\"")))
         .isTrue();
   }
+
+  @Test
+  void dateBeforeOrEqual_includesEqualDate() throws Exception {
+    assertThat(
+            ConditionEvaluator.evaluate(
+                ComparisonOperator.DATE_BEFORE_OR_EQUAL,
+                LocalDate.of(2025, 1, 1),
+                json("\"2025-01-01\"")))
+        .isTrue();
+    assertThat(
+            ConditionEvaluator.evaluate(
+                ComparisonOperator.DATE_BEFORE_OR_EQUAL,
+                LocalDate.of(2025, 1, 2),
+                json("\"2025-01-01\"")))
+        .isFalse();
+  }
+
+  @Test
+  void dateAfterOrEqual_includesEqualDate() throws Exception {
+    assertThat(
+            ConditionEvaluator.evaluate(
+                ComparisonOperator.DATE_AFTER_OR_EQUAL,
+                LocalDate.of(2025, 1, 1),
+                json("\"2025-01-01\"")))
+        .isTrue();
+    assertThat(
+            ConditionEvaluator.evaluate(
+                ComparisonOperator.DATE_AFTER_OR_EQUAL,
+                LocalDate.of(2024, 12, 31),
+                json("\"2025-01-01\"")))
+        .isFalse();
+  }
+
+  @Test
+  void between_isInclusiveOfBothBounds() throws Exception {
+    JsonNode range = json("[9000, 15000]");
+    assertThat(
+            ConditionEvaluator.evaluate(ComparisonOperator.BETWEEN, new BigDecimal("9000"), range))
+        .isTrue();
+    assertThat(
+            ConditionEvaluator.evaluate(ComparisonOperator.BETWEEN, new BigDecimal("15000"), range))
+        .isTrue();
+    assertThat(
+            ConditionEvaluator.evaluate(ComparisonOperator.BETWEEN, new BigDecimal("8999"), range))
+        .isFalse();
+    assertThat(
+            ConditionEvaluator.evaluate(ComparisonOperator.BETWEEN, new BigDecimal("15001"), range))
+        .isFalse();
+  }
+
+  @Test
+  void between_rejectsAnArrayThatIsNotExactlyTwoElements() throws Exception {
+    JsonNode malformed = json("[1, 2, 3]");
+    org.assertj.core.api.Assertions.assertThatThrownBy(
+            () ->
+                ConditionEvaluator.evaluate(
+                    ComparisonOperator.BETWEEN, new BigDecimal("2"), malformed))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  void isMemberOfCountryGroup_neverReachesThisPureEvaluator() {
+    // Brief §41/§68: this operator needs a live CountryClassificationService call -
+    // com.foreignerwarsaw.rules.evaluation.RuleEvaluator must intercept it first.
+    org.assertj.core.api.Assertions.assertThatThrownBy(
+            () ->
+                ConditionEvaluator.evaluate(
+                    ComparisonOperator.IS_MEMBER_OF_COUNTRY_GROUP, "DE", null))
+        .isInstanceOf(IllegalStateException.class);
+    org.assertj.core.api.Assertions.assertThatThrownBy(
+            () ->
+                ConditionEvaluator.evaluate(
+                    ComparisonOperator.IS_NOT_MEMBER_OF_COUNTRY_GROUP, "DE", null))
+        .isInstanceOf(IllegalStateException.class);
+  }
 }

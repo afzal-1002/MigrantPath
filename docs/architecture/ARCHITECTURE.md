@@ -232,44 +232,56 @@ POST   /api/v1/admin/procedure-versions/{id}/publish
 OpenAPI/Swagger generated from the controllers; every endpoint documents request,
 response, auth/authz requirements, error cases, and examples.
 
-## 7. Rules engine
+## 7. Rules engine (IMPLEMENTED, Phase 6 — ADR-009, DATABASE.md §5)
 
-Deterministic, not LLM-based (Product Requirements §7). A `Rule` is a tree of
-conditions stored as `RuleCondition` rows (or a JSONB tree — see §4) using a fixed
-operator vocabulary:
+Deterministic, not LLM-based (Product Requirements §7). A `Rule` identity targets one
+`(targetType, targetCode)` pair (currently only `PROCEDURE` is evaluated); each
+`RuleVersion` stores its condition logic as a validated JSONB tree (`ConditionNode`:
+`ALL`/`ANY`/`NOT`/leaf) using a fixed operator vocabulary (`ComparisonOperator`):
 
 ```
-EQUALS, NOT_EQUALS, IN, NOT_IN,
+EQUALS, NOT_EQUALS, IN, NOT_IN, CONTAINS, NOT_CONTAINS, EXISTS, NOT_EXISTS,
 GREATER_THAN, GREATER_THAN_OR_EQUAL, LESS_THAN, LESS_THAN_OR_EQUAL, BETWEEN,
-EXISTS, NOT_EXISTS,
-DATE_BEFORE, DATE_AFTER, DURATION_GREATER_THAN,
-ALL, ANY
+DATE_BEFORE, DATE_BEFORE_OR_EQUAL, DATE_AFTER, DATE_AFTER_OR_EQUAL,
+IS_MEMBER_OF_COUNTRY_GROUP, IS_NOT_MEMBER_OF_COUNTRY_GROUP
 ```
 
-A condition's right-hand side is either a literal `value` or a `reference` to a
-versioned `Threshold` (resolved at evaluation time against the assessment's date, not
-baked into the rule):
+A leaf's right-hand side is either a literal `value` or a `threshold` code resolved
+against a versioned `Threshold` at evaluation time (never baked into the rule):
 
 ```json
 {
   "all": [
-    { "field": "citizenshipGroup", "operator": "EQUALS", "value": "THIRD_COUNTRY" },
-    { "field": "purpose", "operator": "IN", "value": ["WORK", "HIGHLY_QUALIFIED_WORK"] },
-    { "field": "monthlyGrossSalary", "operator": "GREATER_THAN_OR_EQUAL", "reference": "BLUE_CARD_MIN_SALARY" }
+    { "fact": "CITIZENSHIP_COUNTRY", "operator": "IS_NOT_MEMBER_OF_COUNTRY_GROUP", "value": "EU_MEMBER" },
+    { "fact": "GOALS", "operator": "CONTAINS", "value": "WORK" },
+    { "fact": "MONTHLY_GROSS_SALARY", "operator": "GREATER_THAN_OR_EQUAL", "threshold": "BLUE_CARD_MIN_SALARY" }
   ]
 }
 ```
 
-Evaluation produces, per candidate procedure, one of `PRIMARY_MATCH`,
-`POSSIBLE_ALTERNATIVE`, `MORE_INFORMATION_REQUIRED`, `NOT_APPLICABLE`, each carrying
-matched rules, failed rules, missing fields, a plain-language explanation, and linked
-`OfficialSource`s (Product Requirements §6.3, brief §27). No numeric confidence score is
-ever synthesized ("93% eligible") — ranking between multiple matches is by transparent
-category (`PRIMARY` vs `ALTERNATIVE` vs `CONDITIONAL`, per brief §76), not a probability.
+`fact` names are drawn from the Fact Registry ([docs/rules/FACT_REGISTRY.md](../rules/FACT_REGISTRY.md))
+— either a direct Phase 5 `Question.code`, or one of a small, explicitly-computed set of
+derived facts (`AGE_YEARS`, `IS_OUTSIDE_EU_EEA_SWISS_FREE_MOVEMENT_GROUP`,
+`COUNTRY_GROUP_MEMBERSHIPS`). `RuleEvaluator` walks the tree per assessment, producing a
+`RuleEvaluationResult` per rule with a `SATISFIED`/`NOT_SATISFIED`/`INDETERMINATE`/`ERROR`
+status, structured PASS/FAIL/MISSING/ERROR condition traces, the exact `ThresholdVersion`s
+used, and linked `OfficialSource` ids ([docs/rules/OPERATOR_SEMANTICS.md](../rules/OPERATOR_SEMANTICS.md)
+has the exact ALL/ANY/NOT and per-leaf semantics). A question left unanswered produces
+`MISSING`/`INDETERMINATE`, never a false `FAIL` (brief §29) — and a broken rule
+configuration produces `ERROR`, never a silently-wrong `NOT_SATISFIED` (brief §64/§118).
 
-Country-specific variation is data, not code: `CountrySpecificRule`,
-`DocumentLegalisationRule`, `DrivingLicenceRecognitionRule`, `VisaRequirementRule` all
-key off `Country`/`CountryGroup` and only exist where a nationality genuinely changes an
+**Phase 6 stops there.** It does not rank procedures, does not decide `PRIMARY_MATCH` /
+`POSSIBLE_ALTERNATIVE` / `MORE_INFORMATION_REQUIRED` / `NOT_APPLICABLE`, and never
+synthesizes a confidence percentage ("93% eligible") — that categorical, ranked,
+user-facing output belongs to **Phase 7**, which aggregates one-or-more
+`RuleEvaluationResult`s per procedure (a `RuleEvaluationBundle`, grouped by target code)
+into a recommendation. This split (previously conflated in this section) is deliberate:
+Phase 6's output is a statement about whether *one rule's* conditions held, never a
+comparison between rules or a recommendation.
+
+Country-specific variation is data, not code: a future `CountrySpecificRule` (or simply a
+`RuleVersion` condition referencing `CITIZENSHIP_COUNTRY`/a country group) keys off
+`Country`/`CountryGroup` and only exists where a nationality genuinely changes an
 outcome — there is no `PakistanRules.java`.
 
 ### Publication safety

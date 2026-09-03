@@ -40,9 +40,32 @@ public final class ConditionEvaluator {
       case LESS_THAN -> exists(actualValue) && compareNumeric(actualValue, expectedValue) < 0;
       case LESS_THAN_OR_EQUAL ->
           exists(actualValue) && compareNumeric(actualValue, expectedValue) <= 0;
+      case BETWEEN -> exists(actualValue) && isBetween(actualValue, expectedValue);
       case DATE_BEFORE -> exists(actualValue) && compareDate(actualValue, expectedValue) < 0;
+      case DATE_BEFORE_OR_EQUAL ->
+          exists(actualValue) && compareDate(actualValue, expectedValue) <= 0;
       case DATE_AFTER -> exists(actualValue) && compareDate(actualValue, expectedValue) > 0;
+      case DATE_AFTER_OR_EQUAL ->
+          exists(actualValue) && compareDate(actualValue, expectedValue) >= 0;
+      case IS_MEMBER_OF_COUNTRY_GROUP, IS_NOT_MEMBER_OF_COUNTRY_GROUP ->
+          throw new IllegalStateException(
+              operator
+                  + " needs a live CountryClassificationService call - "
+                  + "com.foreignerwarsaw.rules.evaluation.RuleEvaluator must intercept it before"
+                  + " ever delegating here, never reach this pure evaluator.");
     };
+  }
+
+  /**
+   * {@code expectedValue} is a two-element JSON array {@code [min, max]}, both bounds inclusive -
+   * the same "typed, never string" comparison as every other numeric operator.
+   */
+  private static boolean isBetween(Object actualValue, JsonNode expectedValue) {
+    if (!expectedValue.isArray() || expectedValue.size() != 2) {
+      throw new IllegalArgumentException("BETWEEN expects a two-element [min, max] array");
+    }
+    return compareNumeric(actualValue, expectedValue.get(0)) >= 0
+        && compareNumeric(actualValue, expectedValue.get(1)) <= 0;
   }
 
   private static boolean exists(Object actualValue) {
