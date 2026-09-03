@@ -128,6 +128,17 @@
     </mat-card-content>
     <mat-card-actions>
       <a mat-button [routerLink]="['/procedures', rec.procedureCode]">View details</a>
+      @if (canStartPathway(rec)) {
+        <button
+          mat-flat-button
+          color="primary"
+          type="button"
+          [disabled]="startingPathwayFor() === rec.id"
+          (click)="startPathway(rec)"
+        >
+          {{ startingPathwayFor() === rec.id ? 'Starting…' : 'Start this pathway' }}
+        </button>
+      }
     </mat-card-actions>
   </mat-card>
 </ng-template>

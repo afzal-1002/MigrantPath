@@ -88,6 +88,18 @@ export const routes: Routes = [
       ),
   },
   {
+    // Phase 8 "My Cases" (brief §40/§41) - authenticated-only; ownership is independently
+    // enforced server-side.
+    path: 'cases',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/cases/case-list/case-list').then((m) => m.CaseList),
+  },
+  {
+    path: 'cases/:id',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/cases/case-detail/case-detail').then((m) => m.CaseDetailPage),
+  },
+  {
     path: '**',
     loadComponent: () => import('./features/not-found/not-found').then((m) => m.NotFound),
   },

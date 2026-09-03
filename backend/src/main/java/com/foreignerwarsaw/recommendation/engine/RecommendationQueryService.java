@@ -165,6 +165,7 @@ public class RecommendationQueryService {
             .toList();
 
     return new RecommendationResponse(
+        recommendation.getId(),
         recommendation.getProcedure().getCode(),
         title,
         recommendation.getRecommendationType().name(),

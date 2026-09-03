@@ -40,6 +40,9 @@ export interface OfficialSourceRef {
 }
 
 export interface Recommendation {
+  /** The Recommendation's own id (Phase 8) - pass this to CaseService.create() to start a case
+   * from an allowed (PRIMARY_MATCH/POSSIBLE_ALTERNATIVE) recommendation. */
+  id: string;
   procedureCode: string;
   procedureTitle: string;
   recommendationType: RecommendationType;

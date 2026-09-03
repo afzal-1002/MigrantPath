@@ -1,0 +1,72 @@
+:host {
+  display: block;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.status-line {
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.updates-banner {
+  background: #fff8e1;
+  border: 1px solid #f0c14b;
+  border-radius: 4px;
+  padding: 1rem;
+  margin: 1rem 0;
+}
+
+.changes-review {
+  margin-top: 0.75rem;
+}
+
+.change-row[data-type='ADDED'] {
+  color: #1e4620;
+}
+
+.change-row[data-type='REMOVED'] {
+  color: #7a1414;
+}
+
+.change-row[data-type='CHANGED'] {
+  color: #7a4a00;
+}
+
+.confirm-note {
+  font-size: 0.85rem;
+  color: rgba(0, 0, 0, 0.65);
+}
+
+section {
+  margin-top: 2rem;
+}
+
+.checklist-item {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.item-description {
+  color: rgba(0, 0, 0, 0.65);
+  font-size: 0.9rem;
+}
+
+.mandatory-tag,
+.conditional-tag {
+  font-size: 0.75rem;
+  margin-left: 0.5rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: #eeeeee;
+}
+
+.error {
+  color: #7a1414;
+}

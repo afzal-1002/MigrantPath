@@ -1,0 +1,53 @@
+<h1 tabindex="-1">My cases</h1>
+
+@if (loading()) {
+  <p role="status" class="loading"><mat-spinner diameter="24"></mat-spinner> Loading your cases…</p>
+} @else if (error()) {
+  <p role="alert" class="error">We could not load your cases right now.</p>
+} @else if (cases().length === 0) {
+  <p class="empty">
+    You haven't started tracking any pathways yet. Analyse your assessment results to find a
+    relevant pathway.
+  </p>
+} @else {
+  @if (activeCases().length > 0) {
+    <section aria-labelledby="active-heading">
+      <h2 id="active-heading">Active</h2>
+      @for (c of activeCases(); track c.id) {
+        <mat-card class="case-card">
+          <mat-card-header>
+            <mat-card-title>{{ c.procedureTitle }}</mat-card-title>
+            <mat-card-subtitle>{{ statusLabel(c.status) }}</mat-card-subtitle>
+          </mat-card-header>
+          <mat-card-content>
+            <p>Steps: {{ c.stepsCompleted }} / {{ c.stepsTotal }}</p>
+            <p>Documents: {{ c.documentsReady }} / {{ c.documentsTotal }}</p>
+            @if (c.hasRequirementUpdates) {
+              <p class="update-flag" role="status">Requirements have changed</p>
+            }
+          </mat-card-content>
+          <mat-card-actions>
+            <a mat-button [routerLink]="['/cases', c.id]">Continue →</a>
+          </mat-card-actions>
+        </mat-card>
+      }
+    </section>
+  }
+
+  @if (closedCases().length > 0) {
+    <section aria-labelledby="closed-heading">
+      <h2 id="closed-heading">Completed / cancelled</h2>
+      @for (c of closedCases(); track c.id) {
+        <mat-card class="case-card closed">
+          <mat-card-header>
+            <mat-card-title>{{ c.procedureTitle }}</mat-card-title>
+            <mat-card-subtitle>{{ statusLabel(c.status) }}</mat-card-subtitle>
+          </mat-card-header>
+          <mat-card-actions>
+            <a mat-button [routerLink]="['/cases', c.id]">View →</a>
+          </mat-card-actions>
+        </mat-card>
+      }
+    </section>
+  }
+}

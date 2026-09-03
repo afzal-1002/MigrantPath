@@ -1,7 +1,7 @@
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
-import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
 import { environment } from '../../../../environments/environment';
 import { RecommendationRun } from '../../../core/services/recommendation.service';
 import { RecommendationResults } from './recommendation-results';
@@ -20,6 +20,7 @@ function sampleRun(overrides: Partial<RecommendationRun> = {}): RecommendationRu
     completedAt: '2026-09-03T00:00:01Z',
     recommendations: [
       {
+        id: 'rec-1',
         procedureCode: 'TEST_MATCH',
         procedureTitle: 'Test Match Procedure',
         recommendationType: 'PRIMARY_MATCH',
@@ -139,6 +140,51 @@ describe('RecommendationResults', () => {
     fixture.detectChanges();
 
     expect(fixture.componentInstance['run']()?.id).toBe('run-2');
+    httpMock.verify();
+  });
+
+  it('shows "Start this pathway" for a PRIMARY_MATCH but not for MORE_INFORMATION_REQUIRED', async () => {
+    const { fixture, httpMock } = await setUp();
+    fixture.detectChanges();
+    httpMock.expectOne(`${BASE}/recommendations/latest`).flush(
+      sampleRun({
+        recommendations: [
+          { ...sampleRun().recommendations[0] },
+          {
+            id: 'rec-2',
+            procedureCode: 'TEST_MORE_INFO',
+            procedureTitle: 'Test More Info Procedure',
+            recommendationType: 'MORE_INFORMATION_REQUIRED',
+            rank: 2,
+            reasons: [],
+            missingFacts: ['MONTHLY_GROSS_SALARY'],
+            officialSources: [],
+          },
+        ],
+      }),
+    );
+    fixture.detectChanges();
+
+    const buttons = Array.from(fixture.nativeElement.querySelectorAll('button')) as HTMLButtonElement[];
+    const startButtons = buttons.filter((b) => b.textContent?.includes('Start this pathway'));
+    expect(startButtons.length).toBe(1);
+    httpMock.verify();
+  });
+
+  it('clicking "Start this pathway" creates a case and navigates to it', async () => {
+    const { fixture, httpMock } = await setUp();
+    const router = TestBed.inject(Router);
+    const navigateSpy = vi.spyOn(router, 'navigate');
+    fixture.detectChanges();
+    httpMock.expectOne(`${BASE}/recommendations/latest`).flush(sampleRun());
+    fixture.detectChanges();
+
+    fixture.componentInstance['startPathway'](sampleRun().recommendations[0]);
+    const req = httpMock.expectOne(`${environment.apiBaseUrl}/recommendations/rec-1/cases`);
+    expect(req.request.method).toBe('POST');
+    req.flush({ id: 'case-1' });
+
+    expect(navigateSpy).toHaveBeenCalledWith(['/cases', 'case-1']);
     httpMock.verify();
   });
 });

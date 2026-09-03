@@ -158,16 +158,25 @@ Design principles:
 - Migrations via Flyway (`V1__initial_schema.sql`, ...). `ddl-auto=validate` in every
   environment; schema changes only ever arrive through a migration file.
 
-## 5. Case snapshot & requirement-change handling
+## 5. Case snapshot & requirement-change handling (IMPLEMENTED, Phase 8 — ADR-011, DATABASE.md §8)
 
-A `UserCase` is created from a specific `ProcedureVersion` (and, transitively, the
-`RuleVersion`/`DocumentRequirementVersion`/`FeeVersion` active at that moment) and
-records which version it was built from. If the procedure is later republished with a
-new version, existing cases are **not** silently migrated. A background/on-read check
-compares the case's stored version to the procedure's current published version and, if
-different, surfaces "requirements have changed" with an explicit diff (documents
-added/removed, steps changed) — the user opts in to updating their case. This is what
-makes `ProcedureVersion` (not just `Procedure`) the object a `UserCase` links to.
+A `UserCase` is created from one `Recommendation` (Phase 7 — `PRIMARY_MATCH`/
+`POSSIBLE_ALTERNATIVE` only) and snapshots the active `ProcedureVersion`'s steps,
+documents, and fees into real, case-owned rows (`UserCaseSnapshotRevision` →
+`UserCaseStep`/`UserCaseDocument`/`UserCaseFee`) — not `RuleVersion`/`ThresholdVersion`
+provenance directly, since Phase 8 has no conditional-personalization engine yet (see
+[docs/cases/USER_CASE_MODEL.md](../cases/USER_CASE_MODEL.md)'s "Personalization"
+section). If the procedure is later republished with a new version, existing cases are
+**not** silently migrated. An on-read check (`CaseRequirementChangeService`) compares the
+case's stored version to the procedure's current published version and, if different,
+surfaces "requirements have changed" with an explicit diff (documents added/removed/
+changed, steps changed, fees changed, matched by stable identity code — see
+[docs/cases/REQUIREMENT_CHANGE_POLICY.md](../cases/REQUIREMENT_CHANGE_POLICY.md)) — the
+user opts in to updating their case via an explicit upgrade
+(`UserCaseUpgradeService`, brief §31/§51), which creates a new snapshot revision while
+preserving checklist progress where nothing material changed. This is what makes
+`ProcedureVersion` (via the revision, not directly on `UserCase`) the object a case's
+content ultimately traces back to.
 
 ## 6. API design
 

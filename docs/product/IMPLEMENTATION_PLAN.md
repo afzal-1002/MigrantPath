@@ -881,7 +881,18 @@ brief's own "avoid one giant class" instruction).
 
 ---
 
-## Phase 8 — User cases + checklist
+## Phase 8 — User cases + checklist — ✅ COMPLETE (see [PHASE_8_REPORT.md](PHASE_8_REPORT.md))
+
+The task list below is left as originally planned for traceability; see
+[PHASE_8_REPORT.md](PHASE_8_REPORT.md)'s "Deviations" section for where the actual
+implementation diverged (most notably: `UserCaseRequirementSnapshot`'s single JSONB-
+array-of-version-ids row became a real `UserCaseSnapshotRevision` identity row plus
+per-item `UserCaseStep`/`UserCaseDocument`/`UserCaseFee` rows, giving revisions a natural
+home for the explicit-upgrade flow a single row couldn't represent — see ADR-011;
+`UserCaseFee` was added beyond the original 8.1-8.3 scope since Phase 4 does model fees;
+no district/office-selection case-setup screen was built (brief §18/§97, deferred);
+requirement-change detection covers step/document/fee content only, not a `Procedure`'s
+own title/summary or source-record changes).
 
 #### 8.1 Migration + entities: UserCase, UserCaseRequirementSnapshot
 - **Database/Backend:** per DATABASE.md §8.

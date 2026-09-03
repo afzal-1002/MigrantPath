@@ -1,0 +1,141 @@
+@if (loading()) {
+  <p role="status" class="loading"><mat-spinner diameter="24"></mat-spinner> Loading your case…</p>
+} @else if (notFound()) {
+  <p role="alert" class="error">This case could not be found.</p>
+  <a mat-stroked-button routerLink="/cases">Back to my cases</a>
+} @else if (detail(); as d) {
+  <h1 tabindex="-1">{{ d.procedureTitle }}</h1>
+  <p class="status-line">Status: {{ statusLabel(d.status) }}</p>
+
+  @if (actionError()) {
+    <p role="alert" class="error">{{ actionError() }}</p>
+  }
+
+  @if (d.hasRequirementUpdates) {
+    <section class="updates-banner" role="status">
+      <p>Requirements have changed since you started this case.</p>
+      <button mat-stroked-button type="button" (click)="toggleChanges()">
+        {{ showChanges() ? 'Hide changes' : 'Review changes' }}
+      </button>
+
+      @if (showChanges() && changes(); as report) {
+        <div class="changes-review">
+          @for (change of report.changes; track change.stableCode + change.changeType) {
+            <p class="change-row" [attr.data-type]="change.changeType">
+              <strong>{{ change.changeType }}</strong> ({{ change.category }}) - {{ change.title }}: {{ change.detail }}
+            </p>
+          }
+          <p class="confirm-note">
+            Your existing progress will be preserved where possible. Changed items may be marked
+            as needing review.
+          </p>
+          <button mat-flat-button color="primary" type="button" [disabled]="upgrading()" (click)="upgrade()">
+            {{ upgrading() ? 'Updating…' : 'Update case to latest requirements' }}
+          </button>
+        </div>
+      }
+    </section>
+  }
+
+  <section aria-labelledby="overview-heading">
+    <h2 id="overview-heading">Overview</h2>
+    <p>Steps: {{ d.progress.stepsCompleted }} / {{ d.progress.stepsTotal }}</p>
+    <p>Documents: {{ d.progress.documentsReady }} / {{ d.progress.documentsTotal }}</p>
+    @if (d.progress.conditionalDocumentsToReview > 0) {
+      <p>{{ d.progress.conditionalDocumentsToReview }} conditional document(s) need confirmation</p>
+    }
+  </section>
+
+  <section aria-labelledby="steps-heading">
+    <h2 id="steps-heading">Steps</h2>
+    @for (step of d.steps; track step.id) {
+      <div class="checklist-item">
+        <p>
+          <strong>{{ step.title }}</strong> - {{ statusLabel(step.status) }}
+          @if (step.mandatory) {
+            <span class="mandatory-tag">Required</span>
+          }
+        </p>
+        @if (step.description) {
+          <p class="item-description">{{ step.description }}</p>
+        }
+        @if (step.status !== 'COMPLETED') {
+          <button mat-stroked-button type="button" (click)="setStepStatus(step, 'COMPLETED')">Mark complete</button>
+        } @else {
+          <button mat-button type="button" (click)="setStepStatus(step, 'NOT_STARTED')">Reopen</button>
+        }
+      </div>
+    }
+  </section>
+
+  <section aria-labelledby="documents-heading">
+    <h2 id="documents-heading">Documents</h2>
+    @for (document of d.documents; track document.id) {
+      <div class="checklist-item">
+        <p>
+          <strong>{{ document.name }}</strong> - {{ statusLabel(document.status) }}
+          @if (document.applicability === 'NEEDS_CONFIRMATION') {
+            <span class="conditional-tag">May be required depending on your circumstances</span>
+          } @else if (document.mandatory) {
+            <span class="mandatory-tag">Required</span>
+          }
+        </p>
+        @if (document.description) {
+          <p class="item-description">{{ document.description }}</p>
+        }
+        @if (document.status !== 'READY') {
+          <button mat-stroked-button type="button" (click)="setDocumentStatus(document, 'READY')">Mark ready</button>
+        } @else {
+          <button mat-button type="button" (click)="setDocumentStatus(document, 'IN_PROGRESS')">Reopen</button>
+        }
+      </div>
+    }
+  </section>
+
+  @if (d.fees.length > 0) {
+    <section aria-labelledby="fees-heading">
+      <h2 id="fees-heading">Fees</h2>
+      @for (fee of d.fees; track fee.id) {
+        <div class="checklist-item">
+          <p><strong>{{ fee.amount }} {{ fee.currency }}</strong> - {{ statusLabel(fee.status) }}</p>
+          @if (fee.description) {
+            <p class="item-description">{{ fee.description }}</p>
+          }
+          @if (fee.status !== 'PAID') {
+            <button mat-stroked-button type="button" (click)="setFeeStatus(fee, 'PAID')">Mark paid</button>
+          } @else {
+            <button mat-button type="button" (click)="setFeeStatus(fee, 'NOT_PAID')">Undo</button>
+          }
+        </div>
+      }
+    </section>
+  }
+
+  @if (d.authorities.length > 0 || d.offices.length > 0) {
+    <section aria-labelledby="where-heading">
+      <h2 id="where-heading">Where to go</h2>
+      @for (authority of d.authorities; track authority.code) {
+        <p>{{ authority.name }}</p>
+      }
+      @for (office of d.offices; track office.code) {
+        <p>
+          {{ office.name }}
+          @if (office.street) {
+            , {{ office.street }} {{ office.buildingNumber }}
+          }
+        </p>
+      }
+    </section>
+  }
+
+  @if (d.sources.length > 0) {
+    <section aria-labelledby="sources-heading">
+      <h2 id="sources-heading">Official sources</h2>
+      @for (source of d.sources; track source.url) {
+        <p><a [href]="source.url" target="_blank" rel="noopener noreferrer">{{ source.title }}</a></p>
+      }
+    </section>
+  }
+
+  <a mat-button routerLink="/cases">Back to my cases</a>
+}

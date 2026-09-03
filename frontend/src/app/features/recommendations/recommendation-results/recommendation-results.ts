@@ -1,10 +1,11 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { CaseService } from '../../../core/services/case.service';
 import {
   Recommendation,
   RecommendationReason,
@@ -44,7 +45,9 @@ interface ApiErrorBody {
 })
 export class RecommendationResults {
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly recommendationService = inject(RecommendationService);
+  private readonly caseService = inject(CaseService);
 
   protected readonly assessmentId = this.route.snapshot.paramMap.get('id') ?? '';
   protected readonly loading = signal(true);
@@ -52,6 +55,10 @@ export class RecommendationResults {
   protected readonly run = signal<RecommendationRun | null>(null);
   protected readonly error = signal<string | null>(null);
   protected readonly notCompleted = signal(false);
+  /** The recommendation id currently being turned into a case, if any (brief §111/§118 -
+   * disables that one card's button and waits for a real backend result rather than an
+   * optimistic UI update). */
+  protected readonly startingPathwayFor = signal<string | null>(null);
 
   protected readonly primaryMatches = computed(() => this.byType('PRIMARY_MATCH'));
   protected readonly alternatives = computed(() => this.byType('POSSIBLE_ALTERNATIVE'));
@@ -160,5 +167,29 @@ export class RecommendationResults {
 
   protected reasonIcon(reason: RecommendationReason): string {
     return reason.reasonType === 'MATCHED_CONDITION' ? '✓' : reason.reasonType === 'FAILED_CONDITION' ? '✗' : '!';
+  }
+
+  /** brief §4/§52: only PRIMARY_MATCH/POSSIBLE_ALTERNATIVE may start a case - the backend
+   * enforces this too (CASE_CREATION_NOT_ALLOWED), this just keeps the button from ever
+   * appearing where it would only fail. */
+  protected canStartPathway(rec: Recommendation): boolean {
+    return rec.recommendationType === 'PRIMARY_MATCH' || rec.recommendationType === 'POSSIBLE_ALTERNATIVE';
+  }
+
+  protected startPathway(rec: Recommendation): void {
+    this.startingPathwayFor.set(rec.id);
+    this.error.set(null);
+    this.caseService.create(rec.id).subscribe({
+      next: (caseDetail) => {
+        this.router.navigate(['/cases', caseDetail.id]);
+      },
+      error: (err: HttpErrorResponse) => {
+        this.startingPathwayFor.set(null);
+        const body = err.error as ApiErrorBody | undefined;
+        this.error.set(
+          body?.message ?? 'We could not start this pathway right now. Please try again.',
+        );
+      },
+    });
   }
 }

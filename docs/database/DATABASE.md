@@ -812,66 +812,102 @@ there, the rule's own source) that generated it.
 
 ---
 
-## 8. User-case entities
+## 8. User-case entities (IMPLEMENTED, Phase 8 — see ADR-011)
+
+**Revised from the Phase 0 sketch below**: the single `UserCaseRequirementSnapshot` row
+of JSONB version-id arrays became a real `UserCaseSnapshotRevision` identity row plus
+per-item `UserCaseStep`/`UserCaseDocument`/`UserCaseFee` rows — real relational content,
+not an opaque array of ids a caller would still have to dereference one by one. This also
+gave revisions a natural place to live: `revision_number` + `previous_revision_id` let an
+upgrade (brief §31/§32) create a *new* snapshot without ever touching the old one, which
+a single unique-per-case row couldn't represent at all. See ADR-011 and
+[docs/cases/](../cases/) for the full reasoning and policy.
 
 ### UserCase
-- `id UUID PK`, `user_id FK → User`, `procedure_id FK → Procedure`,
-  `procedure_version_id FK → ProcedureVersion NOT NULL` (pinned at creation —
-  the anchor for "has this changed," §8.5), `recommendation_id FK → Recommendation
-  NULL` (set if created from a guided recommendation rather than the browse flow),
-  `office_id FK → Office NULL` (the user's chosen/routed office, once district-dependent
-  routing applies), `status ENUM(DRAFT, ASSESSING, PREPARING, READY_TO_SUBMIT,
-  SUBMITTED, WAITING, ADDITIONAL_DOCUMENTS_REQUIRED, DECISION_RECEIVED, APPROVED,
-  REJECTED, APPEAL, COMPLETED, CANCELLED)`, `created_at`, `updated_at`. Not every
-  procedure uses every status (brief §29) — enforced in the service layer per procedure
-  category, not by the schema.
-- **Index**: `(user_id, status)` — the dashboard's "my cases" query.
+- `id UUID PK`, `user_id FK → User ON DELETE CASCADE`, `recommendation_id UUID UNIQUE FK
+  → Recommendation ON DELETE RESTRICT` (every case comes from a Phase 7 recommendation —
+  the "browse and start a case directly" flow the Phase 0 sketch's nullable FK
+  anticipated is out of Phase 8's scope), `assessment_id FK → Assessment`,
+  `procedure_id FK → Procedure`, `current_revision_id FK → UserCaseSnapshotRevision NULL`
+  (the "active" snapshot a reader sees — nullable only momentarily during the single
+  creation transaction), `status ENUM(DRAFT, PREPARING, READY_TO_SUBMIT, SUBMITTED,
+  WAITING, ADDITIONAL_DOCUMENTS_REQUIRED, DECISION_RECEIVED, APPROVED, REJECTED, APPEAL,
+  COMPLETED, CANCELLED)` (`ASSESSING` was dropped from the Phase 0 sketch — Phase 5's
+  Assessment already owns that concept; a `UserCase` only exists once an assessment is
+  already complete), `created_at`, `updated_at`, `submitted_at NULL`, `completed_at
+  NULL`, `lock_version` (optimistic locking).
+- **`office_id`/`procedure_version_id` were dropped from this table** — the pinned
+  `ProcedureVersion` lives on `UserCaseSnapshotRevision` instead (a case can have more
+  than one revision, each with its own version), and no `office_id` selection/routing
+  step exists yet (brief §18/§97's district-routing UX — a documented, deferred gap, see
+  PHASE_8_REPORT.md "Deviations"); offices are resolved live from the current revision's
+  `procedure_version_id` (docs/cases/CASE_SNAPSHOT_POLICY.md).
+- **Unique**: `recommendation_id` (one case per recommendation, brief §53/§77's
+  idempotency guarantee — enforced by the schema, not just application code).
+- **Index**: `(user_id, status)`, `(user_id, updated_at DESC)` — the "my cases" query.
 
-### UserCaseRequirementSnapshot
-- **Purpose**: the concrete record of exactly what generated a case's checklist, so
-  "requirements have changed since you created this case" (brief §36) is a comparison,
-  not a guess.
-- `id UUID PK`, `user_case_id UUID UNIQUE FK → UserCase`,
-  `procedure_version_id FK → ProcedureVersion` (redundant copy of `UserCase`'s, kept here
-  so this table is self-contained), `evaluation_date DATE` (the date used to resolve the
-  Active-Version Predicate at case-creation time, enabling exact historical replay, §0),
-  `rule_version_ids JSONB` (array — a case's eligibility may have depended on more than
-  one rule), `step_version_ids JSONB`, `document_requirement_version_ids JSONB`,
-  `fee_version_ids JSONB`, `threshold_version_ids JSONB` (captures the *exact*
-  `ThresholdVersion` — e.g. which specific `BLUE_CARD_MIN_SALARY` figure — used, so a
-  later salary-threshold change is visible as a diff, not silently reinterpreted),
-  `snapshot_taken_at`.
-- **"Requirements changed" check**: compare each stored version ID against the *current*
-  Active-Version Predicate result for the same identity (`ProcedureStep`,
-  `DocumentRequirement`, etc.) — a mismatch is a changed/added/removed item, rendered as
-  the diff described in Product Requirements §6.5.
+### UserCaseSnapshotRevision
+- `id UUID PK`, `user_case_id FK → UserCase ON DELETE CASCADE`, `revision_number INT`,
+  `procedure_version_id FK → ProcedureVersion` (pinned — the anchor for "has this
+  changed"), `evaluation_date DATE`, `snapshot_schema_version INT DEFAULT 1`,
+  `reason ENUM(INITIAL, UPGRADE)`, `created_at`, `created_by FK → User NULL`,
+  `previous_revision_id FK → UserCaseSnapshotRevision NULL`.
+- **Unique**: `(user_case_id, revision_number)`.
+- Never edited after creation — an upgrade always inserts `revision_number + 1`.
 
 ### UserCaseStep
-- `id UUID PK`, `user_case_id FK → UserCase`, `procedure_step_id FK → ProcedureStep`
-  (identity — stable even if wording changes later), `step_version_id FK → StepVersion`
-  (pinned — what was actually shown), `status ENUM(TODO, IN_PROGRESS, DONE)`,
-  `completed_at NULL`.
-- **Unique**: `(user_case_id, procedure_step_id)`.
+- `id UUID PK`, `snapshot_revision_id FK → UserCaseSnapshotRevision ON DELETE CASCADE`,
+  `source_procedure_step_id FK → ProcedureStep` (identity — the stable-code match key
+  across revisions), `source_step_version_id FK → StepVersion` (pinned — what was
+  actually shown), `stable_code`, `title_snapshot`, `description_snapshot`,
+  `detailed_instructions_snapshot`, `step_type`, `sort_order`, `mandatory`,
+  `status ENUM(NOT_STARTED, IN_PROGRESS, COMPLETED, SKIPPED, BLOCKED, NOT_APPLICABLE)`
+  (`TODO`/`DONE` from the Phase 0 sketch renamed to `NOT_STARTED`/`COMPLETED` to match
+  every other checklist-style status in this codebase), `completed_at NULL`, `updated_at`.
+- **Unique**: `(snapshot_revision_id, stable_code)`.
 
 ### UserCaseDocument
-- `id UUID PK`, `user_case_id FK → UserCase`,
-  `document_requirement_id FK → DocumentRequirement` (identity),
-  `document_requirement_version_id FK → DocumentRequirementVersion` (pinned),
-  `status ENUM(NOT_STARTED, MISSING, IN_PROGRESS, READY, NOT_APPLICABLE,
-  NEEDS_UPDATE)`, `updated_at`. **No file/content column** — V1 stores checklist status
-  only (Product Requirements, non-scope).
-- **Unique**: `(user_case_id, document_requirement_id)`.
+- `id UUID PK`, `snapshot_revision_id FK → UserCaseSnapshotRevision ON DELETE CASCADE`,
+  `source_document_requirement_id FK → DocumentRequirement` (identity),
+  `source_document_requirement_version_id FK → DocumentRequirementVersion` (pinned),
+  `stable_code`, `name_snapshot`, `description_snapshot`, `requirement_type`,
+  `applicability ENUM(APPLICABLE, NEEDS_CONFIRMATION, NOT_APPLICABLE)` (new versus the
+  Phase 0 sketch — structural relevance, kept deliberately separate from `status`'s
+  checklist progress, docs/cases/USER_CASE_MODEL.md), `mandatory`,
+  `number_of_copies_snapshot`, `original_required_snapshot`,
+  `translation_required_snapshot`, `sworn_translation_required_snapshot`,
+  `apostille_required_snapshot`, `legalisation_required_snapshot`,
+  `validity_period_description_snapshot`, `content_notes_snapshot`, `user_note`
+  (the user's own free-text note, brief §37 — a separate column from the content's own
+  notes), `sort_order`,
+  `status ENUM(NOT_STARTED, MISSING, IN_PROGRESS, READY, NEEDS_UPDATE, NOT_APPLICABLE)`,
+  `ready_at NULL`, `updated_at`. **No file/content column** — checklist status only
+  (Product Requirements, non-scope).
+- **Unique**: `(snapshot_revision_id, stable_code)`.
+
+### UserCaseFee
+- `id UUID PK`, `snapshot_revision_id FK → UserCaseSnapshotRevision ON DELETE CASCADE`,
+  `source_fee_id FK → Fee`, `source_fee_version_id FK → FeeVersion`, `stable_code`,
+  `fee_type`, `amount_snapshot NUMERIC(10,2)`, `currency_snapshot`,
+  `description_snapshot`, `payment_instructions_snapshot`, `sort_order`,
+  `status ENUM(NOT_PAID, PAID, NOT_APPLICABLE, UNKNOWN)` (new versus the Phase 0 sketch,
+  which didn't yet model fees at the case level), `paid_at NULL`, `updated_at`.
+- **Unique**: `(snapshot_revision_id, stable_code)`.
 
 ### UserCaseEvent
-- `id UUID PK`, `user_case_id FK → UserCase`, `event_type` (`STATUS_CHANGED`,
-  `DOCUMENT_MARKED_READY`, `REQUIREMENTS_CHANGE_ACKNOWLEDGED`, `NOTE_ADDED`, ...),
-  `payload JSONB` (heterogeneous per `event_type` — a justified JSONB use: append-only,
-  never queried by field, only replayed as a timeline), `created_at`,
-  `created_by FK → User NULL` (null for system-generated events).
+- `id UUID PK`, `user_case_id FK → UserCase ON DELETE CASCADE`,
+  `event_type ENUM(CASE_CREATED, CASE_STATUS_CHANGED, STEP_COMPLETED, STEP_REOPENED,
+  DOCUMENT_STATUS_CHANGED, FEE_STATUS_CHANGED, REQUIREMENTS_UPDATE_DETECTED,
+  CASE_UPDATED_TO_NEW_VERSION, CASE_CANCELLED)`, `occurred_at`,
+  `actor_user_id FK → User NULL` (null for a system-generated event — none exist yet in
+  Phase 8), `metadata VARCHAR(500)` (a short, non-sensitive string, e.g. a status
+  transition or a stable item code — the Phase 0 sketch's `payload JSONB` was
+  simplified to plain text since every event this phase actually logs needs only one
+  short fact, never a heterogeneous structure), `created_at`.
 - **Distinct from `AuditLog`** (§9): this is the user-facing case timeline; `AuditLog` is
   the admin/system audit trail. Don't merge them — different audiences, different
   retention/access rules.
-- **Index**: `(user_case_id, created_at)`.
+- **Index**: `(user_case_id, occurred_at DESC)`.
 
 ---
 

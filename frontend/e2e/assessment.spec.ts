@@ -88,6 +88,15 @@ test('Scenario 1: work branch end to end, completes, then analyzes with no fabri
   await expect(page.getByText("couldn't identify a matching pathway")).toBeVisible();
   // Recommendation Engine brief §52: never a confidence/probability figure anywhere.
   await expect(page.getByText(/\d+%/)).toHaveCount(0);
+
+  // Phase 8: "My Cases" is reachable end to end through the real backend too - no case
+  // exists (no production Rule content means no PRIMARY_MATCH to start one from), so the
+  // honest outcome is the empty-cases state, never a fabricated case.
+  await page.goto('/dashboard');
+  await page.getByRole('link', { name: 'View my cases' }).click();
+  await expect(page).toHaveURL(/\/cases$/);
+  await expect(page.getByRole('heading', { name: 'My cases' })).toBeVisible();
+  await expect(page.getByText("haven't started tracking")).toBeVisible();
 });
 
 test('Scenario 2: removing Work after entering the branch hides salary and still allows completion', async ({ page }) => {

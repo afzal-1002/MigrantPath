@@ -16,20 +16,21 @@ expansion). Read these before making changes, in this order:
 6. [docs/product/IMPLEMENTATION_PLAN.md](docs/product/IMPLEMENTATION_PLAN.md) — the full phase-by-phase task breakdown; find the next task here before starting new work
 7. [docs/architecture/ADR/](docs/architecture/ADR/) — the "why" behind the foundational decisions
 
-**Current status: Phase 7 (recommendation engine) complete** — see
-[docs/product/PHASE_7_REPORT.md](docs/product/PHASE_7_REPORT.md). Auth (Phase 2),
+**Current status: Phase 8 (user cases + personalized checklist) complete** — see
+[docs/product/PHASE_8_REPORT.md](docs/product/PHASE_8_REPORT.md). Auth (Phase 2),
 reference data (Phase 3), versioned procedure content (Phase 4), the questionnaire/
-assessment engine (Phase 5), and the deterministic rules engine (Phase 6, see
-[PHASE_6_REPORT.md](docs/product/PHASE_6_REPORT.md)) all work end to end; the
-recommendation engine now classifies and ranks candidate procedures into
-`PRIMARY_MATCH`/`POSSIBLE_ALTERNATIVE`/`MORE_INFORMATION_REQUIRED`/`NOT_APPLICABLE`/
-`UNAVAILABLE_FOR_ANALYSIS` from Phase 6's rule results, persisting an immutable,
-reproducible `RecommendationRun` per analysis (deterministic, no AI, no confidence score
-— see [ADR-010](docs/architecture/ADR/ADR-010-recommendation-engine.md) and
-[docs/recommendations/](docs/recommendations/)) and a real "Analyze my pathways" Angular
-page. User cases/checklists and admin tooling are still later phases per
-IMPLEMENTATION_PLAN.md. Work through IMPLEMENTATION_PLAN.md's tasks in order starting at
-Phase 8.
+assessment engine (Phase 5), the deterministic rules engine (Phase 6), and the
+recommendation engine (Phase 7, see
+[PHASE_7_REPORT.md](docs/product/PHASE_7_REPORT.md)) all work end to end; a user can now
+turn an allowed `Recommendation` into a persistent `UserCase` — an immutable per-
+procedure-version snapshot of steps/documents/fees (never silently mutated by a later
+Procedure republish — see
+[ADR-011](docs/architecture/ADR/ADR-011-user-case-snapshots.md) and
+[docs/cases/](docs/cases/)), with checklist status tracking, deterministic progress,
+requirement-change detection, and an explicit upgrade flow, plus a real "My Cases"/case
+detail Angular UI. Admin tooling and real production legal content are still later
+phases per IMPLEMENTATION_PLAN.md. Work through IMPLEMENTATION_PLAN.md's tasks in order
+starting at Phase 9.
 
 ## Commands
 
