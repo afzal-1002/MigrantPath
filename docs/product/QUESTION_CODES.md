@@ -2,7 +2,12 @@
 
 Status: Phase 5 MVP seed — 18 questions, seeded by
 `backend/src/main/resources/db/migration/V38__seed_warsaw_general_assessment.sql` as
-`QuestionnaireVersion` 1 of `WARSAW_GENERAL_ASSESSMENT`.
+`QuestionnaireVersion` 1 of `WARSAW_GENERAL_ASSESSMENT`. Phase 10.5 (Production Rule
+Wiring) added exactly one new `PRIMARY_PURPOSE` option (`GET_MELDUNEK`) as
+`QuestionnaireVersion` 2 (`V47__seed_warsaw_general_assessment_v2_meldunek_goal.sql`,
+then carried through the real Admin API's DRAFT → review → publish workflow) — no
+question codes changed or were added; see the `PRIMARY_PURPOSE` row below and
+`docs/legal-content/PRODUCTION_RULE_COVERAGE.md` for why.
 
 `Question.code` is a stable, rule-facing identity (docs/database/DATABASE.md §4, ADR-008)
 — a future Phase 6 `RuleCondition` and every `AssessmentAnswer` reference it directly.
@@ -36,7 +41,7 @@ tree's `Q_KARTA_POLAKA_HOLDER`).
 
 | Code | Type | Decision tree source | Why this fact is needed |
 | --- | --- | --- | --- |
-| `PRIMARY_PURPOSE` | MULTI_SELECT | `Q_PURPOSE` | Multiple simultaneous goals are normal (brief §75) — activates the Work/Study/Family/Long-term branches additively. Curated options: `WORK, HIGHLY_QUALIFIED_WORK, STUDY, JOIN_SPOUSE, JOIN_FAMILY_OTHER, LONG_TERM_STAY, PERMANENT_SETTLEMENT, GET_PESEL, UNSURE`. |
+| `PRIMARY_PURPOSE` | MULTI_SELECT | `Q_PURPOSE` | Multiple simultaneous goals are normal (brief §75) — activates the Work/Study/Family/Long-term branches additively. `QuestionnaireVersion` 1 options: `WORK, HIGHLY_QUALIFIED_WORK, STUDY, JOIN_SPOUSE, JOIN_FAMILY_OTHER, LONG_TERM_STAY, PERMANENT_SETTLEMENT, GET_PESEL, UNSURE`. **`QuestionnaireVersion` 2 (current, Phase 10.5) adds `GET_MELDUNEK`** ("Register my address (meldunek)", sort order 85, between `GET_PESEL` and `UNSURE`) — the same explicit-intent, product-relevance signal `GET_PESEL` already provides, feeding `MELDUNEK_BASE_APPLICABILITY`. |
 
 ## Work (section `WORK`) — shown when `PRIMARY_PURPOSE` contains `WORK` or `HIGHLY_QUALIFIED_WORK`
 

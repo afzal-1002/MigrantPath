@@ -1087,16 +1087,23 @@ actually built and where it differs.
 
 ---
 
-## Phase 10 — Warsaw procedure content — ⚠️ SUBSTANTIALLY COMPLETE, ONE GAP DISCLOSED (see [PHASE_10_REPORT.md](PHASE_10_REPORT.md))
+## Phase 10 — Warsaw procedure content — ✅ COMPLETE (see [PHASE_10_REPORT.md](PHASE_10_REPORT.md)); Rule-wiring gap closed by Phase 10.5 (see [PHASE_10_5_REPORT.md](PHASE_10_5_REPORT.md))
 
 Real, sourced content published for 4 of the 5 first-release procedures (PESEL,
 Meldunek, EU citizen residence registration, Temporary residence and work — plus one
 real `Threshold`); the 5th (Temporary residence for studies) reached
 `READY_FOR_PUBLICATION`, correctly held by the new VERIFIED-primary-source publish gate.
-**No `Rule` was authored for any of them** — see PHASE_10_REPORT.md's "Rules &
-Recommendation/Case Validation" before starting further procedure work: none of this
-phase's content is reachable through the recommendation engine or `UserCase` creation
-yet. EU Blue Card, Family Reunification, and Foreign Driving Licence Exchange (the
+Phase 10 itself disclosed a significant gap — no `Rule` targeted any of these procedures,
+so none was reachable through the recommendation engine or `UserCase` creation. **Phase
+10.5 closed that gap**: real production `Rule`s now target PESEL, Meldunek, EU citizen
+residence registration, and Temporary residence and work (all `PUBLISHED`); Temporary
+residence for studies' two Rules are `APPROVED` but deliberately not published, mirroring
+the Procedure's own unpublished state. A real, browser-driven Playwright test now runs
+the full production pipeline (assessment → real Rule evaluation → real recommendation →
+real `UserCase` with a real checklist) end to end. See PHASE_10_5_REPORT.md for the full
+account, including the one new `QuestionnaireVersion` (`GET_MELDUNEK` goal option) and a
+genuine `LazyInitializationException` bug found and fixed along the way. EU Blue Card,
+Family Reunification, and Foreign Driving Licence Exchange (the
 other 3 of the original 8 MVP procedures) remain untouched, out of scope for this pass.
 
 Each of the remaining MVP procedures still gets its own task: verify sources directly, write the
@@ -1162,6 +1169,22 @@ sources are `VERIFIED`, not `DRAFT`.
 - **DoD:** all 8 green.
 - **Depends on:** 10.2–10.9
 - **Risk:** Medium
+
+---
+
+## Phase 10.5 — Production Rule Wiring — ✅ COMPLETE (see [PHASE_10_5_REPORT.md](PHASE_10_5_REPORT.md))
+
+Bridge phase between Phase 10's real legal content and the already-built Assessment/
+Rules/Recommendation/UserCase engines. Authored real `Rule`s (8 total: base
+applicability, goal-exclusion, and a minimum-wage requirement rule where each was
+legally justified) for four of the five Phase 10 procedures, all through the real Admin
+API governance workflow; added one new `QuestionnaireVersion` (a single new goal
+option, `GET_MELDUNEK`) through the same real workflow; and proved the original
+zero-candidate gap closed with a real, browser-driven Playwright test running the full
+production pipeline end to end, including real `UserCase` creation. Full detail,
+including the fact/question coverage audit and the one genuine bug found
+(`LazyInitializationException` in a questionnaire-version listing query), in
+PHASE_10_5_REPORT.md.
 
 ---
 

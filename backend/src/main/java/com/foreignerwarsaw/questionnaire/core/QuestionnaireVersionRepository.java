@@ -79,9 +79,27 @@ public interface QuestionnaireVersionRepository extends JpaRepository<Questionna
 
   List<QuestionnaireVersion> findByStatus(PublicationStatus status);
 
-  /** Phase 9 admin listing (brief §49) - newest first. */
+  /**
+   * Phase 9 admin listing (brief §49) - newest first. Phase 10.5 fix: this was the one admin
+   * repository method in this class that didn't fetch-join the actor fields {@code
+   * AdminQuestionnaireVersionDetailResponse#from} reads (createdBy/submittedBy/approvedBy/
+   * publishedBy) - see {@code findByIdFetchingAll}'s Javadoc for why every one of these needs it.
+   * It went unnoticed until a version with a real (non-null) actor was actually listed through this
+   * method for the first time (every prior version in this codebase's history either had no actors
+   * set, via migration-seeded content, or was looked up by id/version-number instead) - found by
+   * Phase 10.5's real questionnaire-versioning workflow, not by inspection.
+   */
   @Query(
-      "SELECT v FROM QuestionnaireVersion v JOIN FETCH v.questionnaire WHERE v.questionnaire.id = :questionnaireId ORDER BY v.versionNumber DESC")
+      """
+      SELECT v FROM QuestionnaireVersion v
+      JOIN FETCH v.questionnaire
+      LEFT JOIN FETCH v.createdBy
+      LEFT JOIN FETCH v.submittedBy
+      LEFT JOIN FETCH v.approvedBy
+      LEFT JOIN FETCH v.publishedBy
+      WHERE v.questionnaire.id = :questionnaireId
+      ORDER BY v.versionNumber DESC
+      """)
   List<QuestionnaireVersion> findByQuestionnaire_IdOrderByVersionNumberDesc(
       @Param("questionnaireId") UUID questionnaireId);
 

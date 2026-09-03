@@ -168,6 +168,23 @@ contract, not a content issue:
    follow-up `GlobalExceptionHandler` mapping for `ConstraintViolationException`, listed
    as a Known Issue in the Phase 10 completion report.
 
+## Phase 10.5 update — Case Readiness Matrix (authoritative)
+
+Phase 10.5 (Production Rule Wiring) closed the Rule-wiring gap this document originally
+disclosed. Full detail in `PRODUCTION_RULE_COVERAGE.md` and
+`docs/product/PHASE_10_5_REPORT.md`. This matrix is now the authoritative release status
+per procedure — `Recommendation Ready`/`Case Ready` are derived from real, verified
+behavior (an actual assessment → recommendation → case run per row that claims `YES`),
+never manually toggled:
+
+| Procedure | Browse Ready | Rule Ready | Recommendation Ready | Case Ready | Blocking gap |
+|---|---|---|---|---|---|
+| PESEL | YES | YES | **YES** | YES | None |
+| MELDUNEK | YES | YES | **YES** | YES (checklist same shape as PESEL) | None |
+| EU_RESIDENCE_REGISTRATION | YES | YES | **YES** | Not exercised this phase (no real E2E case-creation test run for this procedure specifically — PESEL/TEMP_RESIDENCE_WORK were), but structurally identical path | None blocking; follow-up: one more E2E case-creation run |
+| TEMP_RESIDENCE_WORK | YES | YES | **YES** | **YES** — real Playwright E2E: assessment → PRIMARY_MATCH → "Start this pathway" → real checklist | None |
+| TEMP_RESIDENCE_STUDY | NO (`READY_FOR_PUBLICATION`, not `PUBLISHED`) | YES (Rules `APPROVED`, not published) | NO (no active `PUBLISHED` ProcedureVersion → `UNAVAILABLE_FOR_ANALYSIS` regardless of Rule state) | NO | The Procedure's own VERIFIED-primary-source gate (unchanged from Phase 10) — publishing the two already-approved Rules is then a one-step follow-up |
+
 ## What is deliberately NOT in the database
 
 - No content for EU Blue Card, Family Reunification, or Foreign Driving Licence

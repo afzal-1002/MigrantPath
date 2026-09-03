@@ -40,7 +40,7 @@ async function selectCountry(page: import('@playwright/test').Page, label: strin
   await page.getByRole('option', { name: new RegExp(countryName) }).click();
 }
 
-test('Scenario 1: work branch end to end, completes, then analyzes with no fabricated match', async ({ page }) => {
+test('Scenario 1: work branch end to end, completes, analyzes with a real production match, and starts a real case', async ({ page }) => {
   await registerVerifyAndLogin(page, uniqueEmail());
 
   await page.goto('/assessment/start');
@@ -80,23 +80,36 @@ test('Scenario 1: work branch end to end, completes, then analyzes with no fabri
   await expect(page.getByRole('heading', { name: 'Your assessment is complete' })).toBeVisible();
 
   // Phase 7: "Analyze my pathways" runs the real backend recommendation engine end to
-  // end - no production Rule content is ever seeded (Rules Engine brief §58-60), so the
-  // honest, correct outcome here is the empty-result state, never a fabricated match.
+  // end. Phase 10.5 published real production Rules for this exact scenario (a
+  // third-country citizen with a genuine job offer meeting the minimum wage) -
+  // Temporary residence and work is now a real, sourced PRIMARY_MATCH, not the empty
+  // "couldn't identify a matching pathway" state this test asserted before that rule
+  // existed (docs/product/PHASE_10_REPORT.md's disclosed gap, closed by
+  // docs/legal-content/PRODUCTION_RULE_COVERAGE.md).
   await page.getByRole('link', { name: 'Analyze my pathways' }).click();
   await expect(page).toHaveURL(/\/assessment\/[0-9a-f-]+\/results$/);
   await expect(page.getByRole('heading', { name: 'Your pathways' })).toBeVisible();
-  await expect(page.getByText("couldn't identify a matching pathway")).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Most relevant' })).toBeVisible();
+  const workCard = page.locator('.recommendation-card', { hasText: 'Temporary residence and work' });
+  await expect(workCard).toBeVisible();
+  await expect(workCard.locator('.badge')).toHaveAttribute('data-type', 'PRIMARY_MATCH');
+  // Real, sourced reasons and official sources - never a raw rule/condition code.
+  await expect(workCard.getByText('Why this appears relevant')).toBeVisible();
+  await expect(workCard.getByText('Official sources')).toBeVisible();
   // Recommendation Engine brief §52: never a confidence/probability figure anywhere.
   await expect(page.getByText(/\d+%/)).toHaveCount(0);
 
-  // Phase 8: "My Cases" is reachable end to end through the real backend too - no case
-  // exists (no production Rule content means no PRIMARY_MATCH to start one from), so the
-  // honest outcome is the empty-cases state, never a fabricated case.
+  // Phase 8: start a real case from this real PRIMARY_MATCH and verify its checklist.
+  await workCard.getByRole('button', { name: 'Start this pathway' }).click();
+  await expect(page).toHaveURL(/\/cases\/[0-9a-f-]+$/);
+  await expect(page.getByRole('heading', { name: 'Temporary residence and work' })).toBeVisible();
+  await expect(page.getByText(/Steps?/).first()).toBeVisible();
+
   await page.goto('/dashboard');
   await page.getByRole('link', { name: 'View my cases' }).click();
   await expect(page).toHaveURL(/\/cases$/);
   await expect(page.getByRole('heading', { name: 'My cases' })).toBeVisible();
-  await expect(page.getByText("haven't started tracking")).toBeVisible();
+  await expect(page.getByText('Temporary residence and work')).toBeVisible();
 });
 
 test('Scenario 2: removing Work after entering the branch hides salary and still allows completion', async ({ page }) => {

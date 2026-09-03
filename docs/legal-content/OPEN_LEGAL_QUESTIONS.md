@@ -110,3 +110,39 @@ None of the above are resolved as of this document's creation (2026-09-03, Phase
 research pass). Each blocks a specific downstream artifact from advancing past `DRAFT`/
 `READY_FOR_PUBLICATION` — see the per-procedure status table in
 `MVP_CONTENT_COVERAGE.md`.
+
+## Phase 10.5 addendum — impact on Rule wiring and recommendation/case reachability
+
+Phase 10.5 authored production `Rule`s against four of the five procedures (full detail:
+`PRODUCTION_RULE_COVERAGE.md`). None of the items above blocked Rule authoring for
+PESEL, Meldunek, EU citizen residence registration, or the two facts
+`TEMP_RESIDENCE_WORK`'s Rules actually use (job offer + minimum wage, both solidly
+sourced) — tagging each open item's effect on recommendation/case reachability now that
+real Rules exist:
+
+- **Item 4** (PESEL document enumeration), **item 6** (Meldunek document sub-category
+  enumeration): blocks neither recommendation nor case creation (both already work) —
+  affects only the completeness of the personalized document checklist text, unchanged
+  by this phase.
+- **Item 7** (EU registration sufficient-resources figure): does **not** block
+  recommendation or case creation — `EU_RESIDENCE_REGISTRATION_BASE` doesn't reference
+  it (deliberately; see `PRODUCTION_RULE_COVERAGE.md`'s "deliberately not modeled").
+  Browse remains fully safe.
+- **Items 9-10** (Temporary residence and work fee-tier mapping, statutory processing
+  days): do **not** block recommendation or case creation — neither is an eligibility
+  fact. `TEMP_RESIDENCE_WORK_MIN_WAGE` uses only the one fee-adjacent figure that *is*
+  fully verified (the minimum wage itself).
+- **Items 12-15** (Temporary residence for studies): **blocks recommendation and case
+  reachability entirely**, but not because of these specific open items — because the
+  Procedure itself remains `READY_FOR_PUBLICATION`, correctly held by the
+  VERIFIED-primary-source gate (a Phase 10 governance gap, not a Phase 10.5 legal-research
+  gap). The two `TEMP_RESIDENCE_STUDY` Rules are already `APPROVED` and reference only
+  the citizenship/study-status facts, not the unresolved funds figure — so once the
+  Procedure's source gap is separately resolved, publishing becomes a one-step follow-up
+  with no new Rule-authoring work needed. Browse remains unsafe until publication (by
+  design — `READY_FOR_PUBLICATION` procedures are never shown publicly).
+
+No new open legal question was introduced by Rule authoring itself — every fact these
+Rules reference (citizenship group, current presence, stated goal, job offer, studying
+status, and the one minimum-wage figure) was already fully resolved and sourced by
+Phase 10.

@@ -16,23 +16,27 @@ expansion). Read these before making changes, in this order:
 6. [docs/product/IMPLEMENTATION_PLAN.md](docs/product/IMPLEMENTATION_PLAN.md) — the full phase-by-phase task breakdown; find the next task here before starting new work
 7. [docs/architecture/ADR/](docs/architecture/ADR/) — the "why" behind the foundational decisions
 
-**Current status: Phase 10 (verified Warsaw MVP legal content) complete, with an
-explicitly disclosed gap** — see [docs/product/PHASE_10_REPORT.md](docs/product/PHASE_10_REPORT.md).
-Auth (Phase 2), reference data (Phase 3), versioned procedure content (Phase 4), the
-questionnaire/assessment engine (Phase 5), the deterministic rules engine (Phase 6), the
-recommendation engine (Phase 7), user cases with a personalized checklist (Phase 8), and
-the admin content-governance panel (Phase 9, see
-[PHASE_9_REPORT.md](docs/product/PHASE_9_REPORT.md)) all work end to end. Phase 10
-authored real, sourced legal content — through the actual Admin workflow, never SQL/
-bulk import — for four of the five first-release procedures (PESEL, Meldunek, EU citizen
-residence registration, Temporary residence and work, plus a real minimum-wage
-`Threshold`); Temporary residence for studies correctly stopped at `READY_FOR_PUBLICATION`,
-held by this session's own new VERIFIED-primary-source publish gate. **The one
-significant, disclosed gap**: no eligibility `Rule` was authored for any of the five, so
-none of them is yet reachable through the guided-questionnaire recommendation engine or
-`UserCase` creation — see PHASE_10_REPORT.md's "Rules & Recommendation/Case Validation"
-section before starting Phase 11 or publishing further procedures. Work through
-IMPLEMENTATION_PLAN.md's tasks in order, but close that Rule-wiring gap first.
+**Current status: Phase 10.5 (production Rule wiring) complete** — see
+[docs/product/PHASE_10_5_REPORT.md](docs/product/PHASE_10_5_REPORT.md). Auth (Phase 2),
+reference data (Phase 3), versioned procedure content (Phase 4), the questionnaire/
+assessment engine (Phase 5), the deterministic rules engine (Phase 6), the recommendation
+engine (Phase 7), user cases with a personalized checklist (Phase 8), the admin
+content-governance panel (Phase 9, see
+[PHASE_9_REPORT.md](docs/product/PHASE_9_REPORT.md)), and real Warsaw MVP legal content
+(Phase 10, see [PHASE_10_REPORT.md](docs/product/PHASE_10_REPORT.md)) all work end to
+end. Phase 10 authored real, sourced legal content for four of five first-release
+procedures (PESEL, Meldunek, EU citizen residence registration, Temporary residence and
+work, plus a real minimum-wage `Threshold`) but disclosed a significant gap: no
+eligibility `Rule` existed, so none was reachable through the recommendation engine or
+`UserCase` creation. **Phase 10.5 closed that gap** — real production `Rule`s (8 total)
+now target four of the five procedures (all `PUBLISHED`), one new `QuestionnaireVersion`
+was added (a single `GET_MELDUNEK` goal option) through the real Admin workflow, and a
+real, browser-driven Playwright test proves the full production pipeline end to end:
+assessment → real Rule evaluation → real recommendation → real `UserCase` with a real
+checklist. Temporary residence for studies remains `READY_FOR_PUBLICATION` (its two
+Rules are `APPROVED` but not published, mirroring the Procedure's own held-back state) —
+see PHASE_10_5_REPORT.md's Phase 11 Readiness verdict before starting Phase 11 or
+publishing further procedures.
 
 ## Commands
 
