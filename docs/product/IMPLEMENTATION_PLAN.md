@@ -806,7 +806,19 @@ implemented as `RuleEvaluator.ENGINE_VERSION`).
 
 ---
 
-## Phase 7 — Recommendation engine
+## Phase 7 — Recommendation engine — ✅ COMPLETE (see [PHASE_7_REPORT.md](PHASE_7_REPORT.md))
+
+The task list below is left as originally planned for traceability; see
+[PHASE_7_REPORT.md](PHASE_7_REPORT.md)'s "Deviations" section for where the actual
+implementation diverged (most notably: a `RecommendationRun` identity/grouping row was
+added that 7.1 didn't originally plan for, since the approved Phase 7 brief requires
+immutable historical reproducibility rather than the replace-in-place cache DATABASE.md
+§6 originally sketched — see ADR-010; 7.2's single "evaluate endpoint" became four
+endpoints — `POST .../recommendation-runs`, `GET .../recommendations/latest`, `GET
+.../recommendation-runs` history, `GET /recommendation-runs/{id}` — matching the
+approved brief's richer API surface; 7.3's ranking became two classes,
+`RecommendationClassifier` + `RecommendationRanker`, kept deliberately separate per the
+brief's own "avoid one giant class" instruction).
 
 #### 7.1 Migration + entities: Recommendation, RecommendationReason
 - **Database/Backend:** per DATABASE.md §6.

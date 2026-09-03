@@ -9,7 +9,7 @@
       <p>
         Thank you for answering every question. Next, the system can analyse relevant pathways.
       </p>
-      <p class="informational">Pathway analysis will be available in the next implementation phase.</p>
+      <a mat-flat-button color="primary" [routerLink]="['/assessment', d.id, 'results']">Analyze my pathways</a>
       <button mat-stroked-button type="button" (click)="restart()">Update my answers</button>
       <a mat-button routerLink="/dashboard">Back to dashboard</a>
     </section>

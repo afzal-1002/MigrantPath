@@ -722,35 +722,66 @@ composition.
 
 ---
 
-## 6. Recommendation entities
+## 6. Recommendation entities (IMPLEMENTED, Phase 7 — see ADR-010)
 
-Unlike everything in §3/§5, `Recommendation` rows are **not** append-only legal history —
-they're a computed cache of "what did the engine conclude for this assessment's current
-answers." If a user edits an earlier wizard answer and re-evaluates, the previous
-`Recommendation` rows for that assessment are deleted and replaced, not versioned. The
-distinction matters: legal content changing is a fact worth preserving forever;
-`Recommendation` is a query result on top of stable legal content and stable answers, so
-it doesn't need its own history.
+**Revised from the Phase 0 sketch below**: `RecommendationRun`/`Recommendation`/
+`RecommendationReason` turned out to need exactly the opposite of what this section
+originally said. The approved Phase 7 brief requires historical reproducibility — an old
+analysis must remain viewable exactly as computed even after rules/procedure content/
+thresholds later change (brief §37/§61/§120) — so these rows are **append-only, like
+everything in §3/§5**, not a replace-in-place cache. See ADR-010 for the full reasoning.
+`RecommendationRun` is the new identity/grouping row the original sketch didn't have.
+
+### RecommendationRun
+- `id UUID PK`, `user_id FK → User`, `assessment_id FK → Assessment`,
+  `evaluation_date DATE` (the one date every rule/threshold/procedure-version resolution
+  in this run used), `status ENUM(RUNNING, COMPLETED, PARTIAL, FAILED)`,
+  `recommendation_engine_version`, `rule_engine_version` (two independent version
+  stamps — this module's own classification/ranking semantics vs. the Phase 6 engine
+  semantics it built on), `created_at`, `completed_at`.
+- Immutable once `status` leaves `RUNNING` — a re-analysis always inserts a new row,
+  never updates an existing one (ADR-010).
 
 ### Recommendation
-- `id UUID PK`, `assessment_id FK → Assessment`, `procedure_id FK → Procedure`,
-  `procedure_version_id FK → ProcedureVersion` (the exact version evaluated — the actual
-  provenance pointer, see §7), `rule_version_id FK → RuleVersion`,
-  `match_type ENUM(PRIMARY_MATCH, POSSIBLE_ALTERNATIVE, MORE_INFORMATION_REQUIRED,
-  NOT_APPLICABLE)`, `created_at`.
-- **Unique**: `(assessment_id, procedure_id)`.
+- `id UUID PK`, `recommendation_run_id FK → RecommendationRun ON DELETE CASCADE`,
+  `procedure_id FK → Procedure`, `procedure_version_id FK → ProcedureVersion NULL` (the
+  exact version evaluated — nullable only for `UNAVAILABLE_FOR_ANALYSIS`, see §7),
+  `recommendation_type ENUM(PRIMARY_MATCH, POSSIBLE_ALTERNATIVE,
+  MORE_INFORMATION_REQUIRED, NOT_APPLICABLE, UNAVAILABLE_FOR_ANALYSIS)`, `rank INT`
+  (the run-wide deterministic order, docs/recommendations/RANKING_POLICY.md), `created_at`.
+- **Unique**: `(recommendation_run_id, procedure_id)`.
 - **No confidence/probability column exists anywhere on this table or its children** —
   deliberate, per Product Requirements §7/§27 (never a synthesized "93% eligible").
+- `rule_version_id` was dropped from the Phase 0 sketch's `Recommendation` row itself —
+  a recommendation can be backed by several rules at once (required + exclusion +
+  informational), so that provenance lives per-reason (below), not once per recommendation.
 
 ### RecommendationReason
-- `id UUID PK`, `recommendation_id FK → Recommendation`,
-  `reason_type ENUM(MATCHED_CONDITION, FAILED_CONDITION, MISSING_INFORMATION)`,
-  `condition_path` (a JSON-pointer-style path into the `RuleVersion.condition_tree`, e.g.
-  `all[2]`, tying a displayed reason back to the exact leaf condition), `field_code
-  NULL`, `explanation_translation_key`, `display_order`. This normalized list is what
-  backs the UI's matched-conditions/failed-conditions/missing-information display
-  (Product Requirements §6.3) — it's a small, flat, per-recommendation list, which is
-  exactly what a normalized table (rather than JSONB) suits.
+- `id UUID PK`, `recommendation_id FK → Recommendation ON DELETE CASCADE`,
+  `reason_type ENUM(MATCHED_CONDITION, FAILED_CONDITION, MISSING_INFORMATION,
+  EXCLUSION, ALTERNATIVE_PATH, PROCEDURE_PRIORITY, ANALYSIS_ERROR)` (broader than the
+  Phase 0 sketch's three values — docs/recommendations/REASON_CODES.md explains each,
+  including the two reserved-but-unused-in-Phase-7 values), `reason_code`,
+  `rule_version_id FK → RuleVersion NULL ON DELETE SET NULL`, `condition_code NULL`
+  (the Phase 6 leaf's own stable code — replaces the Phase 0 sketch's JSON-pointer
+  `condition_path`, since Phase 6 already produces a stable `conditionCode` per leaf, one
+  naming convention rather than two), `fact_code NULL`, `message_key NULL`,
+  `display_order`. This normalized list is what backs the UI's matched-conditions/
+  failed-conditions/missing-information display (Product Requirements §6.3) — a small,
+  flat, per-recommendation list, exactly what a normalized table (rather than JSONB)
+  suits.
+
+### What is deliberately not its own table
+
+Official-source references and missing-fact lists are both computed at **read time**
+(`RecommendationSourceResolver`, and a distinct-`factCode` projection over
+`RecommendationReason` rows respectively) from data already stored above, rather than
+persisted as their own join tables — a published version's own source associations never
+change after the fact, so recomputing from the stored `procedure_version_id`/
+`rule_version_id` is exactly as reproducible as persisting a copy would be, without the
+extra schema (brief §67's "do not overbuild" applied one level further; see
+PHASE_7_REPORT.md "Deviations" for the one piece of provenance — threshold-version
+sources — this simplification does not surface).
 
 ---
 

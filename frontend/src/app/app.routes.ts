@@ -78,6 +78,16 @@ export const routes: Routes = [
       import('./features/assessment/assessment-wizard/assessment-wizard').then((m) => m.AssessmentWizard),
   },
   {
+    // Phase 7 "Analyze my pathways" results (brief §88) - authenticated-only like the
+    // assessment routes above; ownership is independently enforced server-side.
+    path: 'assessment/:id/results',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/recommendations/recommendation-results/recommendation-results').then(
+        (m) => m.RecommendationResults,
+      ),
+  },
+  {
     path: '**',
     loadComponent: () => import('./features/not-found/not-found').then((m) => m.NotFound),
   },

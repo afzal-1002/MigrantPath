@@ -307,6 +307,39 @@ so a case created under last year's rules can be replayed exactly even after thi
 threshold change is published. This is what makes "requirements have changed since you
 created this case" (§5 above) a real diff instead of a guess.
 
+### Recommendation Engine (IMPLEMENTED, Phase 7 — ADR-010, DATABASE.md §6)
+
+Where §7 above stops (one rule's own PASS/FAIL/MISSING/ERROR result), the Recommendation
+Engine (`com.foreignerwarsaw.recommendation`) takes over:
+
+```
+Assessment
+   ↓
+AssessmentFacts
+   ↓
+RuleEvaluationBundle (Phase 6, grouped by target procedure)
+   ↓
+RecommendationClassifier   (docs/recommendations/RECOMMENDATION_POLICY.md)
+   ↓
+RecommendationRanker       (docs/recommendations/RANKING_POLICY.md)
+   ↓
+RecommendationReasonMapper (docs/recommendations/REASON_CODES.md)
+   ↓
+RecommendationRun (immutable, persisted — never mutated after it completes)
+   ↓
+Recommendation (per procedure) + RecommendationReason (per condition)
+```
+
+Every candidate procedure is classified into `PRIMARY_MATCH` / `POSSIBLE_ALTERNATIVE` /
+`MORE_INFORMATION_REQUIRED` / `NOT_APPLICABLE` / `UNAVAILABLE_FOR_ANALYSIS`, ranked
+deterministically (no AI, no confidence percentage — brief §51/§52/§80), and persisted as
+one immutable `RecommendationRun`: unlike the Phase 0 draft of this section, a
+`RecommendationRun` is append-only, exactly like a `*Version` row — a re-analysis always
+creates a new run rather than overwriting the last one, so a historical result stays
+exactly reproducible even after rules, procedure content, or thresholds later change
+(ADR-010). Phase 8 (user cases) consumes a `Recommendation` by reference only and never
+alters recommendation history.
+
 ## 8. Versioning & source traceability
 
 Every legally significant fact traces to an `OfficialSource` row

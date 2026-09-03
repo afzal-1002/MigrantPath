@@ -1,0 +1,103 @@
+:host {
+  display: block;
+  max-width: 840px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.notice,
+.error {
+  padding: 0.75rem 1rem;
+  border-radius: 4px;
+  margin: 1rem 0;
+}
+
+.notice {
+  background: #fff8e1;
+  border: 1px solid #f0c14b;
+}
+
+.error {
+  background: #fdecea;
+  border: 1px solid #f5c2c0;
+}
+
+.intro {
+  color: rgba(0, 0, 0, 0.7);
+}
+
+section {
+  margin-top: 2rem;
+}
+
+.recommendation-card {
+  margin-bottom: 1rem;
+}
+
+.recommendation-card.is-primary {
+  border-left: 4px solid #2e7d32;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  background: #eeeeee;
+}
+
+.badge[data-type='PRIMARY_MATCH'] {
+  background: #e6f4ea;
+  color: #1e4620;
+}
+
+.badge[data-type='MORE_INFORMATION_REQUIRED'] {
+  background: #fff3e0;
+  color: #7a4a00;
+}
+
+.badge[data-type='NOT_APPLICABLE'],
+.badge[data-type='UNAVAILABLE_FOR_ANALYSIS'] {
+  background: #f0f0f0;
+  color: #555555;
+}
+
+.reasons,
+.missing-facts,
+.sources {
+  padding-left: 0;
+  list-style: none;
+}
+
+.reasons li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+}
+
+.reason-icon {
+  flex: 0 0 auto;
+}
+
+.other-evaluated {
+  margin-top: 2rem;
+}
+
+.actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 2rem;
+  align-items: center;
+}
+
+.disclaimer {
+  margin-top: 2rem;
+  font-size: 0.85rem;
+  color: rgba(0, 0, 0, 0.6);
+}

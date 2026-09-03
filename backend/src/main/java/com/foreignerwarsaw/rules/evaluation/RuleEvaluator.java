@@ -116,6 +116,7 @@ public class RuleEvaluator {
     return new RuleEvaluationResult(
         rule.getId(),
         rule.getCode(),
+        rule.getRuleType(),
         ruleVersion.getId(),
         ruleVersion.getVersionNumber(),
         rule.getTargetType(),
@@ -168,6 +169,7 @@ public class RuleEvaluator {
     return new RuleEvaluationResult(
         null,
         "PREVIEW",
+        null,
         null,
         0,
         null,

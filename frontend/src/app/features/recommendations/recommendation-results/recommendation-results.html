@@ -1,0 +1,133 @@
+<h1 tabindex="-1">Your pathways</h1>
+
+@if (loading() || analyzing()) {
+  <p role="status" class="loading">
+    <mat-spinner diameter="24"></mat-spinner>
+    {{ analyzing() ? 'Analysing your answers…' : 'Loading your results…' }}
+  </p>
+} @else if (notCompleted()) {
+  <p role="alert" class="notice">
+    This assessment isn't complete yet. Finish answering every required question before we can
+    analyse your pathways.
+  </p>
+  <a mat-stroked-button [routerLink]="['/assessment', assessmentId]">Continue my assessment</a>
+} @else if (error()) {
+  <p role="alert" class="error">{{ error() }}</p>
+  <button mat-stroked-button type="button" (click)="analyze()">Try again</button>
+} @else if (run(); as r) {
+  <p class="intro">
+    Based on the information you provided, these procedures may be relevant. This is
+    informational guidance, not a final decision.
+  </p>
+
+  @if (r.status === 'PARTIAL') {
+    <p role="status" class="notice">
+      Some pathways could not be fully analysed. The results below are still accurate for
+      everything else.
+    </p>
+  }
+
+  @if (primaryMatches().length > 0) {
+    <section aria-labelledby="primary-heading">
+      <h2 id="primary-heading">Most relevant</h2>
+      @for (rec of primaryMatches(); track rec.procedureCode) {
+        <ng-container *ngTemplateOutlet="card; context: { rec: rec }"></ng-container>
+      }
+    </section>
+  }
+
+  @if (alternatives().length > 0) {
+    <section aria-labelledby="alternative-heading">
+      <h2 id="alternative-heading">Other possible pathways</h2>
+      @for (rec of alternatives(); track rec.procedureCode) {
+        <ng-container *ngTemplateOutlet="card; context: { rec: rec }"></ng-container>
+      }
+    </section>
+  }
+
+  @if (moreInfoNeeded().length > 0) {
+    <section aria-labelledby="more-info-heading">
+      <h2 id="more-info-heading">We need more information</h2>
+      @for (rec of moreInfoNeeded(); track rec.procedureCode) {
+        <ng-container *ngTemplateOutlet="card; context: { rec: rec }"></ng-container>
+      }
+    </section>
+  }
+
+  @if (!hasAnyRelevantPathway()) {
+    <p class="notice">
+      We couldn't identify a matching pathway from the information provided.
+    </p>
+    <a mat-stroked-button [routerLink]="['/assessment', assessmentId]">Review my answers</a>
+    <a mat-button routerLink="/procedures">Browse all procedures</a>
+  }
+
+  @if (otherEvaluated().length > 0) {
+    <details class="other-evaluated">
+      <summary>Other evaluated pathways ({{ otherEvaluated().length }})</summary>
+      @for (rec of otherEvaluated(); track rec.procedureCode) {
+        <ng-container *ngTemplateOutlet="card; context: { rec: rec }"></ng-container>
+      }
+    </details>
+  }
+
+  <div class="actions">
+    <button mat-stroked-button type="button" (click)="analyze()">Run analysis again</button>
+    <a mat-button [routerLink]="['/assessment', assessmentId]">Back to assessment</a>
+  </div>
+
+  <p class="disclaimer">
+    These results are informational guidance based on your answers and the official sources
+    linked here. Individual circumstances and legal requirements may change.
+  </p>
+}
+
+<ng-template #card let-rec="rec">
+  <mat-card class="recommendation-card" [class.is-primary]="rec.recommendationType === 'PRIMARY_MATCH'">
+    <mat-card-header>
+      <mat-card-title>{{ rec.procedureTitle }}</mat-card-title>
+      <mat-card-subtitle>
+        <span class="badge" [attr.data-type]="rec.recommendationType">{{ badgeLabel(rec.recommendationType) }}</span>
+      </mat-card-subtitle>
+    </mat-card-header>
+    <mat-card-content>
+      @if (rec.reasons.length > 0) {
+        <h3>Why this appears relevant</h3>
+        <ul class="reasons">
+          @for (reason of rec.reasons; track reason.reasonCode) {
+            <li>
+              <span class="reason-icon" aria-hidden="true">{{ reasonIcon(reason) }}</span>
+              {{ reasonText(reason) }}
+            </li>
+          }
+        </ul>
+      }
+
+      @if (rec.missingFacts.length > 0) {
+        <h3>We still need</h3>
+        <ul class="missing-facts">
+          @for (fact of rec.missingFacts; track fact) {
+            <li>{{ fact.replaceAll('_', ' ').toLowerCase() }}</li>
+          }
+        </ul>
+      }
+
+      @if (rec.officialSources.length > 0) {
+        <h3>Official sources</h3>
+        <ul class="sources">
+          @for (source of rec.officialSources; track source.url) {
+            <li>
+              <a [href]="source.url" target="_blank" rel="noopener noreferrer">{{ source.title }}</a>
+              @if (source.authority) {
+                <span class="authority"> — {{ source.authority }}</span>
+              }
+            </li>
+          }
+        </ul>
+      }
+    </mat-card-content>
+    <mat-card-actions>
+      <a mat-button [routerLink]="['/procedures', rec.procedureCode]">View details</a>
+    </mat-card-actions>
+  </mat-card>
+</ng-template>

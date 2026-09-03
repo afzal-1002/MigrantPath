@@ -51,6 +51,15 @@ public class Procedure {
   @Column(nullable = false)
   private boolean active = true;
 
+  /**
+   * Phase 7's optional, reviewed-only ranking signal (docs/recommendations/RANKING_POLICY.md) -
+   * {@code null} for every Procedure until a deliberate, source-reviewed content pass sets it;
+   * {@code RecommendationRanker} only distinguishes {@code PRIMARY_MATCH} from {@code
+   * POSSIBLE_ALTERNATIVE} by this column when at least one candidate in a run has it set.
+   */
+  @Column(name = "recommendation_priority")
+  private Integer recommendationPriority;
+
   protected Procedure() {}
 
   public static Procedure create(
@@ -94,5 +103,9 @@ public class Procedure {
 
   public boolean isActive() {
     return active;
+  }
+
+  public Integer getRecommendationPriority() {
+    return recommendationPriority;
   }
 }

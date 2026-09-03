@@ -63,6 +63,7 @@ class RuleEvaluationServiceTest {
     return new RuleEvaluationResult(
         rule.getId(),
         rule.getCode(),
+        rule.getRuleType(),
         version.getId(),
         1,
         rule.getTargetType(),
@@ -163,6 +164,7 @@ class RuleEvaluationServiceTest {
         new RuleEvaluationResult(
             rule.getId(),
             rule.getCode(),
+            rule.getRuleType(),
             version.getId(),
             1,
             rule.getTargetType(),
@@ -190,6 +192,7 @@ class RuleEvaluationServiceTest {
         new RuleEvaluationResult(
             null,
             "PREVIEW",
+            null,
             null,
             0,
             null,

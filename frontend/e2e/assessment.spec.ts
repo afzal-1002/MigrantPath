@@ -40,7 +40,7 @@ async function selectCountry(page: import('@playwright/test').Page, label: strin
   await page.getByRole('option', { name: new RegExp(countryName) }).click();
 }
 
-test('Scenario 1: work branch end to end, completes with no recommendation shown', async ({ page }) => {
+test('Scenario 1: work branch end to end, completes, then analyzes with no fabricated match', async ({ page }) => {
   await registerVerifyAndLogin(page, uniqueEmail());
 
   await page.goto('/assessment/start');
@@ -78,9 +78,16 @@ test('Scenario 1: work branch end to end, completes with no recommendation shown
 
   await page.getByRole('button', { name: 'Complete assessment' }).click();
   await expect(page.getByRole('heading', { name: 'Your assessment is complete' })).toBeVisible();
-  await expect(page.getByText('Pathway analysis will be available in the next implementation phase.')).toBeVisible();
-  // brief §90/§55: never a fabricated recommendation on this page.
-  await expect(page.getByText(/recommend/i)).toHaveCount(0);
+
+  // Phase 7: "Analyze my pathways" runs the real backend recommendation engine end to
+  // end - no production Rule content is ever seeded (Rules Engine brief §58-60), so the
+  // honest, correct outcome here is the empty-result state, never a fabricated match.
+  await page.getByRole('link', { name: 'Analyze my pathways' }).click();
+  await expect(page).toHaveURL(/\/assessment\/[0-9a-f-]+\/results$/);
+  await expect(page.getByRole('heading', { name: 'Your pathways' })).toBeVisible();
+  await expect(page.getByText("couldn't identify a matching pathway")).toBeVisible();
+  // Recommendation Engine brief §52: never a confidence/probability figure anywhere.
+  await expect(page.getByText(/\d+%/)).toHaveCount(0);
 });
 
 test('Scenario 2: removing Work after entering the branch hides salary and still allows completion', async ({ page }) => {

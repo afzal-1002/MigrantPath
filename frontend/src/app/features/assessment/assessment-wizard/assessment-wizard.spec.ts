@@ -157,7 +157,7 @@ describe('AssessmentWizard', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain('Your assessment is complete');
-    expect(fixture.nativeElement.textContent).toContain('Pathway analysis will be available in the next implementation phase.');
+    expect(fixture.nativeElement.textContent).toContain('Analyze my pathways');
   });
 
   it('an incomplete-completion error jumps back to the section with the missing question', async () => {
