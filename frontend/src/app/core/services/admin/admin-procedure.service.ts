@@ -53,6 +53,7 @@ export interface AdminDocument {
 export interface AdminFee {
   id: string;
   stableCode: string;
+  feeType: string;
   amount: number;
   currency: string;
   description: string | null;

@@ -109,6 +109,7 @@ public record AdminProcedureVersionDetailResponse(
   public record Fee(
       UUID id,
       String stableCode,
+      String feeType,
       BigDecimal amount,
       String currency,
       String description,
@@ -118,6 +119,7 @@ public record AdminProcedureVersionDetailResponse(
       return new Fee(
           f.getId(),
           f.getFee().getStableCode(),
+          f.getFee().getFeeType().name(),
           f.getAmount(),
           f.getCurrency(),
           f.getDescription(),

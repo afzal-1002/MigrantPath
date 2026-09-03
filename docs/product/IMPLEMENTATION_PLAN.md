@@ -1087,9 +1087,19 @@ actually built and where it differs.
 
 ---
 
-## Phase 10 — Warsaw procedure content
+## Phase 10 — Warsaw procedure content — ⚠️ SUBSTANTIALLY COMPLETE, ONE GAP DISCLOSED (see [PHASE_10_REPORT.md](PHASE_10_REPORT.md))
 
-Each of the 8 MVP procedures gets its own task: verify sources directly, write the
+Real, sourced content published for 4 of the 5 first-release procedures (PESEL,
+Meldunek, EU citizen residence registration, Temporary residence and work — plus one
+real `Threshold`); the 5th (Temporary residence for studies) reached
+`READY_FOR_PUBLICATION`, correctly held by the new VERIFIED-primary-source publish gate.
+**No `Rule` was authored for any of them** — see PHASE_10_REPORT.md's "Rules &
+Recommendation/Case Validation" before starting further procedure work: none of this
+phase's content is reachable through the recommendation engine or `UserCase` creation
+yet. EU Blue Card, Family Reunification, and Foreign Driving Licence Exchange (the
+other 3 of the original 8 MVP procedures) remain untouched, out of scope for this pass.
+
+Each of the remaining MVP procedures still gets its own task: verify sources directly, write the
 dossier (ARCHITECTURE.md §12 format) under `docs/procedures/`, then encode it as real
 `Procedure`/`ProcedureVersion`/`Rule`/`DocumentRequirement`/`Fee`/`Threshold` data
 through the Phase 9 admin tooling (dogfooding it), publishing only after the dossier's

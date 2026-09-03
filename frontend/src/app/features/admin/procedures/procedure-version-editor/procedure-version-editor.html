@@ -96,13 +96,18 @@
             <label>
               Type
               <select [ngModel]="newStepType()" (ngModelChange)="newStepType.set($event)">
+                <option value="INFORMATION">INFORMATION</option>
                 <option value="PREPARATION">PREPARATION</option>
-                <option value="DOCUMENT_COLLECTION">DOCUMENT_COLLECTION</option>
-                <option value="APPLICATION_SUBMISSION">APPLICATION_SUBMISSION</option>
-                <option value="APPOINTMENT">APPOINTMENT</option>
+                <option value="DOCUMENT">DOCUMENT</option>
                 <option value="PAYMENT">PAYMENT</option>
+                <option value="ONLINE_SUBMISSION">ONLINE_SUBMISSION</option>
+                <option value="IN_PERSON_SUBMISSION">IN_PERSON_SUBMISSION</option>
+                <option value="APPOINTMENT">APPOINTMENT</option>
+                <option value="BIOMETRICS">BIOMETRICS</option>
                 <option value="WAITING">WAITING</option>
+                <option value="ADDITIONAL_DOCUMENTS">ADDITIONAL_DOCUMENTS</option>
                 <option value="DECISION">DECISION</option>
+                <option value="COLLECTION">COLLECTION</option>
                 <option value="OTHER">OTHER</option>
               </select>
             </label>
@@ -164,17 +169,18 @@
     }
     @case ('fees') {
       <table class="admin-table">
-        <thead><tr><th>Code</th><th>Amount</th><th>Currency</th><th></th></tr></thead>
+        <thead><tr><th>Code</th><th>Type</th><th>Amount</th><th>Currency</th><th></th></tr></thead>
         <tbody>
           @for (f of v.fees; track f.id) {
             <tr>
               <td>{{ f.stableCode }}</td>
+              <td>{{ f.feeType }}</td>
               <td>{{ f.amount }}</td>
               <td>{{ f.currency }}</td>
               <td>@if (isDraft()) { <button type="button" (click)="removeFee(f.id)">Remove</button> }</td>
             </tr>
           } @empty {
-            <tr><td colspan="4">No fees yet.</td></tr>
+            <tr><td colspan="5">No fees yet.</td></tr>
           }
         </tbody>
       </table>
@@ -182,6 +188,18 @@
         <div class="admin-card">
           <h3>Add fee</h3>
           <div class="admin-form-row"><label>Stable code <input [ngModel]="newFeeCode()" (ngModelChange)="newFeeCode.set($event)" /></label></div>
+          <div class="admin-form-row">
+            <label>
+              Fee type
+              <select [ngModel]="newFeeType()" (ngModelChange)="newFeeType.set($event)">
+                <option value="APPLICATION">APPLICATION</option>
+                <option value="STAMP_DUTY">STAMP_DUTY</option>
+                <option value="RESIDENCE_CARD">RESIDENCE_CARD</option>
+                <option value="DOCUMENT_ISSUANCE">DOCUMENT_ISSUANCE</option>
+                <option value="OTHER">OTHER</option>
+              </select>
+            </label>
+          </div>
           <div class="admin-form-row"><label>Amount <input type="number" [ngModel]="newFeeAmount()" (ngModelChange)="newFeeAmount.set($event)" /></label></div>
           <div class="admin-form-row"><label>Currency <input [ngModel]="newFeeCurrency()" (ngModelChange)="newFeeCurrency.set($event)" /></label></div>
           <button type="button" (click)="addFee()">Add fee</button>
@@ -213,7 +231,7 @@
               <select [ngModel]="attachSourceRole()" (ngModelChange)="attachSourceRole.set($event)">
                 <option value="PRIMARY">PRIMARY</option>
                 <option value="SUPPORTING">SUPPORTING</option>
-                <option value="LEGAL_BASIS">LEGAL_BASIS</option>
+                <option value="OPERATIONAL">OPERATIONAL</option>
               </select>
             </label>
           </div>

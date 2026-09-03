@@ -53,7 +53,7 @@ export class ProcedureVersionEditor {
   protected readonly newDocSortOrder = signal(1);
 
   protected readonly newFeeCode = signal('');
-  protected readonly newFeeType = signal('APPLICATION_FEE');
+  protected readonly newFeeType = signal('APPLICATION');
   protected readonly newFeeAmount = signal(0);
   protected readonly newFeeCurrency = signal('PLN');
 
