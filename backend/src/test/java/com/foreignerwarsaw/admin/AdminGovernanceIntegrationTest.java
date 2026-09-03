@@ -12,6 +12,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.foreignerwarsaw.AbstractIntegrationTest;
+import com.foreignerwarsaw.reference.authority.Authority;
+import com.foreignerwarsaw.reference.authority.AuthorityRepository;
 import com.foreignerwarsaw.user.AppUserPrincipal;
 import com.foreignerwarsaw.user.RoleRepository;
 import com.foreignerwarsaw.user.User;
@@ -49,6 +51,7 @@ class AdminGovernanceIntegrationTest extends AbstractIntegrationTest {
 
   @Autowired private UserRepository userRepository;
   @Autowired private RoleRepository roleRepository;
+  @Autowired private AuthorityRepository authorityRepository;
   @Autowired private Clock clock;
 
   private AppUserPrincipal editor;
@@ -364,6 +367,48 @@ class AdminGovernanceIntegrationTest extends AbstractIntegrationTest {
                 .with(user(reviewer))
                 .with(csrf()))
         .andExpect(status().isOk());
+
+    // Pre-Phase-10 hardening (brief §D): publishing without a VERIFIED source is rejected -
+    // the one publication-safety gap Threshold had that Procedure/Rule never did.
+    mockMvc
+        .perform(
+            post(ADMIN + "/thresholds/" + code + "/versions/" + versionId + "/publish")
+                .with(user(admin))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"effectiveFrom\":\"" + LocalDate.now(clock) + "\"}"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("NO_VERIFIED_SOURCE"));
+
+    String sourceId =
+        extractId(
+            mockMvc
+                .perform(
+                    post(ADMIN + "/sources")
+                        .with(user(editor))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(
+                            "{\"title\":\"Threshold test source\",\"sourceUrl\":\"https://example.gov.pl/threshold-test\",\"sourceType\":\"OFFICIAL_SERVICE_PAGE\"}"))
+                .andExpect(status().isCreated())
+                .andReturn());
+    mockMvc
+        .perform(
+            post(ADMIN + "/sources/" + sourceId + "/verify")
+                .with(user(reviewer))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"VERIFIED\"}"))
+        .andExpect(status().isOk());
+    mockMvc
+        .perform(
+            post(ADMIN + "/thresholds/" + code + "/versions/" + versionId + "/sources")
+                .with(user(editor))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"officialSourceId\":\"%s\",\"role\":\"PRIMARY\"}".formatted(sourceId)))
+        .andExpect(status().isOk());
+
     mockMvc
         .perform(
             post(ADMIN + "/thresholds/" + code + "/versions/" + versionId + "/publish")
@@ -411,6 +456,121 @@ class AdminGovernanceIntegrationTest extends AbstractIntegrationTest {
         .perform(get(ADMIN + "/sources/" + sourceId + "/verifications").with(user(editor)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$[0].status").value("OUTDATED"));
+  }
+
+  /**
+   * Pre-Phase-10 hardening regression (brief §C): once a source has backed a PUBLISHED version, its
+   * identity (here: {@code authority}) is locked - editing it must fail with
+   * SOURCE_IDENTITY_LOCKED, while jurisdiction/language (operational metadata) remain editable.
+   */
+  @Test
+  void officialSourceIdentity_lockedAfterBackingPublishedContent() throws Exception {
+    List<Authority> authorities = authorityRepository.findAll();
+    org.junit.jupiter.api.Assumptions.assumeTrue(
+        authorities.size() >= 2,
+        "Needs at least two seeded authorities to prove a real change is rejected");
+    Authority differentAuthority = authorities.get(0);
+
+    String procedureCode = uniqueCode("TEST_PROCEDURE_SRC_LOCK");
+    mockMvc
+        .perform(
+            post("/api/v1/internal/content/procedures")
+                .with(user(editor))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"code\":\"%s\",\"categoryCode\":\"OTHER\",\"canonicalName\":\"Source Lock Test\",\"shortDescription\":\"For automated tests only\",\"jurisdictionScope\":\"NATIONAL\"}"
+                        .formatted(procedureCode)))
+        .andExpect(status().isCreated());
+    mockMvc
+        .perform(
+            post("/api/v1/internal/content/procedures/" + procedureCode + "/versions")
+                .with(user(editor))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"v1\",\"summary\":\"s\",\"description\":\"d\"}"))
+        .andExpect(status().isCreated());
+
+    String sourceId =
+        extractId(
+            mockMvc
+                .perform(
+                    post(ADMIN + "/sources")
+                        .with(user(editor))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(
+                            "{\"title\":\"Source lock test\",\"sourceUrl\":\"https://example.gov.pl/source-lock-test\",\"sourceType\":\"OFFICIAL_SERVICE_PAGE\"}"))
+                .andExpect(status().isCreated())
+                .andReturn());
+
+    // Editable before it backs any published content.
+    mockMvc
+        .perform(
+            patch(ADMIN + "/sources/" + sourceId)
+                .with(user(editor))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"language\":\"en\"}"))
+        .andExpect(status().isOk());
+
+    mockMvc
+        .perform(
+            post(ADMIN + "/sources/" + sourceId + "/verify")
+                .with(user(reviewer))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"VERIFIED\"}"))
+        .andExpect(status().isOk());
+    mockMvc
+        .perform(
+            post("/api/v1/internal/content/procedures/" + procedureCode + "/versions/1/sources")
+                .with(user(editor))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"officialSourceId\":\"%s\",\"role\":\"PRIMARY\"}".formatted(sourceId)))
+        .andExpect(status().isNoContent());
+    mockMvc
+        .perform(
+            post(ADMIN + "/procedures/" + procedureCode + "/versions/1/submit")
+                .with(user(editor))
+                .with(csrf()))
+        .andExpect(status().isOk());
+    mockMvc
+        .perform(
+            post(ADMIN + "/procedures/" + procedureCode + "/versions/1/approve")
+                .with(user(reviewer))
+                .with(csrf()))
+        .andExpect(status().isOk());
+    mockMvc
+        .perform(
+            post(ADMIN + "/procedures/" + procedureCode + "/versions/1/publish")
+                .with(user(admin))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"effectiveFrom\":\"" + LocalDate.now(clock) + "\"}"))
+        .andExpect(status().isOk());
+
+    // Now locked: an attempted authority change is rejected...
+    mockMvc
+        .perform(
+            patch(ADMIN + "/sources/" + sourceId)
+                .with(user(editor))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"authorityId\":\"" + differentAuthority.getId() + "\"}"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("SOURCE_IDENTITY_LOCKED"));
+
+    // ...but operational metadata (language) remains freely editable.
+    mockMvc
+        .perform(
+            patch(ADMIN + "/sources/" + sourceId)
+                .with(user(editor))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"language\":\"pl\"}"))
+        .andExpect(status().isOk());
   }
 
   @Test

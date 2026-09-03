@@ -2,6 +2,10 @@ package com.foreignerwarsaw.procedure.threshold;
 
 import com.foreignerwarsaw.admin.validation.ValidationIssue;
 import com.foreignerwarsaw.common.web.ApiException;
+import com.foreignerwarsaw.procedure.PublicationStatus;
+import com.foreignerwarsaw.procedure.source.OfficialSource;
+import com.foreignerwarsaw.procedure.source.SourceRole;
+import com.foreignerwarsaw.procedure.source.VerificationStatus;
 import com.foreignerwarsaw.user.User;
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -14,27 +18,39 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * The Threshold engine's own lifecycle - deliberately not exposed through a dedicated internal HTTP
- * API in Phase 4 (brief §43's "if implementing all management endpoints is too much... defer UI/API
- * breadth"): no threshold value exists to manage yet (brief §21/§53 forbids seeding one), so
- * service+repository-level coverage proves the engine works without a controller no admin has any
- * real content to call it with yet. A future phase adds the controller alongside its first real
- * threshold.
+ * The Threshold engine's own lifecycle - originally not exposed through a dedicated HTTP API in
+ * Phase 4 (no threshold value existed yet to manage), given a real admin surface in Phase 9. Every
+ * concept a real numeric legal fact needs (draft/review/approve/publish/archive, effective dates,
+ * an official-source requirement before publication) now mirrors Procedure/Rule exactly - see the
+ * pre-Phase-10 hardening note on {@link #readiness}/{@link #publish} below (brief §D): a {@code
+ * ThresholdVersion} could previously reach {@code PUBLISHED} with no source at all, the one
+ * publication-safety gap Procedure/Rule never had.
  */
 @Service
 public class ThresholdService {
 
   private final ThresholdRepository thresholdRepository;
   private final ThresholdVersionRepository thresholdVersionRepository;
+  private final ThresholdVersionSourceRepository thresholdVersionSourceRepository;
   private final Clock clock;
 
   public ThresholdService(
       ThresholdRepository thresholdRepository,
       ThresholdVersionRepository thresholdVersionRepository,
+      ThresholdVersionSourceRepository thresholdVersionSourceRepository,
       Clock clock) {
     this.thresholdRepository = thresholdRepository;
     this.thresholdVersionRepository = thresholdVersionRepository;
+    this.thresholdVersionSourceRepository = thresholdVersionSourceRepository;
     this.clock = clock;
+  }
+
+  /**
+   * Pre-Phase-10 hardening addition (brief §D), mirroring {@code RuleVersionService#attachSource}.
+   */
+  @Transactional
+  public void attachSource(ThresholdVersion version, OfficialSource source, SourceRole role) {
+    thresholdVersionSourceRepository.save(new ThresholdVersionSource(version, source, role));
   }
 
   @Transactional
@@ -101,19 +117,54 @@ public class ThresholdService {
     return version;
   }
 
-  /** Phase 9 addition (brief §42/§91), mirroring {@code ProcedurePublishingService#readiness}. */
+  /**
+   * Phase 9 addition (brief §42/§91), mirroring {@code ProcedurePublishingService#readiness}.
+   * Pre-Phase-10 hardening (brief §D) added the VERIFIED-source requirement - the one publication-
+   * safety gap Threshold had that Procedure/Rule never did.
+   *
+   * <p>{@code effectiveFrom} is optional here (unlike at real publish time) exactly like {@code
+   * ProcedurePublishingService#readiness}'s own Javadoc explains - a draft being previewed before
+   * an effective date has been chosen simply skips that one check. A real, found-by-testing bug
+   * fixed here: this used to check {@code version.getEffectiveFrom()} - the entity's own field,
+   * which {@link ThresholdVersion#markPublished} is the only thing that ever sets, so it is always
+   * null before publish and this check could never pass, breaking every real publish call that
+   * routed through here.
+   */
   @Transactional(readOnly = true)
-  public List<ValidationIssue> readiness(UUID versionId) {
-    ThresholdVersion version = getManagedById(versionId);
+  public List<ValidationIssue> readiness(UUID versionId, LocalDate effectiveFrom) {
+    return readiness(getManagedById(versionId), effectiveFrom);
+  }
+
+  private List<ValidationIssue> readiness(ThresholdVersion version, LocalDate effectiveFrom) {
     List<ValidationIssue> issues = new ArrayList<>();
+    if (version.getStatus() != PublicationStatus.APPROVED) {
+      issues.add(
+          new ValidationIssue("VERSION_NOT_APPROVED", "Only an APPROVED version can be published"));
+    }
     if (version.getValue() == null && version.getValueText() == null) {
       issues.add(
           new ValidationIssue(
               "THRESHOLD_VALUE_MISSING", "Cannot publish a threshold version with no value"));
     }
-    if (version.getEffectiveFrom() == null) {
+    if (effectiveFrom == null) {
       issues.add(
           new ValidationIssue("MISSING_EFFECTIVE_FROM", "effectiveFrom is required to publish"));
+    }
+    List<ThresholdVersionSource> sources =
+        thresholdVersionSourceRepository.findByThresholdVersion_Id(version.getId());
+    boolean hasVerifiedPrimarySource =
+        sources.stream()
+            .anyMatch(
+                s ->
+                    s.getRole() == SourceRole.PRIMARY
+                        && s.getOfficialSource().getVerificationStatus()
+                            == VerificationStatus.VERIFIED);
+    if (!hasVerifiedPrimarySource) {
+      issues.add(
+          new ValidationIssue(
+              "NO_VERIFIED_SOURCE",
+              "A threshold version cannot be published without at least one VERIFIED primary"
+                  + " official source"));
     }
     return issues;
   }
@@ -141,18 +192,22 @@ public class ThresholdService {
   }
 
   /**
-   * Publish-readiness (a value must be set - already a DB CHECK constraint, so this is a clearer
-   * error than a raw constraint violation) plus the same "close the previous PUBLISHED version"
-   * transactional step ProcedurePublishingService performs (brief §58).
+   * Publish-readiness (value present, VERIFIED primary source - brief §D pre-Phase-10 hardening)
+   * plus the same "close the previous PUBLISHED version" transactional step
+   * ProcedurePublishingService performs (brief §58).
    */
   @Transactional
   public ThresholdVersion publish(UUID versionId, User actor, LocalDate effectiveFrom) {
     ThresholdVersion version = getManagedById(versionId);
-    if (version.getValue() == null && version.getValueText() == null) {
-      throw new ApiException(
-          HttpStatus.CONFLICT,
-          "THRESHOLD_VALUE_MISSING",
-          "Cannot publish a threshold version with no value");
+    List<ValidationIssue> issues = readiness(version, effectiveFrom);
+    if (!issues.isEmpty()) {
+      ValidationIssue first = issues.get(0);
+      HttpStatus status =
+          first.code().equals("MISSING_EFFECTIVE_FROM")
+                  || first.code().equals("THRESHOLD_VALUE_MISSING")
+              ? HttpStatus.BAD_REQUEST
+              : HttpStatus.CONFLICT;
+      throw new ApiException(status, first.code(), first.message());
     }
     UUID thresholdId = version.getThreshold().getId();
     List<ThresholdVersion> currentlyPublished =

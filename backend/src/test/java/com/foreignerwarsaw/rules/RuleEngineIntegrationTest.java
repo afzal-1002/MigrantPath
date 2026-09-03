@@ -98,6 +98,11 @@ class RuleEngineIntegrationTest extends AbstractIntegrationTest {
     ThresholdVersion thresholdVersion =
         thresholdService.createDraftVersion(
             threshold, new BigDecimal("15000"), null, actorEntity(admin));
+    // Pre-Phase-10 hardening (brief §D): a threshold version cannot publish without a VERIFIED
+    // primary source, mirroring Procedure/Rule - see docs/admin/OFFICIAL_SOURCE_SAFETY.md.
+    OfficialSource thresholdSource =
+        officialSourceRepository.findById(UUID.fromString(createAndVerifySource())).orElseThrow();
+    thresholdService.attachSource(thresholdVersion, thresholdSource, SourceRole.PRIMARY);
     thresholdService.submitForReview(thresholdVersion.getId(), actorEntity(admin));
     thresholdService.approve(thresholdVersion.getId(), actorEntity(admin));
     thresholdService.publish(thresholdVersion.getId(), actorEntity(admin), today);

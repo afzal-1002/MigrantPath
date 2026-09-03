@@ -7,14 +7,17 @@ import com.foreignerwarsaw.admin.review.ContentReviewCoordinator;
 import com.foreignerwarsaw.common.audit.AuditEntityType;
 import com.foreignerwarsaw.procedure.admin.dto.AdminThresholdSummaryResponse;
 import com.foreignerwarsaw.procedure.admin.dto.AdminThresholdVersionResponse;
+import com.foreignerwarsaw.procedure.admin.dto.AttachSourceRequest;
 import com.foreignerwarsaw.procedure.admin.dto.CreateThresholdRequest;
 import com.foreignerwarsaw.procedure.admin.dto.PublishRequest;
 import com.foreignerwarsaw.procedure.admin.dto.ThresholdImpactResponse;
 import com.foreignerwarsaw.procedure.admin.dto.UpdateThresholdVersionRequest;
+import com.foreignerwarsaw.procedure.source.OfficialSource;
+import com.foreignerwarsaw.procedure.source.OfficialSourceService;
 import com.foreignerwarsaw.procedure.threshold.Threshold;
-import com.foreignerwarsaw.procedure.threshold.ThresholdRepository;
 import com.foreignerwarsaw.procedure.threshold.ThresholdService;
 import com.foreignerwarsaw.procedure.threshold.ThresholdVersion;
+import com.foreignerwarsaw.procedure.threshold.ThresholdVersionSourceRepository;
 import com.foreignerwarsaw.rules.core.RuleThresholdReferenceRepository;
 import com.foreignerwarsaw.user.AppUserPrincipal;
 import com.foreignerwarsaw.user.User;
@@ -38,7 +41,9 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * Phase 9's Threshold admin surface (brief §46-§48/§56) - the first HTTP-reachable admin API this
  * engine has ever had (Phase 4 deliberately shipped none, since no threshold content existed yet to
- * manage - see {@code ThresholdService}'s own Javadoc).
+ * manage - see {@code ThresholdService}'s own Javadoc). Pre-Phase-10 hardening (brief §D) added
+ * {@code attachSource}/source display - a threshold version can no longer publish without one, so
+ * the admin editor needs a way to attach one, mirroring {@code AdminRuleController}.
  */
 @RestController
 @RequestMapping("/api/v1/admin/thresholds")
@@ -46,24 +51,27 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminThresholdController {
 
   private final ThresholdService thresholdService;
-  private final ThresholdRepository thresholdRepository;
   private final ThresholdAdminService thresholdAdminService;
   private final ContentReviewCoordinator reviewCoordinator;
   private final RuleThresholdReferenceRepository ruleThresholdReferenceRepository;
+  private final ThresholdVersionSourceRepository thresholdVersionSourceRepository;
+  private final OfficialSourceService officialSourceService;
   private final UserAccountService userAccountService;
 
   public AdminThresholdController(
       ThresholdService thresholdService,
-      ThresholdRepository thresholdRepository,
       ThresholdAdminService thresholdAdminService,
       ContentReviewCoordinator reviewCoordinator,
       RuleThresholdReferenceRepository ruleThresholdReferenceRepository,
+      ThresholdVersionSourceRepository thresholdVersionSourceRepository,
+      OfficialSourceService officialSourceService,
       UserAccountService userAccountService) {
     this.thresholdService = thresholdService;
-    this.thresholdRepository = thresholdRepository;
     this.thresholdAdminService = thresholdAdminService;
     this.reviewCoordinator = reviewCoordinator;
     this.ruleThresholdReferenceRepository = ruleThresholdReferenceRepository;
+    this.thresholdVersionSourceRepository = thresholdVersionSourceRepository;
+    this.officialSourceService = officialSourceService;
     this.userAccountService = userAccountService;
   }
 
@@ -77,9 +85,7 @@ public class AdminThresholdController {
   @GetMapping("/{code}")
   public List<AdminThresholdVersionResponse> versions(@PathVariable String code) {
     Threshold threshold = thresholdService.getByCode(code);
-    return thresholdService.listVersions(threshold.getId()).stream()
-        .map(AdminThresholdVersionResponse::from)
-        .toList();
+    return thresholdService.listVersions(threshold.getId()).stream().map(this::detailOf).toList();
   }
 
   @Operation(summary = "Which Rules reference this threshold (brief §48)")
@@ -127,8 +133,7 @@ public class AdminThresholdController {
               request.notes(),
               actor(principal));
     }
-    return ResponseEntity.status(HttpStatus.CREATED)
-        .body(AdminThresholdVersionResponse.from(version));
+    return ResponseEntity.status(HttpStatus.CREATED).body(detailOf(version));
   }
 
   @Operation(summary = "Edit a DRAFT version's value/dates/notes")
@@ -146,7 +151,19 @@ public class AdminThresholdController {
             request.effectiveFrom(),
             request.notes(),
             actor(principal));
-    return AdminThresholdVersionResponse.from(version);
+    return detailOf(version);
+  }
+
+  @Operation(summary = "Attach an official source to a version (brief §D)")
+  @PostMapping("/{code}/versions/{versionId}/sources")
+  public AdminThresholdVersionResponse attachSource(
+      @PathVariable String code,
+      @PathVariable UUID versionId,
+      @Valid @RequestBody AttachSourceRequest request) {
+    ThresholdVersion version = thresholdService.getVersionById(versionId);
+    OfficialSource source = officialSourceService.getById(request.officialSourceId());
+    thresholdService.attachSource(version, source, request.role());
+    return detailOf(thresholdService.getVersionById(versionId));
   }
 
   @Operation(summary = "Submit a DRAFT version for review")
@@ -155,8 +172,7 @@ public class AdminThresholdController {
       @PathVariable String code,
       @PathVariable UUID versionId,
       @AuthenticationPrincipal AppUserPrincipal principal) {
-    return AdminThresholdVersionResponse.from(
-        thresholdAdminService.submitForReview(versionId, actor(principal)));
+    return detailOf(thresholdAdminService.submitForReview(versionId, actor(principal)));
   }
 
   @Operation(summary = "Approve a version under review (self-approval blocked)")
@@ -166,7 +182,7 @@ public class AdminThresholdController {
       @PathVariable UUID versionId,
       @RequestBody(required = false) ReviewDecisionRequest request,
       @AuthenticationPrincipal AppUserPrincipal principal) {
-    return AdminThresholdVersionResponse.from(
+    return detailOf(
         thresholdAdminService.approve(
             versionId, actor(principal), request != null ? request.comment() : null));
   }
@@ -178,7 +194,7 @@ public class AdminThresholdController {
       @PathVariable UUID versionId,
       @RequestBody ReviewDecisionRequest request,
       @AuthenticationPrincipal AppUserPrincipal principal) {
-    return AdminThresholdVersionResponse.from(
+    return detailOf(
         thresholdAdminService.requestChanges(versionId, actor(principal), request.comment()));
   }
 
@@ -189,7 +205,7 @@ public class AdminThresholdController {
       @PathVariable UUID versionId,
       @Valid @RequestBody PublishRequest request,
       @AuthenticationPrincipal AppUserPrincipal principal) {
-    return AdminThresholdVersionResponse.from(
+    return detailOf(
         thresholdAdminService.publish(versionId, actor(principal), request.effectiveFrom()));
   }
 
@@ -199,14 +215,19 @@ public class AdminThresholdController {
       @PathVariable String code,
       @PathVariable UUID versionId,
       @AuthenticationPrincipal AppUserPrincipal principal) {
-    return AdminThresholdVersionResponse.from(
-        thresholdAdminService.archive(versionId, actor(principal)));
+    return detailOf(thresholdAdminService.archive(versionId, actor(principal)));
   }
 
   @Operation(summary = "Publish-readiness checks, without publishing")
   @GetMapping("/{code}/versions/{versionId}/validate")
-  public ValidationResponse validate(@PathVariable String code, @PathVariable UUID versionId) {
-    return ValidationResponse.from(thresholdService.readiness(versionId));
+  public ValidationResponse validate(
+      @PathVariable String code,
+      @PathVariable UUID versionId,
+      @org.springframework.web.bind.annotation.RequestParam(required = false)
+          @org.springframework.format.annotation.DateTimeFormat(
+              iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE)
+          java.time.LocalDate effectiveFrom) {
+    return ValidationResponse.from(thresholdService.readiness(versionId, effectiveFrom));
   }
 
   @Operation(summary = "Review history for a version")
@@ -216,6 +237,12 @@ public class AdminThresholdController {
     return reviewCoordinator.history(AuditEntityType.THRESHOLD_VERSION, versionId).stream()
         .map(AdminReviewResponse::from)
         .toList();
+  }
+
+  private AdminThresholdVersionResponse detailOf(ThresholdVersion version) {
+    return AdminThresholdVersionResponse.from(
+        version,
+        thresholdVersionSourceRepository.findByThresholdVersion_IdFetchingSource(version.getId()));
   }
 
   private User actor(AppUserPrincipal principal) {

@@ -23,4 +23,15 @@ public interface RuleVersionSourceRepository
 
   /** Phase 9 source-impact addition (brief §33/§34). */
   long countByOfficialSource_Id(UUID officialSourceId);
+
+  /**
+   * Pre-Phase-10 hardening addition (brief §C) - see {@code ProcedureVersionSourceRepository
+   * #existsUsedByPublishedVersion}'s Javadoc for the full rationale.
+   */
+  @Query(
+      "SELECT COUNT(s) > 0 FROM RuleVersionSource s"
+          + " WHERE s.officialSource.id = :officialSourceId"
+          + " AND s.ruleVersion.status IN (com.foreignerwarsaw.procedure.PublicationStatus.PUBLISHED,"
+          + " com.foreignerwarsaw.procedure.PublicationStatus.ARCHIVED)")
+  boolean existsUsedByPublishedVersion(@Param("officialSourceId") UUID officialSourceId);
 }

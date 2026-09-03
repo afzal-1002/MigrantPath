@@ -5,6 +5,7 @@ import com.foreignerwarsaw.procedure.admin.dto.CreateOfficialSourceRequest;
 import com.foreignerwarsaw.procedure.admin.dto.RecordVerificationRequest;
 import com.foreignerwarsaw.procedure.admin.dto.SourceUsageResponse;
 import com.foreignerwarsaw.procedure.admin.dto.SourceVerificationResponse;
+import com.foreignerwarsaw.procedure.admin.dto.UpdateSourceMetadataRequest;
 import com.foreignerwarsaw.procedure.core.ProcedureVersionSourceRepository;
 import com.foreignerwarsaw.procedure.source.OfficialSource;
 import com.foreignerwarsaw.procedure.source.OfficialSourceRepository;
@@ -12,6 +13,10 @@ import com.foreignerwarsaw.procedure.source.OfficialSourceService;
 import com.foreignerwarsaw.procedure.source.SourceVerificationRepository;
 import com.foreignerwarsaw.procedure.source.SourceVerificationService;
 import com.foreignerwarsaw.procedure.threshold.ThresholdVersionSourceRepository;
+import com.foreignerwarsaw.reference.authority.Authority;
+import com.foreignerwarsaw.reference.authority.AuthorityRepository;
+import com.foreignerwarsaw.reference.geography.Jurisdiction;
+import com.foreignerwarsaw.reference.geography.JurisdictionRepository;
 import com.foreignerwarsaw.rules.core.RuleVersionSourceRepository;
 import com.foreignerwarsaw.user.AppUserPrincipal;
 import com.foreignerwarsaw.user.User;
@@ -25,6 +30,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -50,6 +56,8 @@ public class AdminSourceController {
   private final ProcedureVersionSourceRepository procedureVersionSourceRepository;
   private final RuleVersionSourceRepository ruleVersionSourceRepository;
   private final ThresholdVersionSourceRepository thresholdVersionSourceRepository;
+  private final AuthorityRepository authorityRepository;
+  private final JurisdictionRepository jurisdictionRepository;
   private final UserAccountService userAccountService;
 
   public AdminSourceController(
@@ -60,6 +68,8 @@ public class AdminSourceController {
       ProcedureVersionSourceRepository procedureVersionSourceRepository,
       RuleVersionSourceRepository ruleVersionSourceRepository,
       ThresholdVersionSourceRepository thresholdVersionSourceRepository,
+      AuthorityRepository authorityRepository,
+      JurisdictionRepository jurisdictionRepository,
       UserAccountService userAccountService) {
     this.officialSourceRepository = officialSourceRepository;
     this.officialSourceService = officialSourceService;
@@ -68,6 +78,8 @@ public class AdminSourceController {
     this.procedureVersionSourceRepository = procedureVersionSourceRepository;
     this.ruleVersionSourceRepository = ruleVersionSourceRepository;
     this.thresholdVersionSourceRepository = thresholdVersionSourceRepository;
+    this.authorityRepository = authorityRepository;
+    this.jurisdictionRepository = jurisdictionRepository;
     this.userAccountService = userAccountService;
   }
 
@@ -83,6 +95,28 @@ public class AdminSourceController {
   @GetMapping("/{id}")
   public AdminSourceDetailResponse detail(@PathVariable UUID id) {
     return AdminSourceDetailResponse.from(officialSourceService.getById(id));
+  }
+
+  @Operation(
+      summary =
+          "Edit operational metadata (authority/jurisdiction/language) - brief §C: title/URL/"
+              + "sourceType are never editable, and authority is locked once this source has"
+              + " backed published content (SOURCE_IDENTITY_LOCKED) - create a new source instead")
+  @PatchMapping("/{id}")
+  public AdminSourceDetailResponse updateMetadata(
+      @PathVariable UUID id, @Valid @RequestBody UpdateSourceMetadataRequest request) {
+    Authority authority =
+        request.authorityId() != null
+            ? authorityRepository.findById(request.authorityId()).orElse(null)
+            : null;
+    Jurisdiction jurisdiction =
+        request.jurisdictionCode() != null
+            ? jurisdictionRepository.findByCode(request.jurisdictionCode()).orElse(null)
+            : null;
+    OfficialSource source =
+        officialSourceService.updateOperationalMetadata(
+            id, authority, jurisdiction, request.language());
+    return AdminSourceDetailResponse.from(source);
   }
 
   @Operation(summary = "Create an official source")

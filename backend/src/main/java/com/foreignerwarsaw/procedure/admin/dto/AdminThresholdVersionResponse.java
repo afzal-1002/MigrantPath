@@ -1,9 +1,11 @@
 package com.foreignerwarsaw.procedure.admin.dto;
 
 import com.foreignerwarsaw.procedure.threshold.ThresholdVersion;
+import com.foreignerwarsaw.procedure.threshold.ThresholdVersionSource;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 public record AdminThresholdVersionResponse(
@@ -20,9 +22,27 @@ public record AdminThresholdVersionResponse(
     String submittedByEmail,
     String approvedByEmail,
     String publishedByEmail,
-    Instant publishedAt) {
+    Instant publishedAt,
+    List<Source> sources) {
 
-  public static AdminThresholdVersionResponse from(ThresholdVersion v) {
+  public record Source(
+      UUID officialSourceId,
+      String title,
+      String sourceUrl,
+      String role,
+      String verificationStatus) {
+    static Source from(ThresholdVersionSource s) {
+      return new Source(
+          s.getOfficialSource().getId(),
+          s.getOfficialSource().getTitle(),
+          s.getOfficialSource().getSourceUrl(),
+          s.getRole().name(),
+          s.getOfficialSource().getVerificationStatus().name());
+    }
+  }
+
+  public static AdminThresholdVersionResponse from(
+      ThresholdVersion v, List<ThresholdVersionSource> sources) {
     return new AdminThresholdVersionResponse(
         v.getId(),
         v.getThreshold().getCode(),
@@ -37,6 +57,7 @@ public record AdminThresholdVersionResponse(
         v.getSubmittedBy() != null ? v.getSubmittedBy().getEmail() : null,
         v.getApprovedBy() != null ? v.getApprovedBy().getEmail() : null,
         v.getPublishedBy() != null ? v.getPublishedBy().getEmail() : null,
-        v.getPublishedAt());
+        v.getPublishedAt(),
+        sources.stream().map(Source::from).toList());
   }
 }
