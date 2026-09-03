@@ -14,4 +14,9 @@ public interface UserRepository extends JpaRepository<User, UUID> {
   Optional<User> findByEmailIgnoreCase(String email);
 
   boolean existsByEmailIgnoreCase(String email);
+
+  /**
+   * Phase 9 admin user search (brief §81) - a simple substring match, no full-text search engine.
+   */
+  java.util.List<User> findByEmailContainingIgnoreCase(String emailFragment);
 }

@@ -12,4 +12,7 @@ public interface ThresholdVersionSourceRepository
    * needs every source backing a threshold a rule actually used, not just the rule's own sources.
    */
   List<ThresholdVersionSource> findByThresholdVersion_Id(UUID thresholdVersionId);
+
+  /** Phase 9 source-impact addition (brief §33/§34). */
+  long countByOfficialSource_Id(UUID officialSourceId);
 }

@@ -4,6 +4,9 @@
   <span class="spacer"></span>
   @if (authService.isAuthenticated()) {
     <a mat-button routerLink="/dashboard">Dashboard</a>
+    @if (isContentAdmin()) {
+      <a mat-button routerLink="/admin">Admin</a>
+    }
     <button mat-button (click)="logout()">Logout</button>
   } @else {
     <a mat-button routerLink="/login">Sign in</a>

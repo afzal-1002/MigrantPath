@@ -1,0 +1,22 @@
+<div class="admin-layout">
+  <nav class="admin-nav">
+    <div class="admin-nav-title">
+      <a routerLink="/admin">Admin</a>
+    </div>
+    <a routerLink="/admin" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Dashboard</a>
+    <a routerLink="/admin/procedures" routerLinkActive="active">Procedures</a>
+    <a routerLink="/admin/rules" routerLinkActive="active">Rules</a>
+    <a routerLink="/admin/thresholds" routerLinkActive="active">Thresholds</a>
+    <a routerLink="/admin/sources" routerLinkActive="active">Sources</a>
+    <a routerLink="/admin/questionnaires" routerLinkActive="active">Questionnaires</a>
+    <a routerLink="/admin/reviews" routerLinkActive="active">Reviews</a>
+    @if (isAdmin()) {
+      <a routerLink="/admin/audit" routerLinkActive="active">Audit</a>
+      <a routerLink="/admin/users" routerLinkActive="active">Users</a>
+    }
+    <a routerLink="/dashboard" class="admin-nav-exit">← Back to app</a>
+  </nav>
+  <main class="admin-content">
+    <router-outlet />
+  </main>
+</div>

@@ -18,4 +18,7 @@ public interface ProcedureVersionSourceRepository
       """)
   List<ProcedureVersionSource> findByProcedureVersion_Id(
       @Param("procedureVersionId") UUID procedureVersionId);
+
+  /** Phase 9 source-impact addition (brief §33/§34). */
+  long countByOfficialSource_Id(UUID officialSourceId);
 }

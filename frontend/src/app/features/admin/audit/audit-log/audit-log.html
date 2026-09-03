@@ -1,0 +1,42 @@
+<h1>Audit log</h1>
+
+<div class="admin-actions">
+  <input placeholder="Business code (e.g. procedure code)" [ngModel]="entityBusinessCode()" (ngModelChange)="entityBusinessCode.set($event)" />
+  <select [ngModel]="entityType()" (ngModelChange)="entityType.set($event)">
+    <option value="">All entity types</option>
+    <option value="PROCEDURE_VERSION">PROCEDURE_VERSION</option>
+    <option value="RULE_VERSION">RULE_VERSION</option>
+    <option value="THRESHOLD_VERSION">THRESHOLD_VERSION</option>
+    <option value="QUESTIONNAIRE_VERSION">QUESTIONNAIRE_VERSION</option>
+    <option value="OFFICIAL_SOURCE">OFFICIAL_SOURCE</option>
+    <option value="USER">USER</option>
+  </select>
+  <input placeholder="Action type (e.g. CONTENT_PUBLISHED)" [ngModel]="actionType()" (ngModelChange)="actionType.set($event)" />
+  <button type="button" (click)="search()">Search</button>
+</div>
+
+@if (loading()) {
+  <p>Loading…</p>
+} @else if (error()) {
+  <p class="admin-error">Could not load the audit log.</p>
+} @else {
+  <table class="admin-table">
+    <thead><tr><th>When</th><th>Actor</th><th>Action</th><th>Entity</th><th>Summary</th></tr></thead>
+    <tbody>
+      @for (e of entries(); track e.id) {
+        <tr>
+          <td>{{ e.occurredAt }}</td>
+          <td>{{ e.actorEmail ?? '—' }}</td>
+          <td>{{ e.actionType }}</td>
+          <td>{{ e.entityType }}@if (e.entityBusinessCode) { : {{ e.entityBusinessCode }} }</td>
+          <td>{{ e.summary }}</td>
+        </tr>
+      } @empty { <tr><td colspan="5">No audit entries match.</td></tr> }
+    </tbody>
+  </table>
+  <div class="admin-actions">
+    <button type="button" (click)="prevPage()" [disabled]="page() === 0">← Previous</button>
+    <span>Page {{ page() + 1 }} of {{ totalPages() || 1 }}</span>
+    <button type="button" (click)="nextPage()" [disabled]="page() + 1 >= totalPages()">Next →</button>
+  </div>
+}

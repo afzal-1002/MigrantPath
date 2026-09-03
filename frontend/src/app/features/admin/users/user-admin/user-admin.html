@@ -1,0 +1,39 @@
+<h1>User roles</h1>
+
+<div class="admin-actions">
+  <input placeholder="Search by email" [ngModel]="query()" (ngModelChange)="query.set($event)" (keyup.enter)="search()" />
+  <button type="button" (click)="search()">Search</button>
+</div>
+
+@if (error()) { <p class="admin-error">{{ error() }}</p> }
+@if (loading()) { <p>Searching…</p> }
+
+<table class="admin-table">
+  <thead><tr><th>Email</th><th>Status</th><th>Verified</th><th>Roles</th><th>Assign</th></tr></thead>
+  <tbody>
+    @for (u of results(); track u.id) {
+      <tr>
+        <td>{{ u.email }}</td>
+        <td>{{ u.status }}</td>
+        <td>{{ u.emailVerified ? 'Yes' : 'No' }}</td>
+        <td>
+          @for (role of u.roles; track role) {
+            <span class="status-badge status-VERIFIED">{{ role }}
+              @if (assignableRoles.includes(role)) {
+                <button type="button" (click)="remove(u.id, role)" title="Remove role">✕</button>
+              }
+            </span>
+          }
+        </td>
+        <td>
+          <select (ngModelChange)="setRoleToAssign(u.id, $event)" [ngModel]="roleToAssign()[u.id] ?? assignableRoles[0]">
+            @for (role of assignableRoles; track role) { <option [value]="role">{{ role }}</option> }
+          </select>
+          <button type="button" (click)="assign(u.id)">Assign</button>
+        </td>
+      </tr>
+    } @empty {
+      <tr><td colspan="5">Search for an account by email to manage its roles.</td></tr>
+    }
+  </tbody>
+</table>

@@ -64,4 +64,70 @@ public class DocumentRequirementService {
     return documentRequirementVersionRepository.findByProcedureVersion_IdOrderBySortOrderAsc(
         procedureVersionId);
   }
+
+  /** Phase 9 addition (brief §23) - editing a requirement already on a still-DRAFT version. */
+  @Transactional
+  public DocumentRequirementVersion updateRequirement(
+      UUID documentRequirementVersionId,
+      String name,
+      String description,
+      RequirementType requirementType,
+      boolean requiredByDefault,
+      Integer numberOfCopies,
+      Boolean originalRequired,
+      Boolean copyRequired,
+      Boolean translationRequired,
+      Boolean swornTranslationRequired,
+      Boolean apostilleRequired,
+      Boolean legalisationRequired,
+      String validityPeriodDescription,
+      String notes,
+      int sortOrder) {
+    DocumentRequirementVersion version = getManagedById(documentRequirementVersionId);
+    requireDraft(version.getProcedureVersion());
+    version.update(
+        name,
+        description,
+        requirementType,
+        requiredByDefault,
+        numberOfCopies,
+        originalRequired,
+        copyRequired,
+        translationRequired,
+        swornTranslationRequired,
+        apostilleRequired,
+        legalisationRequired,
+        validityPeriodDescription,
+        notes,
+        sortOrder);
+    return version;
+  }
+
+  /** Phase 9 addition (brief §23) - removing a requirement from a still-DRAFT version. */
+  @Transactional
+  public void removeRequirement(UUID documentRequirementVersionId) {
+    DocumentRequirementVersion version = getManagedById(documentRequirementVersionId);
+    requireDraft(version.getProcedureVersion());
+    documentRequirementVersionRepository.delete(version);
+  }
+
+  private DocumentRequirementVersion getManagedById(UUID id) {
+    return documentRequirementVersionRepository
+        .findByIdFetchingAll(id)
+        .orElseThrow(
+            () ->
+                new ApiException(
+                    HttpStatus.NOT_FOUND,
+                    "DOCUMENT_REQUIREMENT_NOT_FOUND",
+                    "No document requirement found for id " + id));
+  }
+
+  private void requireDraft(ProcedureVersion procedureVersion) {
+    if (procedureVersion.getStatus() != PublicationStatus.DRAFT) {
+      throw new ApiException(
+          HttpStatus.CONFLICT,
+          "VERSION_NOT_DRAFT",
+          "Document requirements can only be edited on a DRAFT version");
+    }
+  }
 }

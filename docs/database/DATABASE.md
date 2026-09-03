@@ -911,25 +911,45 @@ a single unique-per-case row couldn't represent at all. See ADR-011 and
 
 ---
 
-## 9. Administration entities
+## 9. Administration entities (IMPLEMENTED, Phase 9 — see ADR-012)
+
+The Phase 0 sketch below has been superseded by the actual Phase 9 schema (V46), described
+here. The polymorphic-reference design the sketch anticipated survived; the exact shape did
+not (a genuine `target_type` enum spanning six tables was simplified to the four version types
+that actually needed review workflow — `DOCUMENT_REQUIREMENT_VERSION`/`FEE_VERSION` are
+sub-content of a `ProcedureVersion`, reviewed as part of it, never independently).
 
 ### AdminReview
-- `id UUID PK`, `target_type ENUM(PROCEDURE_VERSION, RULE_VERSION,
-  DOCUMENT_REQUIREMENT_VERSION, FEE_VERSION, THRESHOLD_VERSION, OFFICIAL_SOURCE)`,
-  `target_id UUID` (polymorphic — deliberately **not** an FK constraint, since it can
-  point at any of six tables; integrity here is enforced by the admin service layer, not
-  the database, which is an acceptable trade-off for a review/workflow log rather than
-  primary content), `reviewer_id FK → User`, `decision ENUM(APPROVED, REJECTED,
-  CHANGES_REQUESTED)`, `comments`, `reviewed_at`.
+- `id UUID PK`, `entity_type ENUM(PROCEDURE_VERSION, RULE_VERSION, THRESHOLD_VERSION,
+  QUESTIONNAIRE_VERSION)`, `entity_version_id UUID` (polymorphic, deliberately **not** an
+  FK — it can point at any of four different version tables; integrity here is enforced by
+  `ContentReviewCoordinator`, not the database — an accepted trade-off for a review/workflow
+  log rather than primary content), `submitted_by FK → User NOT NULL`, `reviewer FK → User
+  NULL`, `status ENUM(PENDING, APPROVED, CHANGES_REQUESTED, REJECTED)`, `comment
+  VARCHAR(2000) NULL`, `created_at`, `completed_at NULL`.
+- **Unique index**: `(entity_type, entity_version_id) WHERE status = 'PENDING'` — only one
+  open review per version at a time.
+- `submitted_by` is denormalized specifically so self-approval prevention (`submitted_by !=
+  reviewer` for `approve`/`request-changes`/`reject`) never needs to re-fetch the specific
+  version entity generically (brief §5/§117, ADR-012).
 
 ### AuditLog
-- `id UUID PK`, `actor_user_id FK → User NULL` (null for system actions),
-  `action` (`PROCEDURE_VERSION_PUBLISHED`, ...), `entity_type`, `entity_id UUID`
-  (same polymorphic trade-off as `AdminReview`, for the same reason), `before_state
-  JSONB NULL`, `after_state JSONB NULL`, `occurred_at`, `ip_address NULL`,
-  `correlation_id`.
-- **Index**: `(entity_type, entity_id)`, `(occurred_at)`.
-- Append-only; never updated or deleted.
+- `id UUID PK`, `actor_user_id FK → User NULL` (null for a system-initiated action, none
+  exist yet), `action_type VARCHAR(60)` (`CONTENT_PUBLISHED`, `SOURCE_VERIFIED`,
+  `ROLE_ASSIGNED`, ... — a closed, domain-specific vocabulary, `AuditActionType`, never a
+  generic CRUD verb), `entity_type VARCHAR(40)` (`AuditEntityType`), `entity_id UUID NULL`,
+  `entity_business_code VARCHAR(50) NULL` (e.g. a Procedure code, for human-readable
+  filtering), `entity_version_id UUID NULL`, `occurred_at TIMESTAMPTZ`, `summary
+  VARCHAR(500)`, `metadata JSONB NULL` (small and structured when present — never a full
+  entity-graph dump; see docs/admin/AUDIT_POLICY.md).
+- **Indexes**: `(actor_user_id, occurred_at DESC)`, `(entity_type, entity_id)`,
+  `(action_type, occurred_at DESC)`.
+- Append-only; never updated or deleted by any application code. Written transactionally
+  alongside the mutation it describes (`AuditService.record`), so a rolled-back mutation
+  never leaves behind a misleading successful audit row.
+- **Known gap** (see PHASE_9_REPORT.md): content mutated through the pre-existing Phase 4
+  `/api/v1/internal/content/**` endpoints (which predate `AuditService`) is not retrofitted
+  into this table — only the new `/api/v1/admin/**` surface writes to it.
 
 ### Notification / NotificationPreference
 - **Notification**: `id UUID PK`, `user_id FK → User`, `type` (`EMAIL_VERIFICATION`,

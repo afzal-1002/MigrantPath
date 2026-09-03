@@ -225,6 +225,11 @@ public class User {
     this.roles.add(role);
   }
 
+  /** Phase 9 addition (brief §81) - the reverse of {@link #addRole}, for admin role management. */
+  public void removeRole(Role role) {
+    this.roles.remove(role);
+  }
+
   public boolean hasRole(String code) {
     return roles.stream().anyMatch(r -> r.getCode().equals(code));
   }

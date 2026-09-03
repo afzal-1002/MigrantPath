@@ -20,4 +20,10 @@ public interface AssessmentRepository extends JpaRepository<Assessment, UUID> {
   @Query(
       "SELECT a FROM Assessment a JOIN FETCH a.questionnaire WHERE a.user.id = :userId ORDER BY a.startedAt DESC")
   List<Assessment> findByUser_IdOrderByStartedAtDesc(@Param("userId") UUID userId);
+
+  /**
+   * Phase 9 impact analysis (brief §72/§133) - a count only, never which users, of assessments
+   * permanently bound to this exact {@code QuestionnaireVersion}.
+   */
+  long countByQuestionnaireVersion_Id(UUID questionnaireVersionId);
 }

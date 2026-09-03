@@ -23,4 +23,17 @@ public interface DocumentRequirementVersionRepository
       """)
   List<DocumentRequirementVersion> findByProcedureVersion_IdOrderBySortOrderAsc(
       @Param("procedureVersionId") UUID procedureVersionId);
+
+  /**
+   * Phase 9 addition (brief §23) - both fetch joins for the same reasons as StepVersionRepository.
+   */
+  @Query(
+      """
+      SELECT drv FROM DocumentRequirementVersion drv
+      JOIN FETCH drv.documentRequirement dr
+      LEFT JOIN FETCH dr.documentType
+      JOIN FETCH drv.procedureVersion
+      WHERE drv.id = :id
+      """)
+  java.util.Optional<DocumentRequirementVersion> findByIdFetchingAll(@Param("id") UUID id);
 }

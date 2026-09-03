@@ -172,6 +172,10 @@ public class ProcedureVersion {
     return createdBy;
   }
 
+  public User getSubmittedBy() {
+    return submittedBy;
+  }
+
   public User getApprovedBy() {
     return approvedBy;
   }
@@ -180,17 +184,34 @@ public class ProcedureVersion {
     return publishedBy;
   }
 
+  public Instant getSubmittedAt() {
+    return submittedAt;
+  }
+
+  public Instant getApprovedAt() {
+    return approvedAt;
+  }
+
   public Instant getPublishedAt() {
     return publishedAt;
   }
 
+  public long getLockVersion() {
+    return lockVersion;
+  }
+
   public void updateDraftContent(
-      String title, String summary, String description, LocalDate effectiveFrom) {
+      String title,
+      String summary,
+      String description,
+      LocalDate effectiveFrom,
+      String changeSummary) {
     requireMutable();
     this.title = title;
     this.summary = summary;
     this.description = description;
     this.effectiveFrom = effectiveFrom;
+    this.changeSummary = changeSummary;
   }
 
   public void submitForReview(User actor, Instant at) {

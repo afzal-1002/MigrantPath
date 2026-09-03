@@ -146,4 +146,26 @@ public class StepVersion {
   public void setJurisdiction(Jurisdiction jurisdiction) {
     this.jurisdiction = jurisdiction;
   }
+
+  /**
+   * Phase 9 addition (brief §21): editing a step already added to a still-DRAFT version, rather
+   * than only ever adding new ones. The caller ({@code ProcedureStepService#updateStep}) is
+   * responsible for confirming the parent {@link ProcedureVersion} is still DRAFT before calling
+   * this - mirrors every versioned entity's own {@code requireMutable()} convention, just enforced
+   * one layer up here since a step has no independent status of its own.
+   */
+  public void update(
+      String title,
+      String description,
+      String detailedInstructions,
+      StepType stepType,
+      int sortOrder,
+      boolean mandatory) {
+    this.title = title;
+    this.description = description;
+    this.detailedInstructions = detailedInstructions;
+    this.stepType = stepType;
+    this.sortOrder = sortOrder;
+    this.mandatory = mandatory;
+  }
 }

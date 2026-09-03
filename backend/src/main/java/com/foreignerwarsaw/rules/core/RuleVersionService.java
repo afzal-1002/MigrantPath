@@ -5,6 +5,7 @@ import com.foreignerwarsaw.procedure.source.OfficialSource;
 import com.foreignerwarsaw.procedure.source.SourceRole;
 import com.foreignerwarsaw.user.User;
 import java.time.Clock;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -65,6 +66,22 @@ public class RuleVersionService {
     RuleVersion version = getManagedById(versionId);
     version.updateDraftContent(conditionTree, explanationKey);
     return version;
+  }
+
+  /**
+   * Phase 9 addition (brief §37) - the admin editor's version, which also records a change summary.
+   */
+  @Transactional
+  public RuleVersion updateDraftContent(
+      UUID versionId, String conditionTree, String explanationKey, String changeSummary) {
+    RuleVersion version = getManagedById(versionId);
+    version.updateDraftContent(conditionTree, explanationKey, changeSummary);
+    return version;
+  }
+
+  @Transactional(readOnly = true)
+  public List<RuleVersion> listVersions(UUID ruleId) {
+    return ruleVersionRepository.findByRule_Id(ruleId);
   }
 
   @Transactional

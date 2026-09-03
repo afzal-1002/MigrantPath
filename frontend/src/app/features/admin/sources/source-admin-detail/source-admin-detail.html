@@ -1,0 +1,62 @@
+<p><a routerLink="/admin/sources">← All sources</a></p>
+
+@if (loading()) {
+  <p>Loading…</p>
+} @else if (error()) {
+  <p class="admin-error">Could not load this source.</p>
+} @else if (source(); as s) {
+  <h1>{{ s.title }}</h1>
+  <p><a [href]="s.sourceUrl" target="_blank" rel="noopener">{{ s.sourceUrl }}</a></p>
+  <p>Type: {{ s.sourceType }} &nbsp; Status:
+    <span class="status-badge" [class]="'status-' + s.verificationStatus">{{ s.verificationStatus }}</span></p>
+  <p>Last checked: {{ s.lastCheckedAt ?? '—' }} &nbsp; Last verified: {{ s.lastVerifiedAt ?? '—' }}</p>
+
+  @if (usage(); as u) {
+    <div class="admin-card">
+      <h3>Impact - know this before marking outdated</h3>
+      <p>{{ u.procedureVersions }} procedure version(s), {{ u.ruleVersions }} rule version(s),
+        {{ u.thresholdVersions }} threshold version(s) depend on this source.</p>
+    </div>
+  }
+
+  <div class="admin-card">
+    <h3>Record a verification</h3>
+    <p><strong>VERIFIED</strong> means an authorized reviewer checked this exact page and confirmed it is
+      current for the recorded purpose - it does not automatically mean every rule built from it is
+      legally approved (that is a separate, content-review step).</p>
+    <div class="admin-form-row">
+      <label>
+        Outcome
+        <select [ngModel]="verifyStatus()" (ngModelChange)="verifyStatus.set($event)">
+          <option value="VERIFIED">VERIFIED</option>
+          <option value="NEEDS_REVIEW">NEEDS_REVIEW</option>
+          <option value="OUTDATED">OUTDATED</option>
+          <option value="ARCHIVED">ARCHIVED</option>
+        </select>
+      </label>
+    </div>
+    <div class="admin-form-row">
+      <label>
+        Notes @if (verifyStatus() === 'OUTDATED') { (reason required) }
+        <textarea [ngModel]="verifyNotes()" (ngModelChange)="verifyNotes.set($event)"></textarea>
+      </label>
+    </div>
+    @if (verifyError()) { <p class="admin-error">{{ verifyError() }}</p> }
+    <button type="button" (click)="verify()">Record verification</button>
+  </div>
+
+  <h3>Verification history</h3>
+  <table class="admin-table">
+    <thead><tr><th>When</th><th>By</th><th>Outcome</th><th>Notes</th></tr></thead>
+    <tbody>
+      @for (v of verifications(); track v.id) {
+        <tr>
+          <td>{{ v.checkedAt }}</td>
+          <td>{{ v.checkedByEmail ?? '—' }}</td>
+          <td><span class="status-badge" [class]="'status-' + v.status">{{ v.status }}</span></td>
+          <td>{{ v.notes ?? '—' }}</td>
+        </tr>
+      } @empty { <tr><td colspan="4">No verifications recorded yet.</td></tr> }
+    </tbody>
+  </table>
+}

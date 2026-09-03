@@ -130,6 +130,38 @@ public class OfficialSource {
     return sourceType;
   }
 
+  public LocalDate getPublicationDate() {
+    return publicationDate;
+  }
+
+  public void setPublicationDate(LocalDate publicationDate) {
+    this.publicationDate = publicationDate;
+  }
+
+  public LocalDate getEffectiveFrom() {
+    return effectiveFrom;
+  }
+
+  public void setEffectiveFrom(LocalDate effectiveFrom) {
+    this.effectiveFrom = effectiveFrom;
+  }
+
+  public LocalDate getEffectiveTo() {
+    return effectiveTo;
+  }
+
+  public void setEffectiveTo(LocalDate effectiveTo) {
+    this.effectiveTo = effectiveTo;
+  }
+
+  public String getNotes() {
+    return notes;
+  }
+
+  public void setNotes(String notes) {
+    this.notes = notes;
+  }
+
   public VerificationStatus getVerificationStatus() {
     return verificationStatus;
   }

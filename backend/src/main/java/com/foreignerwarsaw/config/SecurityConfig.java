@@ -127,6 +127,35 @@ public class SecurityConfig {
                     // only, per brief §44's own responsibility split).
                     .requestMatchers("/api/v1/internal/content/**")
                     .hasAnyRole("CONTENT_EDITOR", "ADMIN")
+                    // Phase 9 admin panel (brief §3/§4/§79-§82) - same "most specific
+                    // matcher first" idiom as the Phase 4 block above. ADMIN-only:
+                    // publish, archive, role management, and the audit log (brief §4's
+                    // "system-level content status"). LEGAL_REVIEWER + ADMIN: the
+                    // review-decision actions (brief §4's approve/request-changes/
+                    // reject) and source verification. Everything else under the
+                    // prefix - including every plain GET - is CONTENT_EDITOR/
+                    // LEGAL_REVIEWER/ADMIN alike (brief §14/§15's shared admin shell;
+                    // all three roles need to see drafts, reviews, and sources even
+                    // though only some of them can act on them).
+                    .requestMatchers(HttpMethod.POST, "/api/v1/admin/*/*/versions/*/publish")
+                    .hasRole("ADMIN")
+                    .requestMatchers(HttpMethod.POST, "/api/v1/admin/*/*/versions/*/archive")
+                    .hasRole("ADMIN")
+                    .requestMatchers("/api/v1/admin/users/**")
+                    .hasRole("ADMIN")
+                    .requestMatchers("/api/v1/admin/audit/**")
+                    .hasRole("ADMIN")
+                    .requestMatchers(HttpMethod.POST, "/api/v1/admin/*/*/versions/*/approve")
+                    .hasAnyRole("LEGAL_REVIEWER", "ADMIN")
+                    .requestMatchers(
+                        HttpMethod.POST, "/api/v1/admin/*/*/versions/*/request-changes")
+                    .hasAnyRole("LEGAL_REVIEWER", "ADMIN")
+                    .requestMatchers(HttpMethod.POST, "/api/v1/admin/*/*/versions/*/reject")
+                    .hasAnyRole("LEGAL_REVIEWER", "ADMIN")
+                    .requestMatchers(HttpMethod.POST, "/api/v1/admin/sources/*/verify")
+                    .hasAnyRole("LEGAL_REVIEWER", "ADMIN")
+                    .requestMatchers("/api/v1/admin/**")
+                    .hasAnyRole("CONTENT_EDITOR", "LEGAL_REVIEWER", "ADMIN")
                     .anyRequest()
                     .authenticated())
         .logout(

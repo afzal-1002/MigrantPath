@@ -70,4 +70,35 @@ public interface ProcedureVersionRepository extends JpaRepository<ProcedureVersi
   int findMaxVersionNumber(@Param("procedureId") UUID procedureId);
 
   List<ProcedureVersion> findByStatus(PublicationStatus status);
+
+  /** Phase 9 admin dashboard addition (brief §16). */
+  long countByStatus(PublicationStatus status);
+
+  /** Phase 9 admin listing (brief §17/§18) - every version of one procedure, newest first. */
+  @Query(
+      "SELECT v FROM ProcedureVersion v JOIN FETCH v.procedure WHERE v.procedure.id = :procedureId ORDER BY v.versionNumber DESC")
+  List<ProcedureVersion> findByProcedure_IdOrderByVersionNumberDesc(
+      @Param("procedureId") UUID procedureId);
+
+  /**
+   * Phase 9 admin detail addition - fetch-joins every actor field {@code
+   * AdminProcedureVersionDetailResponse.Actor#from} reads, on top of {@code procedure} itself, so
+   * the admin controller (not itself {@code @Transactional}, per this codebase's convention of
+   * pushing every needed fetch join into the repository layer) can map the response after this call
+   * returns without a LazyInitializationException - the exact class of bug documented throughout
+   * Phases 1-8's own repository Javadocs, reproduced and fixed here for Phase 9's new admin detail
+   * responses.
+   */
+  @Query(
+      """
+      SELECT v FROM ProcedureVersion v
+      JOIN FETCH v.procedure
+      LEFT JOIN FETCH v.createdBy
+      LEFT JOIN FETCH v.submittedBy
+      LEFT JOIN FETCH v.approvedBy
+      LEFT JOIN FETCH v.publishedBy
+      WHERE v.procedure.id = :procedureId AND v.versionNumber = :versionNumber
+      """)
+  Optional<ProcedureVersion> findByProcedure_IdAndVersionNumberFetchingActors(
+      @Param("procedureId") UUID procedureId, @Param("versionNumber") int versionNumber);
 }

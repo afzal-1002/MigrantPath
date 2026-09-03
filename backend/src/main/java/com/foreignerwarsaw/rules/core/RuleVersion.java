@@ -148,18 +148,55 @@ public class RuleVersion {
     return explanationKey;
   }
 
+  public User getCreatedBy() {
+    return createdBy;
+  }
+
+  public User getSubmittedBy() {
+    return submittedBy;
+  }
+
+  public User getApprovedBy() {
+    return approvedBy;
+  }
+
   public User getPublishedBy() {
     return publishedBy;
+  }
+
+  public Instant getSubmittedAt() {
+    return submittedAt;
+  }
+
+  public Instant getApprovedAt() {
+    return approvedAt;
   }
 
   public Instant getPublishedAt() {
     return publishedAt;
   }
 
+  public String getChangeSummary() {
+    return changeSummary;
+  }
+
+  public long getLockVersion() {
+    return lockVersion;
+  }
+
   public void updateDraftContent(String conditionTree, String explanationKey) {
     requireMutable();
     this.conditionTree = conditionTree;
     this.explanationKey = explanationKey;
+  }
+
+  /** Phase 9 addition (brief §37): the admin editor also lets an author record a change summary. */
+  public void updateDraftContent(
+      String conditionTree, String explanationKey, String changeSummary) {
+    requireMutable();
+    this.conditionTree = conditionTree;
+    this.explanationKey = explanationKey;
+    this.changeSummary = changeSummary;
   }
 
   public void submitForReview(User actor, Instant at) {

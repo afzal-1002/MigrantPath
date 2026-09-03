@@ -2,6 +2,7 @@ package com.foreignerwarsaw.rules.core;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.foreignerwarsaw.admin.validation.ValidationIssue;
 import com.foreignerwarsaw.common.web.ApiException;
 import com.foreignerwarsaw.procedure.PublicationStatus;
 import com.foreignerwarsaw.procedure.source.SourceRole;
@@ -17,6 +18,7 @@ import com.foreignerwarsaw.rules.condition.NotNode;
 import com.foreignerwarsaw.user.User;
 import java.time.Clock;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -112,18 +114,40 @@ public class RulePublishingService {
    * ARCHIVED} source (brief §22).
    */
   private void validatePublishReadiness(RuleVersion version, LocalDate effectiveFrom) {
+    List<ValidationIssue> issues = readiness(version, effectiveFrom);
+    if (!issues.isEmpty()) {
+      ValidationIssue first = issues.get(0);
+      HttpStatus status =
+          switch (first.code()) {
+            case "MISSING_EFFECTIVE_FROM", "CONDITION_TREE_INVALID" -> HttpStatus.BAD_REQUEST;
+            default -> HttpStatus.CONFLICT;
+          };
+      throw new ApiException(status, first.code(), first.message());
+    }
+  }
+
+  /**
+   * Phase 9 addition (brief §42/§91) - see {@code ProcedurePublishingService#readiness}'s Javadoc.
+   */
+  @Transactional(readOnly = true)
+  public List<ValidationIssue> readiness(UUID versionId, LocalDate effectiveFrom) {
+    return readiness(getManagedById(versionId), effectiveFrom);
+  }
+
+  private List<ValidationIssue> readiness(RuleVersion version, LocalDate effectiveFrom) {
+    List<ValidationIssue> issues = new ArrayList<>();
     if (version.getStatus() != PublicationStatus.APPROVED) {
-      throw new ApiException(
-          HttpStatus.CONFLICT, "VERSION_NOT_APPROVED", "Only an APPROVED version can be published");
+      issues.add(
+          new ValidationIssue("VERSION_NOT_APPROVED", "Only an APPROVED version can be published"));
     }
     if (effectiveFrom == null) {
-      throw new ApiException(
-          HttpStatus.BAD_REQUEST, "MISSING_EFFECTIVE_FROM", "effectiveFrom is required to publish");
+      issues.add(
+          new ValidationIssue("MISSING_EFFECTIVE_FROM", "effectiveFrom is required to publish"));
     }
     try {
       conditionTreeValidator.validate(version.getConditionTree());
     } catch (ConditionTreeValidationException e) {
-      throw new ApiException(HttpStatus.BAD_REQUEST, "CONDITION_TREE_INVALID", e.getMessage());
+      issues.add(new ValidationIssue("CONDITION_TREE_INVALID", e.getMessage()));
     }
 
     List<RuleVersionSource> sources =
@@ -136,12 +160,13 @@ public class RulePublishingService {
                         && s.getOfficialSource().getVerificationStatus()
                             == VerificationStatus.VERIFIED);
     if (!hasVerifiedSource) {
-      throw new ApiException(
-          HttpStatus.CONFLICT,
-          "NO_VERIFIED_SOURCE",
-          "A rule version cannot be published without at least one VERIFIED primary or legal-basis"
-              + " official source");
+      issues.add(
+          new ValidationIssue(
+              "NO_VERIFIED_SOURCE",
+              "A rule version cannot be published without at least one VERIFIED primary or"
+                  + " legal-basis official source"));
     }
+    return issues;
   }
 
   /**

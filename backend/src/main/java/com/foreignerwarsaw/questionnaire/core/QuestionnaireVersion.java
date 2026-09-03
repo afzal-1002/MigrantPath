@@ -139,12 +139,36 @@ public class QuestionnaireVersion {
     return effectiveTo;
   }
 
+  public User getCreatedBy() {
+    return createdBy;
+  }
+
+  public User getSubmittedBy() {
+    return submittedBy;
+  }
+
+  public User getApprovedBy() {
+    return approvedBy;
+  }
+
   public User getPublishedBy() {
     return publishedBy;
   }
 
+  public Instant getSubmittedAt() {
+    return submittedAt;
+  }
+
+  public Instant getApprovedAt() {
+    return approvedAt;
+  }
+
   public Instant getPublishedAt() {
     return publishedAt;
+  }
+
+  public long getLockVersion() {
+    return lockVersion;
   }
 
   public void updateDraftContent(String title, String description) {
@@ -158,6 +182,15 @@ public class QuestionnaireVersion {
     this.status = PublicationStatus.IN_REVIEW;
     this.submittedBy = actor;
     this.submittedAt = at;
+  }
+
+  /**
+   * Phase 9 addition (brief §49) - {@code QuestionnaireVersion} previously had no reverse
+   * transition, unlike its three siblings.
+   */
+  public void sendBackToDraft() {
+    PublicationStateMachine.requireAllowed(status, PublicationStatus.DRAFT);
+    this.status = PublicationStatus.DRAFT;
   }
 
   public void approve(User actor, Instant at) {

@@ -135,6 +135,10 @@ public class DocumentRequirementVersion {
     return originalRequired;
   }
 
+  public Boolean getCopyRequired() {
+    return copyRequired;
+  }
+
   public Boolean getTranslationRequired() {
     return translationRequired;
   }
@@ -161,5 +165,41 @@ public class DocumentRequirementVersion {
 
   public int getSortOrder() {
     return sortOrder;
+  }
+
+  /**
+   * Phase 9 addition (brief §23): editing a document requirement already added to a still-DRAFT
+   * version. See {@link com.foreignerwarsaw.procedure.step.StepVersion#update}'s Javadoc for the
+   * same "caller confirms DRAFT" convention.
+   */
+  public void update(
+      String name,
+      String description,
+      RequirementType requirementType,
+      boolean requiredByDefault,
+      Integer numberOfCopies,
+      Boolean originalRequired,
+      Boolean copyRequired,
+      Boolean translationRequired,
+      Boolean swornTranslationRequired,
+      Boolean apostilleRequired,
+      Boolean legalisationRequired,
+      String validityPeriodDescription,
+      String notes,
+      int sortOrder) {
+    this.name = name;
+    this.description = description;
+    this.requirementType = requirementType;
+    this.requiredByDefault = requiredByDefault;
+    this.numberOfCopies = numberOfCopies;
+    this.originalRequired = originalRequired;
+    this.copyRequired = copyRequired;
+    this.translationRequired = translationRequired;
+    this.swornTranslationRequired = swornTranslationRequired;
+    this.apostilleRequired = apostilleRequired;
+    this.legalisationRequired = legalisationRequired;
+    this.validityPeriodDescription = validityPeriodDescription;
+    this.notes = notes;
+    this.sortOrder = sortOrder;
   }
 }

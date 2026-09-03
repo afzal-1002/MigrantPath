@@ -163,4 +163,67 @@ public class QuestionnaireVersionService {
         || version.getStatus() == PublicationStatus.IN_REVIEW
         || version.getStatus() == PublicationStatus.APPROVED;
   }
+
+  /**
+   * Phase 9 additions (brief §49/§50) - {@code QuestionnaireVersionService} previously exposed only
+   * {@code createDraftFrom}/{@code publish} (brief §40's "no REST-exposed admin editor exists in
+   * Phase 5"); the review-workflow transitions the entity itself already supported were never
+   * wrapped in a service method until now.
+   */
+  @Transactional
+  public QuestionnaireVersion submitForReview(UUID versionId, User actor) {
+    QuestionnaireVersion version = getManagedById(versionId);
+    version.submitForReview(actor, Instant.now(clock));
+    return version;
+  }
+
+  @Transactional
+  public QuestionnaireVersion sendBackToDraft(UUID versionId) {
+    QuestionnaireVersion version = getManagedById(versionId);
+    version.sendBackToDraft();
+    return version;
+  }
+
+  @Transactional
+  public QuestionnaireVersion approve(UUID versionId, User actor) {
+    QuestionnaireVersion version = getManagedById(versionId);
+    version.approve(actor, Instant.now(clock));
+    return version;
+  }
+
+  @Transactional
+  public QuestionnaireVersion archive(UUID versionId) {
+    QuestionnaireVersion version = getManagedById(versionId);
+    version.archive();
+    return version;
+  }
+
+  @Transactional
+  public QuestionnaireVersion updateDraftContent(UUID versionId, String title, String description) {
+    QuestionnaireVersion version = getManagedById(versionId);
+    version.updateDraftContent(title, description);
+    return version;
+  }
+
+  @Transactional(readOnly = true)
+  public QuestionnaireVersion getById(UUID versionId) {
+    return getManagedById(versionId);
+  }
+
+  @Transactional(readOnly = true)
+  public List<QuestionnaireVersion> listVersions(UUID questionnaireId) {
+    return questionnaireVersionRepository.findByQuestionnaire_IdOrderByVersionNumberDesc(
+        questionnaireId);
+  }
+
+  private QuestionnaireVersion getManagedById(UUID versionId) {
+    return questionnaireVersionRepository
+        .findByIdFetchingAll(versionId)
+        .orElseThrow(
+            () ->
+                new com.foreignerwarsaw.common.web.ApiException(
+                    org.springframework.http.HttpStatus.NOT_FOUND,
+                    "QUESTIONNAIRE_VERSION_NOT_FOUND",
+                    "No version found for id " + versionId));
+  }
 }

@@ -60,6 +60,10 @@ public class ThresholdVersion {
   private User createdBy;
 
   @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "submitted_by")
+  private User submittedBy;
+
+  @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "approved_by")
   private User approvedBy;
 
@@ -120,14 +124,62 @@ public class ThresholdVersion {
     return effectiveTo;
   }
 
+  public String getNotes() {
+    return notes;
+  }
+
+  public User getCreatedBy() {
+    return createdBy;
+  }
+
+  public User getSubmittedBy() {
+    return submittedBy;
+  }
+
+  public User getApprovedBy() {
+    return approvedBy;
+  }
+
   public User getPublishedBy() {
     return publishedBy;
+  }
+
+  public Instant getSubmittedAt() {
+    return submittedAt;
+  }
+
+  public Instant getApprovedAt() {
+    return approvedAt;
+  }
+
+  public Instant getPublishedAt() {
+    return publishedAt;
+  }
+
+  public long getLockVersion() {
+    return lockVersion;
+  }
+
+  /** Phase 9 addition (brief §47): edit a still-DRAFT threshold version's value/dates/notes. */
+  public void updateDraftContent(
+      BigDecimal value, String valueText, LocalDate effectiveFrom, String notes) {
+    requireMutable();
+    this.value = value;
+    this.valueText = valueText;
+    this.effectiveFrom = effectiveFrom;
+    this.notes = notes;
   }
 
   public void submitForReview(User actor, Instant at) {
     PublicationStateMachine.requireAllowed(status, PublicationStatus.IN_REVIEW);
     this.status = PublicationStatus.IN_REVIEW;
+    this.submittedBy = actor;
     this.submittedAt = at;
+  }
+
+  public void sendBackToDraft() {
+    PublicationStateMachine.requireAllowed(status, PublicationStatus.DRAFT);
+    this.status = PublicationStatus.DRAFT;
   }
 
   public void approve(User actor, Instant at) {
@@ -145,7 +197,26 @@ public class ThresholdVersion {
     this.effectiveFrom = effectiveFrom;
   }
 
+  /**
+   * Phase 9 addition (brief §46/§77) - {@code ThresholdVersion} previously had no archive
+   * transition at all, unlike its three siblings; withdrawing a published threshold now works the
+   * same way withdrawing a published Procedure/Rule/Questionnaire version does.
+   */
+  public void archive() {
+    PublicationStateMachine.requireAllowed(status, PublicationStatus.ARCHIVED);
+    this.status = PublicationStatus.ARCHIVED;
+  }
+
   public void closeEffectiveTo(LocalDate effectiveTo) {
     this.effectiveTo = effectiveTo;
+  }
+
+  private void requireMutable() {
+    if (status == PublicationStatus.PUBLISHED || status == PublicationStatus.ARCHIVED) {
+      throw new IllegalStateException(
+          "ThresholdVersion content is immutable once "
+              + status
+              + " - create a new draft version instead");
+    }
   }
 }

@@ -14,9 +14,42 @@ public interface QuestionnaireVersionRepository extends JpaRepository<Questionna
   @Query("SELECT v FROM QuestionnaireVersion v JOIN FETCH v.questionnaire WHERE v.id = :id")
   Optional<QuestionnaireVersion> findByIdFetchingQuestionnaire(@Param("id") UUID id);
 
+  /**
+   * Phase 9 addition - additionally fetch-joins every actor field {@code
+   * AdminQuestionnaireVersionDetailResponse} reads, so the (non-{@code @Transactional}) admin
+   * controller can map the response after the service call returns without a
+   * LazyInitializationException (see {@code ProcedureVersionRepository
+   * #findByProcedure_IdAndVersionNumberFetchingActors}'s Javadoc for the same fix elsewhere).
+   */
+  @Query(
+      """
+      SELECT v FROM QuestionnaireVersion v
+      JOIN FETCH v.questionnaire
+      LEFT JOIN FETCH v.createdBy
+      LEFT JOIN FETCH v.submittedBy
+      LEFT JOIN FETCH v.approvedBy
+      LEFT JOIN FETCH v.publishedBy
+      WHERE v.id = :id
+      """)
+  Optional<QuestionnaireVersion> findByIdFetchingAll(@Param("id") UUID id);
+
   @Query(
       "SELECT v FROM QuestionnaireVersion v JOIN FETCH v.questionnaire WHERE v.questionnaire.id = :questionnaireId AND v.versionNumber = :versionNumber")
   Optional<QuestionnaireVersion> findByQuestionnaire_IdAndVersionNumber(
+      @Param("questionnaireId") UUID questionnaireId, @Param("versionNumber") int versionNumber);
+
+  /** Phase 9 addition - the admin-detail fetch-all variant of the lookup above. */
+  @Query(
+      """
+      SELECT v FROM QuestionnaireVersion v
+      JOIN FETCH v.questionnaire
+      LEFT JOIN FETCH v.createdBy
+      LEFT JOIN FETCH v.submittedBy
+      LEFT JOIN FETCH v.approvedBy
+      LEFT JOIN FETCH v.publishedBy
+      WHERE v.questionnaire.id = :questionnaireId AND v.versionNumber = :versionNumber
+      """)
+  Optional<QuestionnaireVersion> findByQuestionnaire_IdAndVersionNumberFetchingActors(
       @Param("questionnaireId") UUID questionnaireId, @Param("versionNumber") int versionNumber);
 
   /**
@@ -45,4 +78,13 @@ public interface QuestionnaireVersionRepository extends JpaRepository<Questionna
   int findMaxVersionNumber(@Param("questionnaireId") UUID questionnaireId);
 
   List<QuestionnaireVersion> findByStatus(PublicationStatus status);
+
+  /** Phase 9 admin listing (brief §49) - newest first. */
+  @Query(
+      "SELECT v FROM QuestionnaireVersion v JOIN FETCH v.questionnaire WHERE v.questionnaire.id = :questionnaireId ORDER BY v.versionNumber DESC")
+  List<QuestionnaireVersion> findByQuestionnaire_IdOrderByVersionNumberDesc(
+      @Param("questionnaireId") UUID questionnaireId);
+
+  /** Phase 9 admin dashboard addition (brief §16). */
+  long countByStatus(PublicationStatus status);
 }

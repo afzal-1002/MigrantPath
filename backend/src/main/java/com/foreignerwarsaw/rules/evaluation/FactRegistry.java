@@ -64,6 +64,18 @@ public class FactRegistry {
     return questionRepository.findByCode(factCode).map(FactRegistry::fromQuestion);
   }
 
+  /**
+   * Every fact a Phase 9 admin condition builder may offer in its fact dropdown (brief §38) -
+   * derived facts plus every direct fact (Question), so an author never has to know a fact code by
+   * heart or type raw JSON.
+   */
+  @Transactional(readOnly = true)
+  public java.util.List<FactDefinition> listAll() {
+    java.util.List<FactDefinition> all = new java.util.ArrayList<>(DERIVED_FACTS.values());
+    questionRepository.findAll().stream().map(FactRegistry::fromQuestion).forEach(all::add);
+    return all;
+  }
+
   private static FactDefinition fromQuestion(Question question) {
     return new FactDefinition(
         question.getCode(),

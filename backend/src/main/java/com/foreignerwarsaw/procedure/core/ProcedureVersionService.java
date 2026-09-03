@@ -11,6 +11,7 @@ import com.foreignerwarsaw.procedure.step.StepVersion;
 import com.foreignerwarsaw.procedure.step.StepVersionRepository;
 import com.foreignerwarsaw.user.User;
 import java.time.Clock;
+import java.time.LocalDate;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -113,7 +114,26 @@ public class ProcedureVersionService {
   public ProcedureVersion updateDraftContent(
       UUID versionId, String title, String summary, String description) {
     ProcedureVersion version = getManagedById(versionId);
-    version.updateDraftContent(title, summary, description, version.getEffectiveFrom());
+    version.updateDraftContent(
+        title, summary, description, version.getEffectiveFrom(), version.getChangeSummary());
+    return version;
+  }
+
+  /**
+   * Phase 9 addition (brief §20): the full admin overview-tab edit, including {@code effectiveFrom}
+   * and {@code changeSummary} - {@link #updateDraftContent(UUID, String, String, String)} above is
+   * kept unchanged for its existing Phase 4 callers/tests, which never needed either field.
+   */
+  @Transactional
+  public ProcedureVersion updateDraftContent(
+      UUID versionId,
+      String title,
+      String summary,
+      String description,
+      LocalDate effectiveFrom,
+      String changeSummary) {
+    ProcedureVersion version = getManagedById(versionId);
+    version.updateDraftContent(title, summary, description, effectiveFrom, changeSummary);
     return version;
   }
 

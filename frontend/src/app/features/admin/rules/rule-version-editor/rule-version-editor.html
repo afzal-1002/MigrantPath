@@ -1,0 +1,182 @@
+<p><a [routerLink]="['/admin/rules', code]">← {{ code }} versions</a></p>
+
+@if (loading()) {
+  <p>Loading…</p>
+} @else if (error()) {
+  <p class="admin-error">{{ error() }}</p>
+} @else if (version(); as v) {
+  <h1>{{ code }} v{{ v.versionNumber }} <span class="status-badge" [class]="'status-' + v.status">{{ v.status }}</span></h1>
+
+  <nav class="admin-actions">
+    <button type="button" (click)="setSection('condition')">Condition</button>
+    <button type="button" (click)="setSection('sources')">Sources ({{ v.sources.length }})</button>
+    <button type="button" (click)="setSection('history')">History</button>
+  </nav>
+
+  @if (actionError()) { <p class="admin-error">{{ actionError() }}</p> }
+
+  <div class="admin-actions">
+    @if (isDraft()) { <button type="button" (click)="submit()">Submit for review</button> }
+    @if (v.status === 'IN_REVIEW') {
+      <input placeholder="Review comment" [ngModel]="reviewComment()" (ngModelChange)="reviewComment.set($event)" />
+      <button type="button" (click)="approve()">Approve</button>
+      <button type="button" (click)="requestChanges()">Request changes</button>
+    }
+    @if (v.status === 'APPROVED') {
+      <input type="date" [ngModel]="publishEffectiveFrom()" (ngModelChange)="publishEffectiveFrom.set($event)" />
+      <button type="button" (click)="publish()">Publish</button>
+    }
+    @if (v.status === 'PUBLISHED') { <button type="button" (click)="archive()">Archive</button> }
+  </div>
+
+  @switch (section()) {
+    @case ('condition') {
+      <div class="admin-card">
+        <h3>Condition builder</h3>
+        <p>
+          <button type="button" (click)="builderMode.set('simple')" [disabled]="builderMode() === 'simple'">Structured</button>
+          <button type="button" (click)="builderMode.set('advanced')" [disabled]="builderMode() === 'advanced'">Advanced JSON</button>
+        </p>
+
+        @if (builderMode() === 'simple') {
+          <div class="admin-form-row">
+            <label>
+              Combine with
+              <select [ngModel]="combinator()" (ngModelChange)="combinator.set($event)" [disabled]="!isDraft()">
+                <option value="ALL">ALL (every condition must pass)</option>
+                <option value="ANY">ANY (at least one must pass)</option>
+              </select>
+            </label>
+          </div>
+          <table class="admin-table">
+            <thead><tr><th>Fact</th><th>Operator</th><th>Compare against</th><th></th></tr></thead>
+            <tbody>
+              @for (row of leaves(); track $index) {
+                <tr>
+                  <td>
+                    <select [ngModel]="row.fact" (ngModelChange)="updateLeaf($index, { fact: $event })" [disabled]="!isDraft()">
+                      @for (f of facts(); track f.code) { <option [value]="f.code">{{ f.code }}</option> }
+                    </select>
+                  </td>
+                  <td>
+                    <select [ngModel]="row.operator" (ngModelChange)="updateLeaf($index, { operator: $event })" [disabled]="!isDraft()">
+                      @for (op of operatorsFor(row.fact); track op) { <option [value]="op">{{ op }}</option> }
+                    </select>
+                  </td>
+                  <td>
+                    <select [ngModel]="row.valueMode" (ngModelChange)="updateLeaf($index, { valueMode: $event })" [disabled]="!isDraft()">
+                      <option value="literal">Literal value</option>
+                      <option value="threshold">Threshold reference</option>
+                    </select>
+                    @if (row.valueMode === 'literal') {
+                      <input [ngModel]="row.value" (ngModelChange)="updateLeaf($index, { value: $event })" placeholder='e.g. "PL" or 18 or true' [disabled]="!isDraft()" />
+                    } @else {
+                      <input [ngModel]="row.threshold" (ngModelChange)="updateLeaf($index, { threshold: $event })" placeholder="Threshold code" [disabled]="!isDraft()" />
+                    }
+                  </td>
+                  <td>@if (isDraft()) { <button type="button" (click)="removeLeaf($index)">Remove</button> }</td>
+                </tr>
+              } @empty {
+                <tr><td colspan="4">No conditions yet.</td></tr>
+              }
+            </tbody>
+          </table>
+          @if (isDraft()) { <button type="button" (click)="addLeaf()">Add condition</button> }
+        } @else {
+          <div class="admin-form-row">
+            <label for="adv">Condition tree (JSON)</label>
+            <textarea id="adv" [ngModel]="advancedJson()" (ngModelChange)="advancedJson.set($event)" [disabled]="!isDraft()"></textarea>
+          </div>
+        }
+
+        <div class="admin-form-row">
+          <label for="expl">Explanation key</label>
+          <input id="expl" [ngModel]="explanationKey()" (ngModelChange)="explanationKey.set($event)" [disabled]="!isDraft()" />
+        </div>
+        <div class="admin-form-row">
+          <label for="chsum">Change summary</label>
+          <input id="chsum" [ngModel]="changeSummary()" (ngModelChange)="changeSummary.set($event)" [disabled]="!isDraft()" />
+        </div>
+
+        <p><strong>Definition preview:</strong></p>
+        <pre>{{ buildTreeText() }}</pre>
+
+        @if (isDraft()) {
+          <div class="admin-actions">
+            <button type="button" (click)="saveDraft()">Save draft</button>
+            <button type="button" (click)="validate()">Validate</button>
+          </div>
+        }
+        @if (validation(); as val) {
+          <ul class="admin-validation-list">
+            @for (issue of val.issues; track issue.code) { <li>{{ issue.message }}</li> }
+            @empty { <li class="ok">Valid</li> }
+          </ul>
+        }
+      </div>
+
+      <div class="admin-card">
+        <h3>Dry run - preview only, never a real user's data</h3>
+        <div class="admin-form-row">
+          <label for="facts">Synthetic facts (JSON)</label>
+          <textarea id="facts" [ngModel]="dryRunFactsJson()" (ngModelChange)="dryRunFactsJson.set($event)"></textarea>
+        </div>
+        @if (dryRunError()) { <p class="admin-error">{{ dryRunError() }}</p> }
+        <button type="button" (click)="runDryRun()">Run</button>
+        @if (dryRunResult(); as res) {
+          <p><strong>Result: {{ res.status }}</strong></p>
+          @for (t of res.passed.concat(res.failed, res.missing, res.errors); track t.path) {
+            <p>{{ t.path }}: {{ t.description }}</p>
+          }
+        }
+      </div>
+    }
+    @case ('sources') {
+      <table class="admin-table">
+        <thead><tr><th>Title</th><th>Role</th><th>Verification</th></tr></thead>
+        <tbody>
+          @for (s of v.sources; track s.officialSourceId) {
+            <tr>
+              <td><a [routerLink]="['/admin/sources', s.officialSourceId]">{{ s.title }}</a></td>
+              <td>{{ s.role }}</td>
+              <td><span class="status-badge" [class]="'status-' + s.verificationStatus">{{ s.verificationStatus }}</span></td>
+            </tr>
+          } @empty { <tr><td colspan="3">No sources attached yet.</td></tr> }
+        </tbody>
+      </table>
+      @if (isDraft()) {
+        <div class="admin-card">
+          <h3>Attach a source</h3>
+          <div class="admin-form-row"><label>Official source id <input [ngModel]="attachSourceId()" (ngModelChange)="attachSourceId.set($event)" /></label></div>
+          <div class="admin-form-row">
+            <label>
+              Role
+              <select [ngModel]="attachSourceRole()" (ngModelChange)="attachSourceRole.set($event)">
+                <option value="PRIMARY">PRIMARY</option>
+                <option value="LEGAL_BASIS">LEGAL_BASIS</option>
+                <option value="SUPPORTING">SUPPORTING</option>
+              </select>
+            </label>
+          </div>
+          <button type="button" (click)="attachSource()">Attach</button>
+        </div>
+      }
+    }
+    @case ('history') {
+      <table class="admin-table">
+        <thead><tr><th>Status</th><th>Submitted by</th><th>Reviewer</th><th>Comment</th><th>When</th></tr></thead>
+        <tbody>
+          @for (r of reviews(); track r.id) {
+            <tr>
+              <td>{{ r.status }}</td>
+              <td>{{ r.submittedByEmail }}</td>
+              <td>{{ r.reviewerEmail ?? '—' }}</td>
+              <td>{{ r.comment ?? '—' }}</td>
+              <td>{{ r.completedAt ?? r.createdAt }}</td>
+            </tr>
+          } @empty { <tr><td colspan="5">No review history yet.</td></tr> }
+        </tbody>
+      </table>
+    }
+  }
+}

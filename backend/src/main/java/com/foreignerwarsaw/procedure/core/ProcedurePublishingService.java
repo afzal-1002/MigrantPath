@@ -1,5 +1,6 @@
 package com.foreignerwarsaw.procedure.core;
 
+import com.foreignerwarsaw.admin.validation.ValidationIssue;
 import com.foreignerwarsaw.common.web.ApiException;
 import com.foreignerwarsaw.procedure.PublicationStatus;
 import com.foreignerwarsaw.procedure.source.SourceRole;
@@ -7,6 +8,7 @@ import com.foreignerwarsaw.procedure.source.VerificationStatus;
 import com.foreignerwarsaw.user.User;
 import java.time.Clock;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -115,21 +117,55 @@ public class ProcedurePublishingService {
   }
 
   private void validatePublishReadiness(ProcedureVersion version, LocalDate effectiveFrom) {
+    List<ValidationIssue> issues = readiness(version, effectiveFrom);
+    if (!issues.isEmpty()) {
+      ValidationIssue first = issues.get(0);
+      HttpStatus status =
+          first.code().equals("MISSING_EFFECTIVE_FROM")
+                  || first.code().equals("MISSING_TITLE")
+                  || first.code().equals("MISSING_SUMMARY")
+              ? HttpStatus.BAD_REQUEST
+              : HttpStatus.CONFLICT;
+      throw new ApiException(status, first.code(), first.message());
+    }
+  }
+
+  /**
+   * Phase 9 addition (brief §42/§91): the same publish-readiness checks {@link #publish} enforces,
+   * collected rather than thrown-at-first-failure, so an admin editor's Validation panel can show
+   * every outstanding problem at once instead of forcing one publish attempt per fix. {@code
+   * effectiveFrom} is optional here (unlike at real publish time) - a draft being previewed before
+   * an effective date has been chosen simply skips the date-specific check rather than failing it.
+   */
+  @Transactional(readOnly = true)
+  public List<ValidationIssue> readiness(UUID versionId, LocalDate effectiveFrom) {
+    ProcedureVersion version =
+        procedureVersionRepository
+            .findByIdFetchingProcedure(versionId)
+            .orElseThrow(
+                () ->
+                    new ApiException(
+                        HttpStatus.NOT_FOUND,
+                        "PROCEDURE_VERSION_NOT_FOUND",
+                        "No version found for id " + versionId));
+    return readiness(version, effectiveFrom);
+  }
+
+  private List<ValidationIssue> readiness(ProcedureVersion version, LocalDate effectiveFrom) {
+    List<ValidationIssue> issues = new ArrayList<>();
     if (version.getStatus() != PublicationStatus.APPROVED) {
-      throw new ApiException(
-          HttpStatus.CONFLICT, "VERSION_NOT_APPROVED", "Only an APPROVED version can be published");
+      issues.add(
+          new ValidationIssue("VERSION_NOT_APPROVED", "Only an APPROVED version can be published"));
     }
     if (effectiveFrom == null) {
-      throw new ApiException(
-          HttpStatus.BAD_REQUEST, "MISSING_EFFECTIVE_FROM", "effectiveFrom is required to publish");
+      issues.add(
+          new ValidationIssue("MISSING_EFFECTIVE_FROM", "effectiveFrom is required to publish"));
     }
     if (version.getTitle() == null || version.getTitle().isBlank()) {
-      throw new ApiException(
-          HttpStatus.BAD_REQUEST, "MISSING_TITLE", "A title is required to publish");
+      issues.add(new ValidationIssue("MISSING_TITLE", "A title is required to publish"));
     }
     if (version.getSummary() == null || version.getSummary().isBlank()) {
-      throw new ApiException(
-          HttpStatus.BAD_REQUEST, "MISSING_SUMMARY", "A summary is required to publish");
+      issues.add(new ValidationIssue("MISSING_SUMMARY", "A summary is required to publish"));
     }
     List<ProcedureVersionSource> sources =
         procedureVersionSourceRepository.findByProcedureVersion_Id(version.getId());
@@ -141,10 +177,12 @@ public class ProcedurePublishingService {
                         && s.getOfficialSource().getVerificationStatus()
                             == VerificationStatus.VERIFIED);
     if (!hasVerifiedPrimarySource) {
-      throw new ApiException(
-          HttpStatus.CONFLICT,
-          "NO_VERIFIED_SOURCE",
-          "A version cannot be published without at least one VERIFIED primary official source");
+      issues.add(
+          new ValidationIssue(
+              "NO_VERIFIED_SOURCE",
+              "A version cannot be published without at least one VERIFIED primary official"
+                  + " source"));
     }
+    return issues;
   }
 }

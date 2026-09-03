@@ -1,0 +1,46 @@
+<h1>Thresholds</h1>
+
+<div class="admin-actions">
+  <button type="button" (click)="showCreate.set(!showCreate())">{{ showCreate() ? 'Cancel' : 'New threshold' }}</button>
+</div>
+
+@if (showCreate()) {
+  <div class="admin-card">
+    <div class="admin-form-row"><label>Code <input [ngModel]="newCode()" (ngModelChange)="newCode.set($event)" /></label></div>
+    <div class="admin-form-row"><label>Canonical name <input [ngModel]="newName()" (ngModelChange)="newName.set($event)" /></label></div>
+    <div class="admin-form-row">
+      <label>
+        Value type
+        <select [ngModel]="newValueType()" (ngModelChange)="newValueType.set($event)">
+          <option value="MONEY">MONEY</option>
+          <option value="DECIMAL">DECIMAL</option>
+          <option value="INTEGER">INTEGER</option>
+          <option value="PERCENTAGE">PERCENTAGE</option>
+          <option value="DURATION">DURATION</option>
+          <option value="TEXT">TEXT</option>
+        </select>
+      </label>
+    </div>
+    @if (createError()) { <p class="admin-error">{{ createError() }}</p> }
+    <button type="button" (click)="createThreshold()">Create</button>
+  </div>
+}
+
+@if (loading()) {
+  <p>Loading…</p>
+} @else if (error()) {
+  <p class="admin-error">Could not load thresholds.</p>
+} @else {
+  <table class="admin-table">
+    <thead><tr><th>Code</th><th>Name</th><th>Value type</th></tr></thead>
+    <tbody>
+      @for (t of thresholds(); track t.code) {
+        <tr>
+          <td><a [routerLink]="['/admin/thresholds', t.code]">{{ t.code }}</a></td>
+          <td>{{ t.canonicalName }}</td>
+          <td>{{ t.valueType }}</td>
+        </tr>
+      } @empty { <tr><td colspan="3">No thresholds yet.</td></tr> }
+    </tbody>
+  </table>
+}

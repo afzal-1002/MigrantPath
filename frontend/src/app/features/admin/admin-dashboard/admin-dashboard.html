@@ -1,0 +1,33 @@
+<h1>Admin dashboard</h1>
+
+@if (loading()) {
+  <p>Loading…</p>
+} @else if (error()) {
+  <p class="admin-error">Could not load the dashboard summary.</p>
+} @else if (summary(); as s) {
+  <div class="admin-dashboard-grid">
+    <div class="admin-card">
+      <h3>Draft content</h3>
+      <p>{{ s.draftProcedureVersions }} procedure version(s)</p>
+      <p>{{ s.draftRuleVersions }} rule version(s)</p>
+      <p>{{ s.draftThresholdVersions }} threshold version(s)</p>
+      <p>{{ s.draftQuestionnaireVersions }} questionnaire version(s)</p>
+    </div>
+    <div class="admin-card">
+      <h3>Waiting for review</h3>
+      <p><a routerLink="/admin/reviews">{{ s.pendingReviews }} item(s) pending review</a></p>
+    </div>
+    <div class="admin-card">
+      <h3>Approved, awaiting publication</h3>
+      <p>{{ s.approvedProcedureVersionsAwaitingPublication }} procedure version(s)</p>
+      <p>{{ s.approvedRuleVersionsAwaitingPublication }} rule version(s)</p>
+      <p>{{ s.approvedThresholdVersionsAwaitingPublication }} threshold version(s)</p>
+      <p>{{ s.approvedQuestionnaireVersionsAwaitingPublication }} questionnaire version(s)</p>
+    </div>
+    <div class="admin-card">
+      <h3>Sources</h3>
+      <p><a routerLink="/admin/sources">{{ s.sourcesNeedingReview }} needing review</a></p>
+      <p><a routerLink="/admin/sources">{{ s.outdatedSources }} marked outdated</a></p>
+    </div>
+  </div>
+}

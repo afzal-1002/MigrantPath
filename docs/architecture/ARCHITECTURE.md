@@ -349,7 +349,7 @@ exactly reproducible even after rules, procedure content, or thresholds later ch
 (ADR-010). Phase 8 (user cases) consumes a `Recommendation` by reference only and never
 alters recommendation history.
 
-## 8. Versioning & source traceability
+## 8. Versioning & source traceability (workflow mechanics IMPLEMENTED, Phase 9 — ADR-012)
 
 Every legally significant fact traces to an `OfficialSource` row
 (`authority, title, sourceUrl, jurisdiction, language, sourceType, publishedDate,
@@ -372,14 +372,22 @@ Source changes (admin notices, or future change-detection tooling)
   → Affected users may be notified; existing cases flag "requirements changed" (§5)
 ```
 
-Content status progression: `DRAFT → IN_REVIEW → APPROVED → PUBLISHED → ARCHIVED`.
-Before a procedure version can move to `PUBLISHED`, publish validation checks: it has an
-official source, a jurisdiction, at least one version, referenced thresholds exist,
-there are no broken references, and effective dates are sane (brief §94).
+Content status progression: `DRAFT → IN_REVIEW → APPROVED → PUBLISHED → ARCHIVED`
+(`PublicationStateMachine`, shared by all four version types since Phase 4-8; the Phase 9
+Admin Panel is the first UI/API surface to expose the full submit/approve/publish/archive
+cycle — see [docs/admin/CONTENT_REVIEW_WORKFLOW.md](../admin/CONTENT_REVIEW_WORKFLOW.md)).
+Before a version can move to `PUBLISHED`, publish validation checks a version-specific set
+of conditions (a verified primary source, a valid condition tree, an acyclic dependency
+graph, ...) — see [docs/admin/PUBLISHING_CHECKLIST.md](../admin/PUBLISHING_CHECKLIST.md)
+for the exact, implemented checklist per content type.
 
-AI may assist by detecting/summarizing source changes or suggesting rule diffs, but a
-human administrator approves every publish — AI-authored legal content never goes live
-unreviewed (Product Requirements, non-scope; brief §24/§53).
+Separation of duties is enforced once, centrally, for all four content types
+(`ContentReviewCoordinator`, ADR-012): the account that submitted a version can never also
+approve/reject it, even holding `LEGAL_REVIEWER`. `ADMIN` may still both approve and
+publish the same version (a documented, brief-approved simplification of full
+`creator != approver != publisher`). No AI is involved in approval or publication anywhere
+in this codebase (Product Requirements, non-scope; brief §24/§53/§135) — every publish is a
+human `ADMIN` action, every approval a human `LEGAL_REVIEWER`/`ADMIN` action.
 
 **Provenance chain**: every user-visible legal fact must resolve, mechanically, to an
 `OfficialSource` — e.g. `UserCaseDocument → DocumentRequirementVersion → OfficialSource`,

@@ -1,0 +1,4 @@
+// Layout rules for .admin-layout/.admin-nav/.admin-content live in src/styles.scss
+// (global, not component-scoped) since they must also apply inside every routed admin
+// page rendered through this shell's <router-outlet> - Angular's per-component view
+// encapsulation would not let a scoped rule here reach into those child components.

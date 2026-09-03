@@ -984,7 +984,24 @@ own title/summary or source-record changes).
 
 ---
 
-## Phase 9 — Admin panel
+## Phase 9 — Admin panel — ✅ COMPLETE (see [PHASE_9_REPORT.md](PHASE_9_REPORT.md))
+
+Delivered: `AuditLog` + `AdminReview` (append-only, entity-agnostic across the four content
+types) and `ContentReviewCoordinator` (self-approval prevention, centralized once); a full
+`/api/v1/admin/**` surface (list/detail/diff/impact/validate/dry-run for
+Procedure/Rule/Threshold/Questionnaire/Source, plus review queue, audit log, and role
+management), reusing rather than duplicating the pre-existing Phase 4-8 lifecycle
+(`PublicationStateMachine`, publish-readiness validation); and a real Angular `/admin` panel
+(dashboard, procedures editor with steps/documents/fees/sources tabs, a structured Rule
+condition builder with dry-run, threshold/source/questionnaire management, reviews, audit,
+users). Deviations (structured Rule builder covers one ALL/ANY group with a JSON fallback for
+anything more complex; Threshold has no version-copy action or VERIFIED-source publish gate;
+Questionnaire question/dependency editing stays read-only; content created through the
+pre-Phase-9 `/api/v1/internal/content/**` endpoints is not retrofitted into the audit trail) are
+documented in full in PHASE_9_REPORT.md - see there before starting Phase 10.
+
+The task breakdown below is retained as the original plan; the report above reflects what was
+actually built and where it differs.
 
 #### 9.1 Migration + entities: AdminReview, AuditLog
 - **Database/Backend:** per DATABASE.md §9.

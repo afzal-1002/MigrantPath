@@ -1,0 +1,258 @@
+<p><a [routerLink]="['/admin/procedures', code]">← {{ code }} versions</a></p>
+
+@if (loading()) {
+  <p>Loading…</p>
+} @else if (error()) {
+  <p class="admin-error">{{ error() }}</p>
+} @else if (version(); as v) {
+  <h1>{{ code }} v{{ v.versionNumber }} <span class="status-badge" [class]="'status-' + v.status">{{ v.status }}</span></h1>
+
+  <nav class="admin-actions">
+    <button type="button" (click)="setSection('overview')">Overview</button>
+    <button type="button" (click)="setSection('steps')">Steps ({{ v.steps.length }})</button>
+    <button type="button" (click)="setSection('documents')">Documents ({{ v.documents.length }})</button>
+    <button type="button" (click)="setSection('fees')">Fees ({{ v.fees.length }})</button>
+    <button type="button" (click)="setSection('sources')">Sources ({{ v.sources.length }})</button>
+    <button type="button" (click)="setSection('validation')">Validation</button>
+    <button type="button" (click)="setSection('history')">History</button>
+  </nav>
+
+  @if (actionError()) {
+    <p class="admin-error">{{ actionError() }}</p>
+  }
+
+  <div class="admin-actions">
+    @if (isDraft()) {
+      <button type="button" (click)="submit()">Submit for review</button>
+    }
+    @if (v.status === 'IN_REVIEW') {
+      <input placeholder="Review comment" [ngModel]="reviewComment()" (ngModelChange)="reviewComment.set($event)" />
+      <button type="button" (click)="approve()">Approve</button>
+      <button type="button" (click)="requestChanges()">Request changes</button>
+    }
+    @if (v.status === 'APPROVED') {
+      <input type="date" [ngModel]="publishEffectiveFrom()" (ngModelChange)="publishEffectiveFrom.set($event)" />
+      <button type="button" (click)="publish()">Publish</button>
+    }
+    @if (v.status === 'PUBLISHED') {
+      <button type="button" (click)="archive()">Archive</button>
+    }
+  </div>
+
+  @switch (section()) {
+    @case ('overview') {
+      <div class="admin-card">
+        <div class="admin-form-row">
+          <label for="ov-title">Title</label>
+          <input id="ov-title" [ngModel]="overviewTitle()" (ngModelChange)="overviewTitle.set($event)" [disabled]="!isDraft()" />
+        </div>
+        <div class="admin-form-row">
+          <label for="ov-summary">Summary</label>
+          <textarea id="ov-summary" [ngModel]="overviewSummary()" (ngModelChange)="overviewSummary.set($event)" [disabled]="!isDraft()"></textarea>
+        </div>
+        <div class="admin-form-row">
+          <label for="ov-description">Description</label>
+          <textarea id="ov-description" [ngModel]="overviewDescription()" (ngModelChange)="overviewDescription.set($event)" [disabled]="!isDraft()"></textarea>
+        </div>
+        <div class="admin-form-row">
+          <label for="ov-effective">Effective from (used at publish time; editable here as a plan)</label>
+          <input id="ov-effective" type="date" [ngModel]="overviewEffectiveFrom()" (ngModelChange)="overviewEffectiveFrom.set($event)" [disabled]="!isDraft()" />
+        </div>
+        <div class="admin-form-row">
+          <label for="ov-change">Change summary</label>
+          <textarea id="ov-change" [ngModel]="overviewChangeSummary()" (ngModelChange)="overviewChangeSummary.set($event)" [disabled]="!isDraft()"></textarea>
+        </div>
+        @if (isDraft()) {
+          <button type="button" (click)="saveOverview()">Save overview</button>
+        }
+        <p>Created by {{ v.createdBy?.email ?? '—' }}. Submitted by {{ v.submittedBy?.email ?? '—' }}. Approved by
+          {{ v.approvedBy?.email ?? '—' }}. Published by {{ v.publishedBy?.email ?? '—' }}.</p>
+      </div>
+    }
+    @case ('steps') {
+      <table class="admin-table">
+        <thead><tr><th>Code</th><th>Title</th><th>Type</th><th>Order</th><th>Mandatory</th><th></th></tr></thead>
+        <tbody>
+          @for (s of v.steps; track s.id) {
+            <tr>
+              <td>{{ s.stableCode }}</td>
+              <td>{{ s.title }}</td>
+              <td>{{ s.stepType }}</td>
+              <td>{{ s.sortOrder }}</td>
+              <td>{{ s.mandatory ? 'Yes' : 'No' }}</td>
+              <td>@if (isDraft()) { <button type="button" (click)="removeStep(s.id)">Remove</button> }</td>
+            </tr>
+          } @empty {
+            <tr><td colspan="6">No steps yet.</td></tr>
+          }
+        </tbody>
+      </table>
+      @if (isDraft()) {
+        <div class="admin-card">
+          <h3>Add step</h3>
+          <div class="admin-form-row"><label>Stable code <input [ngModel]="newStepCode()" (ngModelChange)="newStepCode.set($event)" /></label></div>
+          <div class="admin-form-row"><label>Title <input [ngModel]="newStepTitle()" (ngModelChange)="newStepTitle.set($event)" /></label></div>
+          <div class="admin-form-row">
+            <label>
+              Type
+              <select [ngModel]="newStepType()" (ngModelChange)="newStepType.set($event)">
+                <option value="PREPARATION">PREPARATION</option>
+                <option value="DOCUMENT_COLLECTION">DOCUMENT_COLLECTION</option>
+                <option value="APPLICATION_SUBMISSION">APPLICATION_SUBMISSION</option>
+                <option value="APPOINTMENT">APPOINTMENT</option>
+                <option value="PAYMENT">PAYMENT</option>
+                <option value="WAITING">WAITING</option>
+                <option value="DECISION">DECISION</option>
+                <option value="OTHER">OTHER</option>
+              </select>
+            </label>
+          </div>
+          <div class="admin-form-row"><label>Sort order <input type="number" [ngModel]="newStepSortOrder()" (ngModelChange)="newStepSortOrder.set($event)" /></label></div>
+          <div class="admin-form-row">
+            <label><input type="checkbox" [ngModel]="newStepMandatory()" (ngModelChange)="newStepMandatory.set($event)" /> Mandatory</label>
+          </div>
+          <button type="button" (click)="addStep()">Add step</button>
+        </div>
+      }
+    }
+    @case ('documents') {
+      <table class="admin-table">
+        <thead><tr><th>Code</th><th>Name</th><th>Requirement type</th><th>Order</th><th></th></tr></thead>
+        <tbody>
+          @for (d of v.documents; track d.id) {
+            <tr>
+              <td>{{ d.stableCode }}</td>
+              <td>{{ d.name }}</td>
+              <td>
+                @if (isDraft()) {
+                  <select [ngModel]="d.requirementType" (ngModelChange)="updateDocumentType(d, $event)">
+                    <option value="DEFAULT_REQUIRED">DEFAULT_REQUIRED</option>
+                    <option value="CONDITIONAL">CONDITIONAL</option>
+                    <option value="INFORMATIONAL">INFORMATIONAL</option>
+                  </select>
+                } @else {
+                  {{ d.requirementType }}
+                }
+              </td>
+              <td>{{ d.sortOrder }}</td>
+              <td>@if (isDraft()) { <button type="button" (click)="removeDocument(d.id)">Remove</button> }</td>
+            </tr>
+          } @empty {
+            <tr><td colspan="5">No documents yet.</td></tr>
+          }
+        </tbody>
+      </table>
+      @if (isDraft()) {
+        <div class="admin-card">
+          <h3>Add document requirement</h3>
+          <div class="admin-form-row"><label>Stable code <input [ngModel]="newDocCode()" (ngModelChange)="newDocCode.set($event)" /></label></div>
+          <div class="admin-form-row"><label>Name <input [ngModel]="newDocName()" (ngModelChange)="newDocName.set($event)" /></label></div>
+          <div class="admin-form-row">
+            <label>
+              Requirement type
+              <select [ngModel]="newDocType()" (ngModelChange)="newDocType.set($event)">
+                <option value="DEFAULT_REQUIRED">DEFAULT_REQUIRED</option>
+                <option value="CONDITIONAL">CONDITIONAL</option>
+                <option value="INFORMATIONAL">INFORMATIONAL</option>
+              </select>
+            </label>
+          </div>
+          <div class="admin-form-row"><label>Sort order <input type="number" [ngModel]="newDocSortOrder()" (ngModelChange)="newDocSortOrder.set($event)" /></label></div>
+          <button type="button" (click)="addDocument()">Add document</button>
+        </div>
+      }
+    }
+    @case ('fees') {
+      <table class="admin-table">
+        <thead><tr><th>Code</th><th>Amount</th><th>Currency</th><th></th></tr></thead>
+        <tbody>
+          @for (f of v.fees; track f.id) {
+            <tr>
+              <td>{{ f.stableCode }}</td>
+              <td>{{ f.amount }}</td>
+              <td>{{ f.currency }}</td>
+              <td>@if (isDraft()) { <button type="button" (click)="removeFee(f.id)">Remove</button> }</td>
+            </tr>
+          } @empty {
+            <tr><td colspan="4">No fees yet.</td></tr>
+          }
+        </tbody>
+      </table>
+      @if (isDraft()) {
+        <div class="admin-card">
+          <h3>Add fee</h3>
+          <div class="admin-form-row"><label>Stable code <input [ngModel]="newFeeCode()" (ngModelChange)="newFeeCode.set($event)" /></label></div>
+          <div class="admin-form-row"><label>Amount <input type="number" [ngModel]="newFeeAmount()" (ngModelChange)="newFeeAmount.set($event)" /></label></div>
+          <div class="admin-form-row"><label>Currency <input [ngModel]="newFeeCurrency()" (ngModelChange)="newFeeCurrency.set($event)" /></label></div>
+          <button type="button" (click)="addFee()">Add fee</button>
+        </div>
+      }
+    }
+    @case ('sources') {
+      <table class="admin-table">
+        <thead><tr><th>Title</th><th>Role</th><th>Verification</th></tr></thead>
+        <tbody>
+          @for (s of v.sources; track s.officialSourceId) {
+            <tr>
+              <td><a [routerLink]="['/admin/sources', s.officialSourceId]">{{ s.title }}</a></td>
+              <td>{{ s.role }}</td>
+              <td><span class="status-badge" [class]="'status-' + s.verificationStatus">{{ s.verificationStatus }}</span></td>
+            </tr>
+          } @empty {
+            <tr><td colspan="3">No sources attached yet.</td></tr>
+          }
+        </tbody>
+      </table>
+      @if (isDraft()) {
+        <div class="admin-card">
+          <h3>Attach a source</h3>
+          <div class="admin-form-row"><label>Official source id <input [ngModel]="attachSourceId()" (ngModelChange)="attachSourceId.set($event)" /></label></div>
+          <div class="admin-form-row">
+            <label>
+              Role
+              <select [ngModel]="attachSourceRole()" (ngModelChange)="attachSourceRole.set($event)">
+                <option value="PRIMARY">PRIMARY</option>
+                <option value="SUPPORTING">SUPPORTING</option>
+                <option value="LEGAL_BASIS">LEGAL_BASIS</option>
+              </select>
+            </label>
+          </div>
+          <button type="button" (click)="attachSource()">Attach</button>
+          <p><a routerLink="/admin/sources">Find or create a source →</a></p>
+        </div>
+      }
+    }
+    @case ('validation') {
+      @if (validation(); as val) {
+        <ul class="admin-validation-list">
+          @for (issue of val.issues; track issue.code) {
+            <li>{{ issue.message }}</li>
+          }
+          @empty {
+            <li class="ok">Ready to publish</li>
+          }
+        </ul>
+      } @else {
+        <p>Checking…</p>
+      }
+    }
+    @case ('history') {
+      <table class="admin-table">
+        <thead><tr><th>Status</th><th>Submitted by</th><th>Reviewer</th><th>Comment</th><th>When</th></tr></thead>
+        <tbody>
+          @for (r of reviews(); track r.id) {
+            <tr>
+              <td>{{ r.status }}</td>
+              <td>{{ r.submittedByEmail }}</td>
+              <td>{{ r.reviewerEmail ?? '—' }}</td>
+              <td>{{ r.comment ?? '—' }}</td>
+              <td>{{ r.completedAt ?? r.createdAt }}</td>
+            </tr>
+          } @empty {
+            <tr><td colspan="5">No review history yet.</td></tr>
+          }
+        </tbody>
+      </table>
+    }
+  }
+}

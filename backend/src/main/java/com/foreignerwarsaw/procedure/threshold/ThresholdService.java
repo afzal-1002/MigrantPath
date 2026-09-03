@@ -1,10 +1,12 @@
 package com.foreignerwarsaw.procedure.threshold;
 
+import com.foreignerwarsaw.admin.validation.ValidationIssue;
 import com.foreignerwarsaw.common.web.ApiException;
 import com.foreignerwarsaw.user.User;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -66,10 +68,76 @@ public class ThresholdService {
   }
 
   @Transactional
+  public ThresholdVersion sendBackToDraft(UUID versionId) {
+    ThresholdVersion version = getManagedById(versionId);
+    version.sendBackToDraft();
+    return version;
+  }
+
+  @Transactional
   public ThresholdVersion approve(UUID versionId, User actor) {
     ThresholdVersion version = getManagedById(versionId);
     version.approve(actor, clock.instant());
     return version;
+  }
+
+  /**
+   * Phase 9 addition (brief §46/§77) - {@code ThresholdVersion} previously had no archive action
+   * exposed anywhere, unlike its three siblings.
+   */
+  @Transactional
+  public ThresholdVersion archive(UUID versionId) {
+    ThresholdVersion version = getManagedById(versionId);
+    version.archive();
+    return version;
+  }
+
+  /** Phase 9 addition (brief §47): edit a still-DRAFT threshold version's value/dates/notes. */
+  @Transactional
+  public ThresholdVersion updateDraftContent(
+      UUID versionId, BigDecimal value, String valueText, LocalDate effectiveFrom, String notes) {
+    ThresholdVersion version = getManagedById(versionId);
+    version.updateDraftContent(value, valueText, effectiveFrom, notes);
+    return version;
+  }
+
+  /** Phase 9 addition (brief §42/§91), mirroring {@code ProcedurePublishingService#readiness}. */
+  @Transactional(readOnly = true)
+  public List<ValidationIssue> readiness(UUID versionId) {
+    ThresholdVersion version = getManagedById(versionId);
+    List<ValidationIssue> issues = new ArrayList<>();
+    if (version.getValue() == null && version.getValueText() == null) {
+      issues.add(
+          new ValidationIssue(
+              "THRESHOLD_VALUE_MISSING", "Cannot publish a threshold version with no value"));
+    }
+    if (version.getEffectiveFrom() == null) {
+      issues.add(
+          new ValidationIssue("MISSING_EFFECTIVE_FROM", "effectiveFrom is required to publish"));
+    }
+    return issues;
+  }
+
+  @Transactional(readOnly = true)
+  public List<Threshold> listAll() {
+    return thresholdRepository.findAll();
+  }
+
+  @Transactional(readOnly = true)
+  public Threshold getByCode(String code) {
+    return thresholdRepository
+        .findByCodeIgnoreCase(code)
+        .orElseThrow(() -> new ThresholdNotFoundException(code));
+  }
+
+  @Transactional(readOnly = true)
+  public List<ThresholdVersion> listVersions(UUID thresholdId) {
+    return thresholdVersionRepository.findByThreshold_Id(thresholdId);
+  }
+
+  @Transactional(readOnly = true)
+  public ThresholdVersion getVersionById(UUID versionId) {
+    return getManagedById(versionId);
   }
 
   /**
@@ -122,7 +190,7 @@ public class ThresholdService {
 
   private ThresholdVersion getManagedById(UUID versionId) {
     return thresholdVersionRepository
-        .findById(versionId)
+        .findByIdFetchingAll(versionId)
         .orElseThrow(
             () ->
                 new ApiException(

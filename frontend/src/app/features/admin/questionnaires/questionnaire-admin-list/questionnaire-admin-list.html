@@ -1,0 +1,28 @@
+<h1>Questionnaires</h1>
+
+<p>Creating a brand-new questionnaire identity is not supported yet - copy a version of an existing
+  questionnaire to start a new draft (see the seeded Warsaw General Assessment below).</p>
+
+@if (loading()) {
+  <p>Loading…</p>
+} @else if (error()) {
+  <p class="admin-error">Could not load questionnaires.</p>
+} @else {
+  <table class="admin-table">
+    <thead><tr><th>Code</th><th>Active version</th><th>Latest version</th></tr></thead>
+    <tbody>
+      @for (q of questionnaires(); track q.code) {
+        <tr>
+          <td><a [routerLink]="['/admin/questionnaires', q.code]">{{ q.code }}</a></td>
+          <td>{{ q.activeVersionNumber ? 'v' + q.activeVersionNumber : '—' }}</td>
+          <td>
+            @if (q.latestVersionNumber) {
+              v{{ q.latestVersionNumber }}
+              <span class="status-badge" [class]="'status-' + q.latestVersionStatus">{{ q.latestVersionStatus }}</span>
+            } @else { — }
+          </td>
+        </tr>
+      } @empty { <tr><td colspan="3">No questionnaires yet.</td></tr> }
+    </tbody>
+  </table>
+}

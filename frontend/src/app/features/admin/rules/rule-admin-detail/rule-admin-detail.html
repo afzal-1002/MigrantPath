@@ -1,0 +1,38 @@
+<p><a routerLink="/admin/rules">← All rules</a></p>
+<h1>{{ code }}</h1>
+
+<div class="admin-card">
+  <h3>Create draft version</h3>
+  <div class="admin-form-row">
+    <label for="tree">Condition tree (JSON)</label>
+    <textarea id="tree" [ngModel]="newConditionTree()" (ngModelChange)="newConditionTree.set($event)"></textarea>
+  </div>
+  <div class="admin-form-row">
+    <label for="key">Explanation key</label>
+    <input id="key" [ngModel]="newExplanationKey()" (ngModelChange)="newExplanationKey.set($event)" />
+  </div>
+  @if (createError()) { <p class="admin-error">{{ createError() }}</p> }
+  <button type="button" (click)="createDraft()">Create draft</button>
+  <p>The structured condition builder is available once a draft is open - <a routerLink="/admin/facts">see available facts</a>.</p>
+</div>
+
+@if (loading()) {
+  <p>Loading…</p>
+} @else if (error()) {
+  <p class="admin-error">Could not load version history.</p>
+} @else {
+  <table class="admin-table">
+    <thead><tr><th>Version</th><th>Status</th><th>Effective from</th></tr></thead>
+    <tbody>
+      @for (v of versions(); track v.versionNumber) {
+        <tr>
+          <td><a [routerLink]="['/admin/rules', code, 'versions', v.versionNumber]">v{{ v.versionNumber }}</a></td>
+          <td><span class="status-badge" [class]="'status-' + v.status">{{ v.status }}</span></td>
+          <td>{{ v.effectiveFrom ?? '—' }}</td>
+        </tr>
+      } @empty {
+        <tr><td colspan="3">No versions yet.</td></tr>
+      }
+    </tbody>
+  </table>
+}

@@ -18,4 +18,15 @@ public interface RuleThresholdReferenceRepository
    */
   @Query("SELECT r FROM RuleThresholdReference r WHERE r.id.thresholdCode = :thresholdCode")
   List<RuleThresholdReference> findByThresholdCode(@Param("thresholdCode") String thresholdCode);
+
+  /**
+   * Phase 9 threshold-impact-analysis addition (brief §48) - fetch-joins {@code ruleVersion.rule}
+   * so the admin controller can read {@code getRuleVersion().getRule().getCode()} after this
+   * repository call's own transaction has closed, without a LazyInitializationException.
+   */
+  @Query(
+      "SELECT r FROM RuleThresholdReference r JOIN FETCH r.ruleVersion rv JOIN FETCH rv.rule"
+          + " WHERE r.id.thresholdCode = :thresholdCode")
+  List<RuleThresholdReference> findByThresholdCodeFetchingRule(
+      @Param("thresholdCode") String thresholdCode);
 }

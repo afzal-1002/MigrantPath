@@ -83,6 +83,10 @@ public class SourceVerification {
     return checkedAt;
   }
 
+  public User getCheckedBy() {
+    return checkedBy;
+  }
+
   public VerificationStatus getStatus() {
     return status;
   }

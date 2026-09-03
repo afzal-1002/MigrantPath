@@ -1,0 +1,75 @@
+<p><a routerLink="/admin/questionnaires">← All questionnaires</a></p>
+<h1>{{ code }}</h1>
+
+<div class="admin-card">
+  <h3>Create a new draft from an existing version</h3>
+  <div class="admin-form-row">
+    <label>
+      Copy from version
+      <select [ngModel]="copyFromVersion()" (ngModelChange)="copyFromVersion.set($event)">
+        @for (v of versions(); track v.versionNumber) { <option [ngValue]="v.versionNumber">v{{ v.versionNumber }} ({{ v.status }})</option> }
+      </select>
+    </label>
+  </div>
+  <div class="admin-form-row"><label>New title <input [ngModel]="copyTitle()" (ngModelChange)="copyTitle.set($event)" /></label></div>
+  <div class="admin-form-row"><label>Description <textarea [ngModel]="copyDescription()" (ngModelChange)="copyDescription.set($event)"></textarea></label></div>
+  @if (actionError()) { <p class="admin-error">{{ actionError() }}</p> }
+  <button type="button" (click)="copyVersion()">Create draft</button>
+</div>
+
+<div class="admin-form-row">
+  <label>
+    Review comment / publish effective-from (used below)
+    <input [ngModel]="reviewComment()" (ngModelChange)="reviewComment.set($event)" placeholder="Review comment" />
+    <input type="date" [ngModel]="publishEffectiveFrom()" (ngModelChange)="publishEffectiveFrom.set($event)" />
+  </label>
+</div>
+
+@if (loading()) {
+  <p>Loading…</p>
+} @else if (error()) {
+  <p class="admin-error">Could not load versions.</p>
+} @else {
+  @for (v of versions(); track v.versionNumber) {
+    <div class="admin-card">
+      <p><strong>v{{ v.versionNumber }} — {{ v.title }}</strong>
+        <span class="status-badge" [class]="'status-' + v.status">{{ v.status }}</span></p>
+      <p>Effective {{ v.effectiveFrom ?? '—' }} → {{ v.effectiveTo ?? '—' }}. {{ v.questions.length }} question(s).</p>
+      <div class="admin-actions">
+        @if (v.status === 'DRAFT') { <button type="button" (click)="submit(v.versionNumber)">Submit for review</button> }
+        @if (v.status === 'IN_REVIEW') {
+          <button type="button" (click)="approve(v.versionNumber)">Approve</button>
+          <button type="button" (click)="requestChanges(v.versionNumber)">Request changes</button>
+        }
+        @if (v.status === 'APPROVED') { <button type="button" (click)="publish(v.versionNumber)">Publish</button> }
+        @if (v.status === 'PUBLISHED') { <button type="button" (click)="archive(v.versionNumber)">Archive</button> }
+        <button type="button" (click)="toggleExpand(v.versionNumber)">
+          {{ expanded()[v.versionNumber] ? 'Hide questions' : 'Show questions' }}
+        </button>
+        <button type="button" (click)="loadImpact(v.versionNumber)">Check impact</button>
+      </div>
+      @if (impactByVersion()[v.versionNumber]; as imp) {
+        <p>{{ imp.description }}: {{ imp.count }}</p>
+      }
+      @if (expanded()[v.versionNumber]) {
+        <table class="admin-table">
+          <thead><tr><th>Code</th><th>Section</th><th>Label</th><th>Type</th><th>Required</th><th>Order</th></tr></thead>
+          <tbody>
+            @for (q of v.questions; track q.questionCode) {
+              <tr>
+                <td>{{ q.questionCode }}</td>
+                <td>{{ q.sectionCode }}</td>
+                <td>{{ q.label }}</td>
+                <td>{{ q.questionType }}</td>
+                <td>{{ q.required ? 'Yes' : 'No' }}</td>
+                <td>{{ q.sortOrder }}</td>
+              </tr>
+            } @empty { <tr><td colspan="6">No questions.</td></tr> }
+          </tbody>
+        </table>
+      }
+    </div>
+  } @empty {
+    <p>No versions yet.</p>
+  }
+}

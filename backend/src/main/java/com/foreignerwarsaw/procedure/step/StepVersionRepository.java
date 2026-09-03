@@ -18,4 +18,13 @@ public interface StepVersionRepository extends JpaRepository<StepVersion, UUID> 
       "SELECT sv FROM StepVersion sv JOIN FETCH sv.procedureStep WHERE sv.procedureVersion.id = :procedureVersionId ORDER BY sv.sortOrder ASC")
   List<StepVersion> findByProcedureVersion_IdOrderBySortOrderAsc(
       @Param("procedureVersionId") UUID procedureVersionId);
+
+  /**
+   * Phase 9 addition (brief §21) - both fetch joins are required: {@code procedureStep} for {@code
+   * StepResponse#from}'s stable code, {@code procedureVersion} for {@code
+   * ProcedureStepService#updateStep}/{@code removeStep}'s own DRAFT-only guard.
+   */
+  @Query(
+      "SELECT sv FROM StepVersion sv JOIN FETCH sv.procedureStep JOIN FETCH sv.procedureVersion WHERE sv.id = :id")
+  java.util.Optional<StepVersion> findByIdFetchingAll(@Param("id") UUID id);
 }

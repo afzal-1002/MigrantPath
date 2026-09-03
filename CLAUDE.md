@@ -16,21 +16,23 @@ expansion). Read these before making changes, in this order:
 6. [docs/product/IMPLEMENTATION_PLAN.md](docs/product/IMPLEMENTATION_PLAN.md) — the full phase-by-phase task breakdown; find the next task here before starting new work
 7. [docs/architecture/ADR/](docs/architecture/ADR/) — the "why" behind the foundational decisions
 
-**Current status: Phase 8 (user cases + personalized checklist) complete** — see
-[docs/product/PHASE_8_REPORT.md](docs/product/PHASE_8_REPORT.md). Auth (Phase 2),
-reference data (Phase 3), versioned procedure content (Phase 4), the questionnaire/
-assessment engine (Phase 5), the deterministic rules engine (Phase 6), and the
-recommendation engine (Phase 7, see
-[PHASE_7_REPORT.md](docs/product/PHASE_7_REPORT.md)) all work end to end; a user can now
-turn an allowed `Recommendation` into a persistent `UserCase` — an immutable per-
-procedure-version snapshot of steps/documents/fees (never silently mutated by a later
-Procedure republish — see
-[ADR-011](docs/architecture/ADR/ADR-011-user-case-snapshots.md) and
-[docs/cases/](docs/cases/)), with checklist status tracking, deterministic progress,
-requirement-change detection, and an explicit upgrade flow, plus a real "My Cases"/case
-detail Angular UI. Admin tooling and real production legal content are still later
-phases per IMPLEMENTATION_PLAN.md. Work through IMPLEMENTATION_PLAN.md's tasks in order
-starting at Phase 9.
+**Current status: Phase 9 (admin panel + legal content governance) complete** — see
+[docs/product/PHASE_9_REPORT.md](docs/product/PHASE_9_REPORT.md). Auth (Phase 2), reference
+data (Phase 3), versioned procedure content (Phase 4), the questionnaire/assessment engine
+(Phase 5), the deterministic rules engine (Phase 6), the recommendation engine (Phase 7),
+and user cases with a personalized checklist (Phase 8, see
+[PHASE_8_REPORT.md](docs/product/PHASE_8_REPORT.md)) all work end to end. Phase 9 adds the
+`CONTENT_EDITOR`/`LEGAL_REVIEWER`/`ADMIN` admin panel (`/admin`) that lets authorized humans
+maintain Procedure/Rule/Threshold/Questionnaire/OfficialSource content through the existing
+`DRAFT → IN_REVIEW → APPROVED → PUBLISHED → ARCHIVED` lifecycle (shared since Phase 4,
+`PublicationStateMachine`) without touching SQL, Flyway, or Java — self-approval is blocked
+centrally (`ContentReviewCoordinator`, never the same account that submitted a version), every
+administrative mutation is recorded in an append-only `AuditLog`, and a structured Rule
+condition builder supports validate/dry-run against synthetic facts before anything publishes.
+See [ADR-012](docs/architecture/ADR/ADR-012-admin-content-governance.md) and
+[docs/admin/](docs/admin/) for the full governance model. Real production legal content
+(actually authoring Warsaw's procedures/rules through this admin tooling) is Phase 10. Work
+through IMPLEMENTATION_PLAN.md's tasks in order starting at Phase 10.
 
 ## Commands
 

@@ -50,4 +50,51 @@ public class FeeService {
   public List<FeeVersion> listForVersion(UUID procedureVersionId) {
     return feeVersionRepository.findByProcedureVersion_Id(procedureVersionId);
   }
+
+  /** Phase 9 addition (brief §25) - editing a fee already on a still-DRAFT version. */
+  @Transactional
+  public FeeVersion updateFee(
+      UUID feeVersionId,
+      BigDecimal amount,
+      String currency,
+      String description,
+      String paymentInstructions,
+      Boolean refundable) {
+    if (amount.signum() < 0) {
+      throw new ApiException(
+          HttpStatus.BAD_REQUEST, "INVALID_FEE_AMOUNT", "Fee amount must not be negative");
+    }
+    FeeVersion fee = getManagedById(feeVersionId);
+    requireDraft(fee.getProcedureVersion());
+    fee.setAmount(amount);
+    fee.setCurrency(currency);
+    fee.setDescription(description);
+    fee.setPaymentInstructions(paymentInstructions);
+    fee.setRefundable(refundable);
+    return fee;
+  }
+
+  /** Phase 9 addition (brief §25) - removing a fee from a still-DRAFT version. */
+  @Transactional
+  public void removeFee(UUID feeVersionId) {
+    FeeVersion fee = getManagedById(feeVersionId);
+    requireDraft(fee.getProcedureVersion());
+    feeVersionRepository.delete(fee);
+  }
+
+  private FeeVersion getManagedById(UUID id) {
+    return feeVersionRepository
+        .findByIdFetchingAll(id)
+        .orElseThrow(
+            () ->
+                new ApiException(
+                    HttpStatus.NOT_FOUND, "FEE_NOT_FOUND", "No fee found for id " + id));
+  }
+
+  private void requireDraft(ProcedureVersion procedureVersion) {
+    if (procedureVersion.getStatus() != PublicationStatus.DRAFT) {
+      throw new ApiException(
+          HttpStatus.CONFLICT, "VERSION_NOT_DRAFT", "Fees can only be edited on a DRAFT version");
+    }
+  }
 }

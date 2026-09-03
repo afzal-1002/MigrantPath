@@ -1,0 +1,53 @@
+<h1>Official sources</h1>
+
+<div class="admin-actions">
+  <select [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event)">
+    <option value="">All statuses</option>
+    <option value="DRAFT">DRAFT</option>
+    <option value="VERIFIED">VERIFIED</option>
+    <option value="NEEDS_REVIEW">NEEDS_REVIEW</option>
+    <option value="OUTDATED">OUTDATED</option>
+    <option value="ARCHIVED">ARCHIVED</option>
+  </select>
+  <button type="button" (click)="showCreate.set(!showCreate())">{{ showCreate() ? 'Cancel' : 'New source' }}</button>
+</div>
+
+@if (showCreate()) {
+  <div class="admin-card">
+    <div class="admin-form-row"><label>Title <input [ngModel]="newTitle()" (ngModelChange)="newTitle.set($event)" /></label></div>
+    <div class="admin-form-row"><label>Official URL <input [ngModel]="newUrl()" (ngModelChange)="newUrl.set($event)" placeholder="https://…" /></label></div>
+    <div class="admin-form-row">
+      <label>
+      Source type
+      <select [ngModel]="newType()" (ngModelChange)="newType.set($event)">
+        <option value="LEGISLATION">LEGISLATION</option>
+        <option value="OFFICIAL_SERVICE_PAGE">OFFICIAL_SERVICE_PAGE</option>
+        <option value="GOVERNMENT_GUIDANCE">GOVERNMENT_GUIDANCE</option>
+        <option value="OTHER">OTHER</option>
+      </select>
+      </label>
+    </div>
+    @if (createError()) { <p class="admin-error">{{ createError() }}</p> }
+    <button type="button" (click)="create()">Create</button>
+  </div>
+}
+
+@if (loading()) {
+  <p>Loading…</p>
+} @else if (error()) {
+  <p class="admin-error">Could not load sources.</p>
+} @else {
+  <table class="admin-table">
+    <thead><tr><th>Title</th><th>Type</th><th>Verification</th><th>Last verified</th></tr></thead>
+    <tbody>
+      @for (s of filtered(); track s.id) {
+        <tr>
+          <td><a [routerLink]="['/admin/sources', s.id]">{{ s.title }}</a></td>
+          <td>{{ s.sourceType }}</td>
+          <td><span class="status-badge" [class]="'status-' + s.verificationStatus">{{ s.verificationStatus }}</span></td>
+          <td>{{ s.lastVerifiedAt ?? '—' }}</td>
+        </tr>
+      } @empty { <tr><td colspan="4">No sources yet.</td></tr> }
+    </tbody>
+  </table>
+}

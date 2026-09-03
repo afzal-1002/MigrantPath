@@ -1,0 +1,69 @@
+<h1>Rules</h1>
+
+<div class="admin-actions">
+  <button type="button" (click)="showCreate.set(!showCreate())">{{ showCreate() ? 'Cancel' : 'New rule' }}</button>
+</div>
+
+@if (showCreate()) {
+  <div class="admin-card">
+    <div class="admin-form-row"><label>Code <input [ngModel]="newCode()" (ngModelChange)="newCode.set($event)" /></label></div>
+    <div class="admin-form-row"><label>Canonical name <input [ngModel]="newName()" (ngModelChange)="newName.set($event)" /></label></div>
+    <div class="admin-form-row">
+      <label>
+        Rule type
+        <select [ngModel]="newRuleType()" (ngModelChange)="newRuleType.set($event)">
+          <option value="ELIGIBILITY">ELIGIBILITY</option>
+          <option value="APPLICABILITY">APPLICABILITY</option>
+          <option value="EXCLUSION">EXCLUSION</option>
+          <option value="REQUIREMENT">REQUIREMENT</option>
+          <option value="INFORMATION_REQUIRED">INFORMATION_REQUIRED</option>
+        </select>
+      </label>
+    </div>
+    <div class="admin-form-row">
+      <label>
+        Target type
+        <select [ngModel]="newTargetType()" (ngModelChange)="newTargetType.set($event)">
+          <option value="PROCEDURE">PROCEDURE</option>
+          <option value="DOCUMENT_REQUIREMENT">DOCUMENT_REQUIREMENT</option>
+          <option value="STEP">STEP</option>
+          <option value="FEE">FEE</option>
+          <option value="THRESHOLD_APPLICABILITY">THRESHOLD_APPLICABILITY</option>
+          <option value="ROUTING">ROUTING</option>
+        </select>
+      </label>
+    </div>
+    <div class="admin-form-row"><label>Target code <input [ngModel]="newTargetCode()" (ngModelChange)="newTargetCode.set($event)" placeholder="e.g. a Procedure code" /></label></div>
+    @if (createError()) { <p class="admin-error">{{ createError() }}</p> }
+    <button type="button" (click)="createRule()">Create</button>
+  </div>
+}
+
+@if (loading()) {
+  <p>Loading…</p>
+} @else if (error()) {
+  <p class="admin-error">Could not load rules.</p>
+} @else {
+  <table class="admin-table">
+    <thead><tr><th>Code</th><th>Name</th><th>Type</th><th>Target</th><th>Active</th><th>Latest</th></tr></thead>
+    <tbody>
+      @for (r of rules(); track r.code) {
+        <tr>
+          <td><a [routerLink]="['/admin/rules', r.code]">{{ r.code }}</a></td>
+          <td>{{ r.canonicalName }}</td>
+          <td>{{ r.ruleType }}</td>
+          <td>{{ r.targetType }}:{{ r.targetCode }}</td>
+          <td>{{ r.activeVersionNumber ? 'v' + r.activeVersionNumber : '—' }}</td>
+          <td>
+            @if (r.latestVersionNumber) {
+              v{{ r.latestVersionNumber }}
+              <span class="status-badge" [class]="'status-' + r.latestVersionStatus">{{ r.latestVersionStatus }}</span>
+            } @else { — }
+          </td>
+        </tr>
+      } @empty {
+        <tr><td colspan="6">No rules yet.</td></tr>
+      }
+    </tbody>
+  </table>
+}

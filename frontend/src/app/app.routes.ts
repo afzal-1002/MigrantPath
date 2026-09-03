@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { adminGuard } from './core/guards/admin.guard';
 import { authGuard } from './core/guards/auth.guard';
 import { guestGuard } from './core/guards/guest.guard';
 
@@ -98,6 +99,106 @@ export const routes: Routes = [
     path: 'cases/:id',
     canActivate: [authGuard],
     loadComponent: () => import('./features/cases/case-detail/case-detail').then((m) => m.CaseDetailPage),
+  },
+  {
+    // Phase 9 admin panel (brief §14/§15) - authGuard first (must be logged in at all),
+    // adminGuard second (must hold an admin role); every child route is lazy-loaded, same
+    // convention as the rest of this file. Server-side authorization is what actually
+    // matters (SecurityConfig) - both guards here are UX only.
+    path: 'admin',
+    canActivate: [authGuard, adminGuard],
+    loadComponent: () => import('./features/admin/admin-shell/admin-shell').then((m) => m.AdminShell),
+    children: [
+      {
+        path: '',
+        loadComponent: () => import('./features/admin/admin-dashboard/admin-dashboard').then((m) => m.AdminDashboard),
+      },
+      {
+        path: 'procedures',
+        loadComponent: () =>
+          import('./features/admin/procedures/procedure-admin-list/procedure-admin-list').then(
+            (m) => m.ProcedureAdminList,
+          ),
+      },
+      {
+        path: 'procedures/:code',
+        loadComponent: () =>
+          import('./features/admin/procedures/procedure-admin-detail/procedure-admin-detail').then(
+            (m) => m.ProcedureAdminDetail,
+          ),
+      },
+      {
+        path: 'procedures/:code/versions/:versionNumber',
+        loadComponent: () =>
+          import('./features/admin/procedures/procedure-version-editor/procedure-version-editor').then(
+            (m) => m.ProcedureVersionEditor,
+          ),
+      },
+      {
+        path: 'rules',
+        loadComponent: () => import('./features/admin/rules/rule-admin-list/rule-admin-list').then((m) => m.RuleAdminList),
+      },
+      {
+        path: 'rules/:code',
+        loadComponent: () =>
+          import('./features/admin/rules/rule-admin-detail/rule-admin-detail').then((m) => m.RuleAdminDetail),
+      },
+      {
+        path: 'rules/:code/versions/:versionNumber',
+        loadComponent: () =>
+          import('./features/admin/rules/rule-version-editor/rule-version-editor').then((m) => m.RuleVersionEditor),
+      },
+      {
+        path: 'thresholds',
+        loadComponent: () =>
+          import('./features/admin/thresholds/threshold-admin-list/threshold-admin-list').then(
+            (m) => m.ThresholdAdminList,
+          ),
+      },
+      {
+        path: 'thresholds/:code',
+        loadComponent: () =>
+          import('./features/admin/thresholds/threshold-admin-detail/threshold-admin-detail').then(
+            (m) => m.ThresholdAdminDetail,
+          ),
+      },
+      {
+        path: 'sources',
+        loadComponent: () =>
+          import('./features/admin/sources/source-admin-list/source-admin-list').then((m) => m.SourceAdminList),
+      },
+      {
+        path: 'sources/:id',
+        loadComponent: () =>
+          import('./features/admin/sources/source-admin-detail/source-admin-detail').then((m) => m.SourceAdminDetail),
+      },
+      {
+        path: 'questionnaires',
+        loadComponent: () =>
+          import('./features/admin/questionnaires/questionnaire-admin-list/questionnaire-admin-list').then(
+            (m) => m.QuestionnaireAdminList,
+          ),
+      },
+      {
+        path: 'questionnaires/:code',
+        loadComponent: () =>
+          import('./features/admin/questionnaires/questionnaire-admin-detail/questionnaire-admin-detail').then(
+            (m) => m.QuestionnaireAdminDetail,
+          ),
+      },
+      {
+        path: 'reviews',
+        loadComponent: () => import('./features/admin/reviews/review-queue/review-queue').then((m) => m.ReviewQueue),
+      },
+      {
+        path: 'audit',
+        loadComponent: () => import('./features/admin/audit/audit-log/audit-log').then((m) => m.AuditLog),
+      },
+      {
+        path: 'users',
+        loadComponent: () => import('./features/admin/users/user-admin/user-admin').then((m) => m.UserAdmin),
+      },
+    ],
   },
   {
     path: '**',

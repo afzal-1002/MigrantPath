@@ -1,0 +1,67 @@
+<p><a routerLink="/admin/thresholds">← All thresholds</a></p>
+<h1>{{ code }}</h1>
+
+@if (impact(); as imp) {
+  <p>Used by: {{ imp.referencingRuleCodes.length ? imp.referencingRuleCodes.join(', ') : 'no rules yet' }}</p>
+}
+
+<div class="admin-card">
+  <h3>Create draft version</h3>
+  <div class="admin-form-row"><label>Value <input type="number" [ngModel]="newValue()" (ngModelChange)="newValue.set($event)" /></label></div>
+  <div class="admin-form-row"><label>Effective from <input type="date" [ngModel]="newEffectiveFrom()" (ngModelChange)="newEffectiveFrom.set($event)" /></label></div>
+  <div class="admin-form-row"><label>Notes <textarea [ngModel]="newNotes()" (ngModelChange)="newNotes.set($event)"></textarea></label></div>
+  @if (actionError()) { <p class="admin-error">{{ actionError() }}</p> }
+  <button type="button" (click)="createDraft()">Create draft</button>
+</div>
+
+<div class="admin-form-row">
+  <label>Review comment (used by approve/request-changes below)
+    <input [ngModel]="reviewComment()" (ngModelChange)="reviewComment.set($event)" />
+  </label>
+</div>
+
+@if (loading()) {
+  <p>Loading…</p>
+} @else if (error()) {
+  <p class="admin-error">Could not load versions.</p>
+} @else {
+  @for (v of versions(); track v.id) {
+    <div class="admin-card">
+      <p><strong>Value:</strong> {{ v.value ?? v.valueText }} &nbsp;
+        <span class="status-badge" [class]="'status-' + v.status">{{ v.status }}</span></p>
+      <p>Effective {{ v.effectiveFrom ?? '—' }} → {{ v.effectiveTo ?? '—' }}</p>
+      @if (v.notes) { <p>{{ v.notes }}</p> }
+      <div class="admin-actions">
+        @if (v.status === 'DRAFT') { <button type="button" (click)="submit(v.id)">Submit for review</button> }
+        @if (v.status === 'IN_REVIEW') {
+          <button type="button" (click)="approve(v.id)">Approve</button>
+          <button type="button" (click)="requestChanges(v.id)">Request changes</button>
+        }
+        @if (v.status === 'APPROVED') {
+          <button type="button" (click)="publish(v.id, v.effectiveFrom ?? '')">Publish (uses effective-from above)</button>
+        }
+        @if (v.status === 'PUBLISHED') { <button type="button" (click)="archive(v.id)">Archive</button> }
+        <button type="button" (click)="validate(v.id)">Validate</button>
+        <button type="button" (click)="loadReviews(v.id)">Show review history</button>
+      </div>
+      @if (validationByVersion()[v.id]; as val) {
+        <ul class="admin-validation-list">
+          @for (issue of val.issues; track issue.code) { <li>{{ issue.message }}</li> }
+          @empty { <li class="ok">Ready to publish</li> }
+        </ul>
+      }
+      @if (reviewsByVersion()[v.id]; as revs) {
+        <table class="admin-table">
+          <thead><tr><th>Status</th><th>Submitted by</th><th>Reviewer</th><th>Comment</th></tr></thead>
+          <tbody>
+            @for (r of revs; track r.id) {
+              <tr><td>{{ r.status }}</td><td>{{ r.submittedByEmail }}</td><td>{{ r.reviewerEmail ?? '—' }}</td><td>{{ r.comment ?? '—' }}</td></tr>
+            } @empty { <tr><td colspan="4">No review history.</td></tr> }
+          </tbody>
+        </table>
+      }
+    </div>
+  } @empty {
+    <p>No versions yet.</p>
+  }
+}

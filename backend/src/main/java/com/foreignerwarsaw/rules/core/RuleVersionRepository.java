@@ -35,4 +35,30 @@ public interface RuleVersionRepository extends JpaRepository<RuleVersion, UUID> 
 
   @Query("SELECT COALESCE(MAX(v.versionNumber), 0) FROM RuleVersion v WHERE v.rule.id = :ruleId")
   int findMaxVersionNumber(@Param("ruleId") UUID ruleId);
+
+  /**
+   * Phase 9 admin listing (brief §36) - newest version first. Fetch-joins {@code rule} and every
+   * actor field {@code AdminRuleVersionDetailResponse} reads, so the (non-{@code @Transactional})
+   * admin controller can map the response after this call returns without a
+   * LazyInitializationException - see {@code ProcedureVersionRepository
+   * #findByProcedure_IdAndVersionNumberFetchingActors}'s Javadoc for the same fix applied there.
+   */
+  @Query(
+      """
+      SELECT v FROM RuleVersion v
+      JOIN FETCH v.rule
+      LEFT JOIN FETCH v.createdBy
+      LEFT JOIN FETCH v.submittedBy
+      LEFT JOIN FETCH v.approvedBy
+      LEFT JOIN FETCH v.publishedBy
+      WHERE v.rule.id = :ruleId ORDER BY v.versionNumber DESC
+      """)
+  List<RuleVersion> findByRule_IdOrderByVersionNumberDesc(@Param("ruleId") UUID ruleId);
+
+  default List<RuleVersion> findByRule_Id(UUID ruleId) {
+    return findByRule_IdOrderByVersionNumberDesc(ruleId);
+  }
+
+  /** Phase 9 admin dashboard addition (brief §16). */
+  long countByStatus(com.foreignerwarsaw.procedure.PublicationStatus status);
 }
