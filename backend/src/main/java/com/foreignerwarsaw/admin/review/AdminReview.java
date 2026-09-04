@@ -29,6 +29,16 @@ import java.util.UUID;
  * triggered this review, specifically so {@link ContentReviewCoordinator#approve} can enforce
  * self-approval prevention (brief §5/§117) without re-fetching four different entity types
  * generically.
+ *
+ * <p>{@code submittedByActorRef} (Phase 12, V48__admin_review_pseudonymous_submitter.sql) is an
+ * immutable, pseudonymous copy of {@code submittedBy}'s id, set once at {@link #open} and never
+ * changed again - unlike {@link #submittedBy} (now {@code ON DELETE SET NULL}, so it goes {@code
+ * null} if that account is ever deleted), this field survives account deletion, so the review
+ * remains fully attributable to a stable identifier even after the submitting account is gone.
+ * Self-approval prevention ({@link ContentReviewCoordinator#requireNotSelfReview}) compares
+ * against this field, not {@code submittedBy.getId()}, so it stays correct even for a review
+ * whose original submitter has since deleted their account. No email/name/profile data is ever
+ * copied here - only the UUID.
  */
 @Entity
 @Table(name = "admin_review")
@@ -45,9 +55,12 @@ public class AdminReview {
   @Column(name = "entity_version_id", nullable = false)
   private UUID entityVersionId;
 
-  @ManyToOne(fetch = FetchType.LAZY, optional = false)
-  @JoinColumn(name = "submitted_by", nullable = false)
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "submitted_by")
   private User submittedBy;
+
+  @Column(name = "submitted_by_actor_ref", nullable = false)
+  private UUID submittedByActorRef;
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "reviewer")
@@ -74,6 +87,7 @@ public class AdminReview {
     review.entityType = entityType;
     review.entityVersionId = entityVersionId;
     review.submittedBy = submittedBy;
+    review.submittedByActorRef = submittedBy.getId();
     review.createdAt = now;
     return review;
   }
@@ -90,8 +104,16 @@ public class AdminReview {
     return entityVersionId;
   }
 
+  /**
+   * The live account, if it still exists - {@code null} once that account has been deleted. Use
+   * {@link #getSubmittedByActorRef} for a reference that always survives deletion.
+   */
   public User getSubmittedBy() {
     return submittedBy;
+  }
+
+  public UUID getSubmittedByActorRef() {
+    return submittedByActorRef;
   }
 
   public User getReviewer() {

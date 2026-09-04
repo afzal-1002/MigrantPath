@@ -123,7 +123,11 @@ public class ContentReviewCoordinator {
   }
 
   private void requireNotSelfReview(AdminReview review, User reviewer) {
-    if (review.getSubmittedBy().getId().equals(reviewer.getId())) {
+    // Compares against the pseudonymous, deletion-surviving actor ref (Phase 12), not
+    // submittedBy.getId() directly - submittedBy itself can legitimately be null if that
+    // account has since been deleted (V48), and self-review must still be correctly
+    // evaluated (never NPE) in that case.
+    if (review.getSubmittedByActorRef().equals(reviewer.getId())) {
       throw new ApiException(
           HttpStatus.CONFLICT,
           "SELF_APPROVAL_NOT_ALLOWED",
