@@ -1,0 +1,10 @@
+{
+  "release": "0.1.0-rc.1",
+  "commit": "1eb5f173aeb352d8f3aa0a068721c1ca6a555060",
+  "backendImage": "foreigner-warsaw-backend:0.1.0-rc.1",
+  "frontendImage": "foreigner-warsaw-frontend:0.1.0-rc.1",
+  "flywayVersion": 48,
+  "applicationVersion": "0.0.1-SNAPSHOT",
+  "builtAt": "2026-09-04T16:00:00Z",
+  "note": "The Docker images independently verified this phase (backend/frontend/HTTPS Playwright/privacy/admin journeys) were built from commit 9ab6e6d728d6276c9c5543c5fd09c25f57e530a1 (Canonical Phase 14) - no application source code changed in this commit beyond frontend/playwright.config.ts, which is a test-harness-only file never baked into the built image, so both commits produce byte-for-byte behaviorally identical images. This manifest records the final RC commit; docs/product/PHASE_15_REPORT.md documents this distinction explicitly."
+}
