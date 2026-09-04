@@ -18,6 +18,17 @@ import { defineConfig, devices } from '@playwright/test';
  */
 const baseURL = process.env['BASE_URL'] ?? 'http://localhost:4200';
 
+/**
+ * Canonical Phase 15 (Release Readiness) brief §11/§12 - a real, self-signed
+ * certificate is expected (and correct) to fail normal browser TLS validation.
+ * `ignoreHTTPSErrors` is opt-in, never a global default: a real staging/production
+ * `BASE_URL` run must keep full certificate validation (a real cert failure there is
+ * a genuine finding, not noise to suppress). Set only by the throwaway local HTTPS
+ * harness itself (`docs/operations/LOCAL_HTTPS_TESTING.md`) - production browser TLS
+ * policy is entirely unaffected; this only relaxes Playwright's own test client.
+ */
+const ignoreHTTPSErrors = process.env['PW_IGNORE_HTTPS_ERRORS'] === 'true';
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
@@ -35,6 +46,7 @@ export default defineConfig({
   use: {
     baseURL,
     trace: 'on-first-retry',
+    ignoreHTTPSErrors,
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: process.env['BASE_URL']

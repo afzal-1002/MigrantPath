@@ -4,19 +4,21 @@ A guided-eligibility and case-tracking web application for foreigners living in 
 moving to Warsaw, Poland — architected so additional Polish cities (and eventually other
 countries) can be enabled later without rewriting core logic.
 
-**Status: Phase 11 (production readiness / deployment / release hardening) in
-progress.** The full guided-eligibility product flow works end to end — registration,
-the guided questionnaire, the deterministic rules engine, personalized recommendations,
-and case tracking with a checklist — backed by versioned, sourced legal content managed
-through a real admin governance workflow (draft → review → approve → publish). Phase 11
-adds what makes that flow safe to actually run in production: hardened security headers,
-an admin bootstrap mechanism, production Docker images and a Compose stack (reverse
-proxy + backend + frontend, no direct backend exposure), health/readiness probes,
-correlation-ID request tracing, a first real metric, a tested backup/restore drill, and
-the operational/release/security/privacy documentation under `docs/operations/`,
-`docs/releases/`, `docs/security/`, and `docs/privacy/`. See
+**Status: canonical roadmap complete through Phase 15 (Release Candidate / Launch
+Readiness).** The full guided-eligibility product flow works end to end —
+registration, the guided questionnaire, the deterministic rules engine, personalized
+recommendations, and case tracking with a checklist — for five real, sourced Warsaw
+procedures, backed by versioned legal content managed through a real admin governance
+workflow (draft → review → approve → publish). Production deployment (Docker Compose,
+reverse proxy, backups, CI/CD), security/privacy hardening (GDPR export/deletion,
+CSRF, CSP, role-based admin), and full operational observability (structured logging,
+Prometheus metrics, health/readiness, an alert catalogue) are all real and verified —
+see [docs/product/PROJECT_STATUS.md](docs/product/PROJECT_STATUS.md) for the
+authoritative current summary and
+[docs/releases/FINAL_GO_NO_GO.md](docs/releases/FINAL_GO_NO_GO.md) for exactly what
+remains an external (hosting/domain/legal-review) blocker to a real public launch. See
 [docs/product/IMPLEMENTATION_PLAN.md](docs/product/IMPLEMENTATION_PLAN.md) for the full
-phase-by-phase history and current status.
+phase-by-phase history.
 
 ## Prerequisites
 
@@ -89,9 +91,9 @@ for the full walkthrough.
 - `GET /api/v1/procedures` / `GET /api/v1/procedures/{code}` — public, read-only
   procedure content, resolved through the Active-Version Predicate (only currently
   published content is ever returned). http://localhost:4200/procedures is the Angular
-  "Browse procedures" page. Content management (draft → published) is behind the
-  internal `/api/v1/internal/content/**` API, gated to CONTENT_EDITOR/LEGAL_REVIEWER/
-  ADMIN roles — no dedicated admin UI yet (Phase 9).
+  "Browse procedures" page. Content management (draft → review → approve → publish) is
+  behind the internal `/api/v1/internal/content/**` API and the real Admin UI at
+  http://localhost:4200/admin, both gated to CONTENT_EDITOR/LEGAL_REVIEWER/ADMIN roles.
 
 ## Production deployment
 
@@ -110,7 +112,10 @@ Further operational reference: environments
 incident response
 ([DISASTER_RECOVERY.md](docs/operations/DISASTER_RECOVERY.md),
 [INCIDENT_RESPONSE.md](docs/operations/INCIDENT_RESPONSE.md)), observability
-([OBSERVABILITY.md](docs/operations/OBSERVABILITY.md)), the release process
+(structured logging, metrics, alerting, dashboards —
+[OBSERVABILITY.md](docs/operations/OBSERVABILITY.md),
+[METRICS.md](docs/operations/METRICS.md),
+[DIAGNOSTICS.md](docs/operations/DIAGNOSTICS.md)), the release process
 ([RELEASE_PROCESS.md](docs/releases/RELEASE_PROCESS.md)), and the security review
 ([PRODUCTION_SECURITY.md](docs/security/PRODUCTION_SECURITY.md)).
 

@@ -146,8 +146,19 @@ official sources.
 
 See [PROCEDURE_CATALOGUE.md](PROCEDURE_CATALOGUE.md) for the concrete MVP procedure list
 and [../architecture/ARCHITECTURE.md](../architecture/ARCHITECTURE.md) for the platform
-this is built on. Functionally, MVP = §6.1–§6.7 above, scoped to Warsaw and the seven
-MVP procedures, in English, with no payments and no document upload.
+this is built on. Functionally, MVP = §6.1–§6.7 above, scoped to Warsaw, in English,
+with no payments and no document upload.
+
+> **Canonical Phase 15 reconciliation**: this section's original "seven/eight MVP
+> procedures" language (also §10 below) was the aspirational research target
+> (`PROCEDURE_CATALOGUE.md`'s original 8-item list). What actually shipped with real,
+> sourced content and active Rules (Phase 10/10.5) is **five**: PESEL, address
+> registration (meldunek), EU citizen residence registration, temporary residence and
+> work, and temporary residence for studies (the last held behind its own
+> source-verification gate, unpublished — `PROJECT_STATUS.md`). EU Blue Card, family
+> reunification, and driving licence exchange were narrowed out to
+> `docs/product/POST_MVP_ROADMAP.md`'s fast-follow list. Left as originally written
+> below, not rewritten, per this document's own established reconciliation convention.
 
 ## 9. Roadmap (phase names only — see Architecture doc for the full 16-phase breakdown)
 

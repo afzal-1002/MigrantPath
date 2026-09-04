@@ -1,7 +1,42 @@
 # Implementation Plan — Foreigner Warsaw
 
-Status: DRAFT (Phase 0)
-Last updated: 2026-09-01
+Status: canonical roadmap complete through Phase 15 (Release Candidate / Launch
+Readiness / Project Closeout).
+Last updated: Canonical Phase 15.
+
+## Canonical roadmap reconciliation
+
+Real engineering work completed out of this document's own sequential order — this
+table is the honest record, added by Canonical Phase 15 per its own brief's explicit
+instruction not to rewrite history or rename old reports. Every phase section below is
+left exactly as originally written; this table only adds the reconciliation.
+
+| Phase | Status | Notes |
+|---|---|---|
+| 0 | COMPLETED IN CANONICAL PHASE | Repo audit — see `PHASE_0_AUDIT.md` |
+| 1 | COMPLETED IN CANONICAL PHASE | Repository + infrastructure |
+| 2 | COMPLETED IN CANONICAL PHASE | Auth + users |
+| 3 | COMPLETED IN CANONICAL PHASE | Reference/geographic data |
+| 4 | COMPLETED IN CANONICAL PHASE | Procedure/content management |
+| 5 | COMPLETED IN CANONICAL PHASE | Questionnaire engine |
+| 6 | COMPLETED IN CANONICAL PHASE | Rules engine |
+| 7 | COMPLETED IN CANONICAL PHASE | Recommendation engine |
+| 8 | COMPLETED IN CANONICAL PHASE | User cases + checklist |
+| 9 | COMPLETED IN CANONICAL PHASE | Admin panel |
+| 10 | COMPLETED IN CANONICAL PHASE | Warsaw procedure content (4 of 5 procedures sourced; disclosed the missing-Rule gap) |
+| 10.5 | BRIDGE PHASE | Closed Phase 10's own disclosed gap — real production Rules wired, before Phase 11 began |
+| 11 | COMPLETED IN CANONICAL PHASE | Testing completeness |
+| 12 | COMPLETED EARLY IN ANOTHER PHASE | Security/GDPR — completed as "canonical Phase 12," ahead of this document's own sequential position, per that session's own explicit instruction |
+| 13 | COMPLETED EARLY IN ANOTHER PHASE | Deployment — completed as "canonical Phase 13" |
+| 13.5 | BRIDGE PHASE | Fixed a production-build-only Assessment regression found during Phase 13's own verification, before Phase 14 began |
+| 14 | COMPLETED EARLY IN ANOTHER PHASE | Monitoring/Observability — completed as "canonical Phase 14"; found and fixed a real, previously-undiscovered readiness-probe bug |
+| 15 (this document's own "Monetisation" slot) | DEFERRED / EXTERNAL / BUSINESS DEPENDENCY | Design-only scaffolding, explicitly deferred until real MVP usage data exists — **not** the same thing as "Canonical Phase 15" below; a numbering coincidence only |
+| **Canonical Phase 15** | COMPLETED IN CANONICAL PHASE | Release Candidate / Launch Readiness / Project Closeout — this document's own reconciliation, `docs/product/PROJECT_STATUS.md`, `docs/product/PHASE_15_REPORT.md`, `docs/releases/FINAL_GO_NO_GO.md` |
+
+**Canonical Phase 15 is the final canonical engineering phase** (its own brief's
+explicit instruction — no Phase 16 was invented). This document's own sequential
+"Phase 15 — Monetisation" slot below remains completely unimplemented and unscoped by
+canonical Phase 15 — see `docs/product/POST_MVP_ROADMAP.md`.
 
 Breaks the roadmap in [PRODUCT_REQUIREMENTS.md](PRODUCT_REQUIREMENTS.md) §9 into small,
 independently testable tasks. Entities referenced in Database/Backend columns are

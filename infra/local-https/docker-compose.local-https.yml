@@ -1,0 +1,33 @@
+name: foreigner-warsaw-prod
+
+# Canonical Phase 15 (Release Readiness) - a throwaway local HTTPS overlay, layered on
+# top of the real production Compose file (never modifying it). Adds one extra
+# container: a minimal nginx TLS terminator in front of the unmodified frontend image,
+# so a real browser-driven Playwright run can exercise the actual production-built
+# images over genuine HTTPS instead of plain HTTP (brief §11/§12 - production `Secure`
+# cookies correctly require HTTPS, which curl silently ignores but a real browser
+# enforces). Never used for, or referenced by, any real deployment - see
+# docs/operations/LOCAL_HTTPS_TESTING.md.
+#
+# Usage (from the repo root):
+#   ./infra/local-https/generate-local-cert.sh   # once, or whenever the 30-day cert expires
+#   docker compose -f infra/docker-compose.prod.yml \
+#     -f infra/local-https/docker-compose.local-https.yml \
+#     --env-file infra/.env.production up -d
+#   PW_IGNORE_HTTPS_ERRORS=true BASE_URL=https://localhost:8443 npx playwright test
+
+services:
+  tls-proxy:
+    image: nginx:1.27-alpine
+    # Paths here are relative to infra/ (the FIRST -f file's directory), not this
+    # file's own directory - a real Docker Compose behavior found while first running
+    # this overlay: when multiple -f files are given, every relative path in every
+    # file resolves against the first file's directory, not its own.
+    volumes:
+      - ./local-https/nginx-tls.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./local-https/certs:/etc/nginx/certs:ro
+    ports:
+      - "8443:8443"
+    depends_on:
+      - frontend
+    restart: unless-stopped

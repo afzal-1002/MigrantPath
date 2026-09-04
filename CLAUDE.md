@@ -16,27 +16,26 @@ expansion). Read these before making changes, in this order:
 6. [docs/product/IMPLEMENTATION_PLAN.md](docs/product/IMPLEMENTATION_PLAN.md) — the full phase-by-phase task breakdown; find the next task here before starting new work
 7. [docs/architecture/ADR/](docs/architecture/ADR/) — the "why" behind the foundational decisions
 
-**Current status: Phase 10.5 (production Rule wiring) complete** — see
-[docs/product/PHASE_10_5_REPORT.md](docs/product/PHASE_10_5_REPORT.md). Auth (Phase 2),
-reference data (Phase 3), versioned procedure content (Phase 4), the questionnaire/
-assessment engine (Phase 5), the deterministic rules engine (Phase 6), the recommendation
-engine (Phase 7), user cases with a personalized checklist (Phase 8), the admin
-content-governance panel (Phase 9, see
-[PHASE_9_REPORT.md](docs/product/PHASE_9_REPORT.md)), and real Warsaw MVP legal content
-(Phase 10, see [PHASE_10_REPORT.md](docs/product/PHASE_10_REPORT.md)) all work end to
-end. Phase 10 authored real, sourced legal content for four of five first-release
-procedures (PESEL, Meldunek, EU citizen residence registration, Temporary residence and
-work, plus a real minimum-wage `Threshold`) but disclosed a significant gap: no
-eligibility `Rule` existed, so none was reachable through the recommendation engine or
-`UserCase` creation. **Phase 10.5 closed that gap** — real production `Rule`s (8 total)
-now target four of the five procedures (all `PUBLISHED`), one new `QuestionnaireVersion`
-was added (a single `GET_MELDUNEK` goal option) through the real Admin workflow, and a
-real, browser-driven Playwright test proves the full production pipeline end to end:
-assessment → real Rule evaluation → real recommendation → real `UserCase` with a real
-checklist. Temporary residence for studies remains `READY_FOR_PUBLICATION` (its two
-Rules are `APPROVED` but not published, mirroring the Procedure's own held-back state) —
-see PHASE_10_5_REPORT.md's Phase 11 Readiness verdict before starting Phase 11 or
-publishing further procedures.
+**Current status: canonical roadmap complete through Phase 15 (Release Candidate /
+Launch Readiness / Project Closeout).** Canonical Phase 15 is the final canonical
+engineering phase — no Phase 16 exists. See
+[docs/product/PROJECT_STATUS.md](docs/product/PROJECT_STATUS.md) for the authoritative
+current summary (read that first, ahead of any individual phase report). The full
+guided-eligibility product flow works end to end — auth, the guided questionnaire, the
+deterministic rules engine, personalized recommendations, user cases with a checklist,
+and real Admin content governance — against five real Warsaw procedures (four
+`PUBLISHED` with active Rules; temporary residence for studies remains `APPROVED`, held
+behind its own source-verification gate since Phase 10.5, deliberately). Canonical
+Phase 12 (Security/GDPR), Phase 13 (Deployment, plus bridge Phase 13.5 fixing a
+production-only Assessment regression), and Phase 14 (Observability — structured
+logging, metrics, a real previously-undiscovered readiness-probe bug found and fixed)
+were all completed ahead of the original roadmap's own sequential order — see
+`IMPLEMENTATION_PLAN.md`'s own reconciliation of canonical-vs-roadmap phase numbering.
+No real cloud host, domain, or TLS certificate has ever been provisioned; no legal
+review of the Privacy Policy/Terms/Disclaimer has occurred — both are real, disclosed,
+external (non-technical) blockers to public launch, not technical gaps. See
+[docs/releases/FINAL_GO_NO_GO.md](docs/releases/FINAL_GO_NO_GO.md) once Phase 15
+completes for the precise technical-vs-public-launch readiness decision.
 
 ## Commands
 
