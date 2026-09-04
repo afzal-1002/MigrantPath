@@ -250,6 +250,88 @@ class RecommendationEngineIntegrationTest extends AbstractIntegrationTest {
         .andExpect(jsonPath("$.code").value("ASSESSMENT_NOT_COMPLETED"));
   }
 
+  /**
+   * Canonical Phase 11 (Testing Completeness) brief §53 - "Temp Residence Studies": the exact
+   * real-world situation `docs/legal-content/PRODUCTION_RULE_COVERAGE.md` documents for {@code
+   * TEMP_RESIDENCE_STUDY} (its Rules are {@code APPROVED}, its Procedure is {@code
+   * READY_FOR_PUBLICATION} - neither published) must never leak a recommendation. This
+   * generalizes it: a rule already {@code PUBLISHED} and actively targeting a procedure whose own
+   * content has never been published at all (the harder, more realistic ordering - governance
+   * could plausibly approve+publish a Rule slightly ahead of its Procedure) must still produce
+   * {@code UNAVAILABLE_FOR_ANALYSIS}, never a confident match, and must still be rejected at case
+   * creation - proving the two publication gates (Procedure's own {@code PUBLISHED} version,
+   * independent of whatever its Rules say) are genuinely decoupled and both required, not that
+   * this only happens to work today because the real content also stayed in lockstep.
+   */
+  @Test
+  void ruleTargetingAnUnpublishedProcedure_isUnavailableForAnalysis_neverLeaksAConfidentMatch()
+      throws Exception {
+    String procedureCode = createUnpublishedProcedure("TEST_UNPUBLISHED_TARGET");
+    publishRule(
+        procedureCode,
+        RuleType.APPLICABILITY,
+        "{\"fact\":\"PRIMARY_PURPOSE\",\"operator\":\"CONTAINS\",\"value\":\"GET_PESEL\"}");
+
+    AppUserPrincipal applicant = userWithRole("USER");
+    String assessmentId = extractId(startAssessment(applicant));
+    answer(applicant, assessmentId, "CITIZENSHIP_COUNTRY", "{\"referenceCode\":\"PK\"}");
+    answer(applicant, assessmentId, "CURRENTLY_IN_POLAND", "{\"booleanValue\":true}");
+    answer(applicant, assessmentId, "CURRENT_LEGAL_STATUS", "{\"referenceCode\":\"NONE\"}");
+    answer(applicant, assessmentId, "DATE_OF_BIRTH", "{\"dateValue\":\"1990-01-01\"}");
+    answer(applicant, assessmentId, "PRIMARY_PURPOSE", "{\"selectedOptionCodes\":[\"GET_PESEL\"]}");
+    mockMvc
+        .perform(
+            post(ASSESSMENTS_BASE + "/" + assessmentId + "/complete").with(user(applicant)).with(csrf()))
+        .andExpect(status().isOk());
+
+    MvcResult analyzed =
+        mockMvc
+            .perform(
+                post(ASSESSMENTS_BASE + "/" + assessmentId + "/recommendation-runs")
+                    .with(user(applicant))
+                    .with(csrf()))
+            .andExpect(status().isOk())
+            .andReturn();
+    JsonNode body = objectMapper.readTree(analyzed.getResponse().getContentAsString());
+    assertThat(typeFor(body, procedureCode)).isEqualTo("UNAVAILABLE_FOR_ANALYSIS");
+
+    // And case creation for it is rejected outright - never allowed just because a rule matched.
+    String recommendationId = recommendationFor(body, procedureCode).get("id").asText();
+    mockMvc
+        .perform(
+            post("/api/v1/recommendations/" + recommendationId + "/cases")
+                .with(user(applicant))
+                .with(csrf()))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("CASE_CREATION_NOT_ALLOWED"));
+  }
+
+  /** A Procedure that reaches DRAFT content but is deliberately never published - mirrors the
+   * real TEMP_RESIDENCE_STUDY situation exactly (Procedure held at READY_FOR_PUBLICATION). */
+  private String createUnpublishedProcedure(String prefix) throws Exception {
+    String code = uniqueCode(prefix);
+    mockMvc
+        .perform(
+            post(CONTENT_BASE + "/procedures")
+                .with(user(editor))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"code\":\"%s\",\"categoryCode\":\"OTHER\",\"canonicalName\":\"Test procedure\",\"shortDescription\":\"For automated tests only\",\"jurisdictionScope\":\"NATIONAL\"}"
+                        .formatted(code)))
+        .andExpect(status().isCreated());
+    mockMvc
+        .perform(
+            post(CONTENT_BASE + "/procedures/" + code + "/versions")
+                .with(user(editor))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"title\":\"Test v1\",\"summary\":\"Test summary\",\"description\":\"Test description\"}"))
+        .andExpect(status().isCreated());
+    return code;
+  }
+
   private String typeFor(JsonNode runBody, String procedureCode) {
     return recommendationFor(runBody, procedureCode).get("recommendationType").asText();
   }

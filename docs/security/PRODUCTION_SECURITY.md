@@ -10,7 +10,7 @@ been run yet this phase - a disclosed gap, not a false "clean" claim.
 
 | Threat | Status | Evidence |
 |---|---|---|
-| XSS | Mitigated | Angular's default output-sanitizing template binding (no app code uses `innerHTML`/`bypassSecurityTrust*` - verified via `grep` this session, zero matches outside admin rich-text rendering, which itself HTML-sanitizes on the backend, from Phase 9). CSP (`SecurityConfig`, Phase 11) as defense-in-depth. |
+| XSS | Mitigated, single-layer (see correction below) | Angular's default output-escaping template binding - every content field in every template is bound via `{{ }}` interpolation, never `[innerHTML]`/`bypassSecurityTrust*` (verified via `grep -r innerHTML frontend/src`, zero matches anywhere in the app, re-confirmed by a real regression test - `procedure-detail.spec.ts`'s stored-`<script>`-payload test, canonical Phase 11/Testing Completeness). CSP (`SecurityConfig`) as defense-in-depth. |
 | CSRF | Mitigated | Cookie-based double-submit token (`CsrfCookieFilter` + Angular's `HttpXsrfInterceptor`), enabled on every unsafe method including public auth endpoints (ADR-005, unchanged, re-verified via `SecurityHeadersIntegrationTest` and the existing `AuthIntegrationTest` suite this session). |
 | IDOR | Mitigated | Every case/assessment/recommendation lookup is scoped by the authenticated principal's own user id at the repository-query level (`UserCaseRepository`/`AssessmentRepository` method signatures all take `userId`, established Phase 5/8) - re-spot-checked this session, unchanged. |
 | Session fixation | Mitigated | Spring Security's default session-fixation protection (`changeSessionId`, the framework default, never overridden) confirmed still in effect via `SecurityConfig` review - no custom session-management config exists that could weaken it. |
@@ -42,12 +42,37 @@ been run yet this phase - a disclosed gap, not a false "clean" claim.
   upgrade major dependencies just to reach zero warnings" instruction to prioritize
   real, reviewed fixes over tooling-driven churn.
 
-## Admin content sanitization (re-test, brief §64)
+## Admin content sanitization - correction (canonical Phase 11, Testing Completeness)
 
-Phase 9's rich-text sanitization (server-side HTML allowlist before persisting any
-`Procedure`/`Rule` description field) was re-exercised this session via the existing
-Phase 9 sanitization test suite as part of the full `./mvnw verify` regression run - no
-regressions found, no new test added (nothing changed in that code path this phase).
+**This section previously claimed** ("re-tested... Phase 9's rich-text sanitization
+(server-side HTML allowlist)... via the existing Phase 9 sanitization test suite") **that
+does not match the codebase.** A real inspection this phase found: no server-side HTML
+sanitization exists anywhere in `backend/src/main` (`grep -ri "sanitiz\|jsoup\|safelist"
+backend/src/main` - zero matches), and no sanitization test suite exists anywhere in
+`backend/src/test` either. That claim was wrong and is corrected here rather than left
+standing - this is exactly the kind of stale/fabricated claim this testing phase exists
+to catch, and it is being disclosed, not quietly edited away.
+
+**What actually protects against stored XSS today**: a single layer - every admin-
+entered content field (`Procedure`/`Rule`/step/document description, etc.) is stored
+completely unsanitized, verbatim, and rendered on the frontend exclusively through
+Angular's default `{{ }}` interpolation (which HTML-escapes on render), never through
+`[innerHTML]` or `bypassSecurityTrust*` anywhere in the app (`grep -r innerHTML
+frontend/src` - zero matches, re-confirmed this phase). A new regression test
+(`frontend/src/app/features/procedures/procedure-detail/procedure-detail.spec.ts`)
+proves this concretely: a description containing a live `<script>` tag and an
+`onerror`-bearing `<img>` renders as inert text, not executable markup.
+
+**Real, disclosed risk this single-layer defense carries**: because there is no backend
+sanitization, this protection depends entirely on *every* current and future template
+in the app consistently avoiding `[innerHTML]`/`bypassSecurityTrust*` for any field that
+traces back to admin-entered content - one future template using `[innerHTML]` to
+render, say, rich-text formatting would reopen a stored-XSS hole with zero defense-in-
+depth to catch it. A real follow-up (not attempted this phase, to avoid a large,
+unvalidated new dependency this late in an already-large session): add a genuine
+server-side HTML allowlist (e.g. OWASP Java HTML Sanitizer) before persisting any
+rich-text content field, as defense-in-depth independent of frontend template
+discipline.
 
 ## Known, disclosed gaps carried out of this review
 

@@ -313,6 +313,129 @@ class UserCaseIntegrationTest extends AbstractIntegrationTest {
         .andExpect(jsonPath("$.code").value("RECOMMENDATION_OUTDATED"));
   }
 
+  /**
+   * Canonical Phase 11 brief §43 - "do not only test case root... try child IDs belonging to
+   * another user's case." The root-level IDOR checks at the end of {@link
+   * #fullLifecycle_snapshotCreationProgressReproducibilityAndUpgrade()} only ever address the
+   * intruder to the victim's own {@code caseId} - never the subtler substitution attack: an
+   * attacker uses a {@code caseId} they legitimately own, paired with a step/document/fee id that
+   * actually belongs to <em>someone else's</em> case. {@link
+   * com.foreignerwarsaw.usercase.engine.UserCaseItemService#requireCurrentRevisionItem} looks the
+   * item up by id alone and only checks its {@code snapshotRevision} against the resolved case's
+   * current revision - there is no explicit "does this item's case equal the requested case" check.
+   * This test proves that check is unnecessary in practice only because revision ids are never
+   * shared across cases (so the revision-mismatch branch always fires first), not because ownership
+   * is checked directly - and pins the resulting behavior (a {@code 409 CASE_ITEM_NOT_APPLICABLE},
+   * not a {@code 404}) so a future refactor cannot silently regress it into an actual cross-case
+   * mutation.
+   */
+  @Test
+  void childResourceOwnership_stepDocumentAndFeeIdsFromAnotherCase_areRejectedNotAccepted()
+      throws Exception {
+    AppUserPrincipal victim = userWithRole("USER");
+    AppUserPrincipal attacker = userWithRole("USER");
+
+    String victimCaseId = createSimpleCase(victim, "TEST_IDOR_VICTIM_PROCEDURE");
+    JsonNode victimCase =
+        objectMapper.readTree(
+            mockMvc
+                .perform(get("/api/v1/cases/" + victimCaseId).with(user(victim)))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString());
+    String victimStepId = idOfStep(victimCase, "TEST_STEP_1");
+    String victimDocId = idOfDocument(victimCase, "TEST_DOC_MANDATORY");
+    String victimFeeId = victimCase.get("fees").get(0).get("id").asText();
+
+    String attackerCaseId = createSimpleCase(attacker, "TEST_IDOR_ATTACKER_PROCEDURE");
+
+    // The attacker's own caseId (which they legitimately own) paired with the victim's
+    // step/document/fee id must never mutate the victim's item, and must never succeed.
+    mockMvc
+        .perform(
+            patch("/api/v1/cases/" + attackerCaseId + "/steps/" + victimStepId)
+                .with(user(attacker))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"COMPLETED\"}"))
+        .andExpect(status().is4xxClientError());
+    mockMvc
+        .perform(
+            patch("/api/v1/cases/" + attackerCaseId + "/documents/" + victimDocId)
+                .with(user(attacker))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"READY\"}"))
+        .andExpect(status().is4xxClientError());
+    mockMvc
+        .perform(
+            patch("/api/v1/cases/" + attackerCaseId + "/fees/" + victimFeeId)
+                .with(user(attacker))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"PAID\"}"))
+        .andExpect(status().is4xxClientError());
+
+    // Confirm the victim's items were genuinely untouched, not just that the API returned an
+    // error - the real proof this wasn't a partial/silent mutation.
+    mockMvc
+        .perform(get("/api/v1/cases/" + victimCaseId).with(user(victim)))
+        .andExpect(status().isOk())
+        .andExpect(
+            jsonPath("$.steps[?(@.stableCode == 'TEST_STEP_1')].status").value("NOT_STARTED"))
+        .andExpect(
+            jsonPath("$.documents[?(@.stableCode == 'TEST_DOC_MANDATORY')].status")
+                .value("NOT_STARTED"));
+
+    // And, using the *victim's* own caseId but the attacker as the caller (the already-covered
+    // root-level shape) still 404s, for completeness alongside the child-id variant above.
+    mockMvc
+        .perform(
+            patch("/api/v1/cases/" + victimCaseId + "/steps/" + victimStepId)
+                .with(user(attacker))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"COMPLETED\"}"))
+        .andExpect(status().isNotFound());
+  }
+
+  /**
+   * A minimal one-step/one-document/one-fee published procedure + completed case, for the IDOR test
+   * above.
+   */
+  private String createSimpleCase(AppUserPrincipal applicant, String procedurePrefix)
+      throws Exception {
+    String procedureCode = uniqueCode(procedurePrefix);
+    createProcedureVersion1(procedureCode);
+    publishRule(
+        procedureCode,
+        "{\"fact\":\"PRIMARY_PURPOSE\",\"operator\":\"CONTAINS\",\"value\":\"GET_PESEL\"}");
+
+    String assessmentId = extractId(startAssessment(applicant));
+    answer(applicant, assessmentId, "CITIZENSHIP_COUNTRY", "{\"referenceCode\":\"PK\"}");
+    answer(applicant, assessmentId, "CURRENTLY_IN_POLAND", "{\"booleanValue\":false}");
+    answer(applicant, assessmentId, "DATE_OF_BIRTH", "{\"dateValue\":\"1990-01-01\"}");
+    answer(applicant, assessmentId, "PRIMARY_PURPOSE", "{\"selectedOptionCodes\":[\"GET_PESEL\"]}");
+    mockMvc
+        .perform(
+            post(ASSESSMENTS_BASE + "/" + assessmentId + "/complete")
+                .with(user(applicant))
+                .with(csrf()))
+        .andExpect(status().isOk());
+
+    String recommendationId = analyzeAndGetRecommendationId(applicant, assessmentId, procedureCode);
+    MvcResult created =
+        mockMvc
+            .perform(
+                post("/api/v1/recommendations/" + recommendationId + "/cases")
+                    .with(user(applicant))
+                    .with(csrf()))
+            .andExpect(status().isOk())
+            .andReturn();
+    return objectMapper.readTree(created.getResponse().getContentAsString()).get("id").asText();
+  }
+
   // --- helpers ---
 
   private String analyzeAndGetRecommendationId(

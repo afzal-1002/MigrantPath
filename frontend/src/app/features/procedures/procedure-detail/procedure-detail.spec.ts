@@ -122,4 +122,36 @@ describe('ProcedureDetailPage', () => {
     expect(component['notFound']()).toBe(true);
     httpMock.verify();
   });
+
+  // Canonical Phase 11 (Testing Completeness) brief §78 - stored-XSS regression. A real finding
+  // this phase (docs/security/PRODUCTION_SECURITY.md): the backend applies NO server-side HTML
+  // sanitization to admin-entered content (Procedure/step/document description fields) - the
+  // *entire* defense against a malicious admin-content payload is that this template (and every
+  // other one in the app - `grep -r innerHTML` across frontend/src returns zero matches) binds
+  // every field through Angular's default `{{ }}` interpolation, which HTML-escapes on render,
+  // never through `[innerHTML]` or `bypassSecurityTrust*`. This test proves that protection is
+  // real today, not assumed - a payload containing a live `<script>` tag must never become an
+  // actual DOM element.
+  it('never executes or renders as markup a stored <script> payload in description fields', async () => {
+    await setUp('PESEL');
+    fixture = TestBed.createComponent(ProcedureDetailPage);
+    component = fixture.componentInstance;
+    httpMock = TestBed.inject(HttpTestingController);
+    fixture.detectChanges();
+
+    const payload = '<script>window.__xss = true;</script><img src=x onerror="window.__xss = true">';
+    httpMock
+      .expectOne(`${environment.apiBaseUrl}/procedures/PESEL`)
+      .flush({ ...SAMPLE_DETAIL, description: payload });
+    fixture.detectChanges();
+
+    // The payload must never become live markup - no <script>/<img> element created from it,
+    // and the XSS marker it would set must never run.
+    expect(fixture.nativeElement.querySelector('script')).toBeNull();
+    expect(fixture.nativeElement.querySelector('img[onerror]')).toBeNull();
+    expect((window as unknown as { __xss?: boolean }).__xss).toBeUndefined();
+    // It must still appear, verbatim, as inert text - proving this is escaping, not silent
+    // stripping (which could itself hide a real content bug from an admin/reviewer).
+    expect(fixture.nativeElement.textContent).toContain(payload);
+  });
 });

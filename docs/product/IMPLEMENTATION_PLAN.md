@@ -1202,8 +1202,32 @@ PHASE_10_5_REPORT.md.
 > plan's own phase *numbers* are left as originally written (Phase 11 is still
 > "Testing") rather than silently renumbered — only that report and these annotations
 > record what was actually consolidated out of order.
+>
+> **Update**: canonical Phase 11 (Testing) has since been done — see
+> [PHASE_11_TESTING_REPORT.md](PHASE_11_TESTING_REPORT.md). Two same-numbered reports
+> now exist for this one plan number ([PHASE_11_REPORT.md](PHASE_11_REPORT.md) for the
+> out-of-order production-readiness work, PHASE_11_TESTING_REPORT.md for the canonical
+> Testing pass) — a direct, disclosed consequence of the numbering collision described
+> above, not a naming accident.
 
-## Phase 11 — Testing
+## Phase 11 — Testing — ✅ SUBSTANTIALLY COMPLETE (see [PHASE_11_TESTING_REPORT.md](PHASE_11_TESTING_REPORT.md))
+
+A canonical "Testing Completeness" pass, done after (not before) the production-
+readiness work above — see the reconciliation note. Real inspection first (existing
+coverage was already far larger than this section's original task list assumed — 59
+backend test files / ~340 methods, 25 frontend spec files, 8 Playwright specs — before
+any new work this pass), then targeted, high-value gap-closing: a real regression
+suite against the six actual `PUBLISHED` production Rules' verbatim condition-tree JSON
+(the biggest concrete gap found — no prior test touched real rule content at all), a
+child-resource (step/document/fee) cross-case IDOR test, a real stored-XSS regression
+test (which also caught and corrected a materially false claim this project's own
+security documentation had been carrying), a "held-back procedure never leaks a
+recommendation" regression generalizing the Temp-Residence-Studies situation, a
+documented and config-enforced Playwright worker-count policy (root-causing, not just
+retrying past, a real flake), and the required `docs/testing/` strategy/coverage-
+matrix/release-policy/E2E/production-like documentation set. See
+PHASE_11_TESTING_REPORT.md for the full account, including every canonical brief item
+*not* pursued this pass and why.
 
 #### 11.1 Backend unit coverage pass
 - **Goal:** Services, the rule evaluator, mappers, and validators reach an agreed

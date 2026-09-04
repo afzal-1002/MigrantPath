@@ -345,4 +345,33 @@ class RuleEvaluatorTest {
     assertThat(result.status()).isEqualTo(RuleEvaluationStatus.SATISFIED);
     assertThat(result.sourceIds()).isEmpty();
   }
+
+  /**
+   * Canonical Phase 11 brief §27 - real production rule regression, at this layer specifically
+   * because {@code MELDUNEK_BASE_APPLICABILITY}'s fact ({@code PRIMARY_PURPOSE CONTAINS
+   * "GET_MELDUNEK"}) can only be produced through the real assessment API by a {@code
+   * QuestionnaireVersion} 2 that exists solely as live data created via the real Admin workflow in
+   * the dev database (docs/legal-content/PRODUCTION_RULE_COVERAGE.md's "QuestionnaireVersion 2"
+   * section) - a fresh Testcontainers database (only V38's original v1) genuinely rejects {@code
+   * GET_MELDUNEK} as "not a valid option," confirmed when this test was first attempted as a
+   * full-HTTP-flow integration test in {@code ProductionRuleRegressionTest} and moved here instead.
+   * The condition tree below is copied verbatim from the same real database query documented in
+   * that class - see it for the other five real rules' full-HTTP-flow regression coverage.
+   */
+  @Test
+  void meldunekBaseApplicability_realProductionConditionTree_passOnGoalSelected_failOtherwise() {
+    String realConditionTree =
+        "{\"code\":\"MELDUNEK_GOAL_SELECTED\",\"fact\":\"PRIMARY_PURPOSE\",\"value\":\"GET_MELDUNEK\",\"operator\":\"CONTAINS\",\"explanationKey\":\"meldunek.applicability.goalSelected\"}";
+    RuleVersion version = versionWithTree(realConditionTree);
+
+    when(factResolver.resolve(eq("PRIMARY_PURPOSE"), any(), any()))
+        .thenReturn(List.of("GET_MELDUNEK"));
+    assertThat(evaluator.evaluate(version, factsWith(Map.of()), evaluationDate).status())
+        .isEqualTo(RuleEvaluationStatus.SATISFIED);
+
+    when(factResolver.resolve(eq("PRIMARY_PURPOSE"), any(), any()))
+        .thenReturn(List.of("GET_PESEL"));
+    assertThat(evaluator.evaluate(version, factsWith(Map.of()), evaluationDate).status())
+        .isEqualTo(RuleEvaluationStatus.NOT_SATISFIED);
+  }
 }
