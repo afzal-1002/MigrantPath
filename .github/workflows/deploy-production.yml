@@ -1,0 +1,77 @@
+name: Deploy to production
+
+# Canonical Phase 13 (Deployment) brief §19/§20/§166/§168/§203. Manual trigger only,
+# gated behind the `production` GitHub Environment - if that environment has required
+# reviewers configured in the repository's own settings (recommended, brief §79; cannot
+# be configured from workflow YAML itself, see docs/operations/ENVIRONMENTS.md), this
+# run pauses for explicit human approval before the `deploy` job's steps execute.
+# `concurrency` prevents two production deploys overlapping (brief §166/§168) -
+# `cancel-in-progress: false` deliberately, since cancelling a real deploy mid-flight is
+# more dangerous than queuing a second one behind it.
+#
+# CONFIGURED, NOT EXECUTED (docs/product/PHASE_13_REPORT.md) - same disclosure as
+# deploy-staging.yml; no real production host exists yet.
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Image tag to deploy (git SHA from a release-build.yml run that has already been verified in staging)'
+        required: true
+        type: string
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy ${{ inputs.image_tag }} to production
+    runs-on: ubuntu-latest
+    # Requires a "production" GitHub Environment configured with required reviewers in
+    # this repository's own Settings -> Environments (brief §79/§169/§170 - cannot be
+    # set from this file; documented, not fabricated as already configured).
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate image_tag looks like a real commit SHA
+        run: |
+          if ! [[ "${{ inputs.image_tag }}" =~ ^[0-9a-f]{7,40}$ ]]; then
+            echo "image_tag must be a 7-40 character hex git SHA, got: '${{ inputs.image_tag }}'" >&2
+            exit 1
+          fi
+
+      # Backup-before-migration is a hard release precondition (brief §26/§158/§159) -
+      # placeholder until a real production DB/host exists; the real command is
+      # documented and drilled in docs/operations/DATABASE_BACKUP.md.
+      - name: Pre-deploy database backup (placeholder - no real production DB yet)
+        run: |
+          echo "No real production database is provisioned yet - see docs/operations/DATABASE_BACKUP.md."
+          echo "Intended: pg_dump (or the managed provider's own snapshot) before any migration-bearing deploy."
+          exit 0
+
+      # TODO(real production host): replace with the actual remote deployment step,
+      # mirroring deploy-staging.yml's own TODO - see docs/operations/DEPLOYMENT.md.
+      - name: Deploy (not yet executable - no real production host provisioned)
+        run: |
+          echo "No real production host is provisioned yet - see docs/operations/DEPLOYMENT.md and FIRST_PRODUCTION_DEPLOYMENT.md."
+          echo "Intended command once one exists:"
+          echo "  IMAGE_TAG=${{ inputs.image_tag }} docker compose -f infra/docker-compose.prod.yml --env-file infra/.env.production up -d"
+          exit 0
+
+      - name: Wait for readiness (placeholder)
+        run: |
+          echo "Would poll https://app.example.com/actuator/health/readiness here, with a bounded timeout - never wait forever (brief §113/§114)."
+
+      - name: Non-destructive production smoke (placeholder)
+        run: |
+          echo "Would run: BASE_URL=https://app.example.com ./scripts/release-smoke.sh"
+          echo "Non-destructive only - never account deletion, never admin publish, as part of automated smoke (brief §61/§183/§184/§185)."
+
+      - name: Record deployed version (placeholder)
+        run: |
+          echo "Would record DEPLOYED_VERSION/DEPLOYED_COMMIT=${{ inputs.image_tag }} on the host (brief §83) - no secrets."

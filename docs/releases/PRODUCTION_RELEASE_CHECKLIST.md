@@ -1,9 +1,13 @@
 # Production Release Checklist
 
 Status: this checklist has **not yet been run against a real production
-environment** - no production deploy has happened yet (ADR-013, DEPLOYMENT.md). It is
-written now, ready to use for the first real release, and should be copy-pasted (or
-linked and checked off) into that release's own entry under this directory.
+environment** - no production deploy has happened yet (ADR-013/ADR-015, DEPLOYMENT.md).
+It is written now, ready to use for the first real release, and should be copy-pasted
+(or linked and checked off) into that release's own entry under this directory. See
+`GO_NO_GO.md` for the criteria to apply once this checklist is worked through, and
+`infra/scripts/db-quality-check.sql` / `scripts/release-smoke.sh` for the two
+repeatable, non-mutating checks referenced below (both real, run against the actual
+built release images this phase - `docs/product/PHASE_13_REPORT.md`).
 
 ## Before merging the release
 
@@ -20,6 +24,9 @@ linked and checked off) into that release's own entry under this directory.
       documented (never bulk-imported, never SQL).
 - [ ] `docs/legal-content/PRODUCTION_RULE_COVERAGE.md` still accurately reflects which
       published procedures have a wired eligibility Rule.
+- [ ] `infra/scripts/db-quality-check.sql` run against the target database - zero rows
+      under every "must be 0" section (overlapping active versions, orphan cases,
+      self-approved reviews, TEST-content leakage, failed migrations).
 - [ ] Migrations reviewed for the expand/deploy/migrate/contract pattern if any are
       breaking (docs/operations/DEPLOYMENT.md).
 - [ ] Release notes drafted (docs/releases/RELEASE_PROCESS.md template, including the
@@ -62,6 +69,11 @@ linked and checked off) into that release's own entry under this directory.
 
 ## After deploy (smoke tests - brief §86)
 
+- [ ] `BASE_URL=https://<real-domain> ./scripts/release-smoke.sh` passes in full
+      (platform status, readiness, homepage, sitemap/robots, procedures list, legal
+      pages, non-exposed Actuator paths) - the individual checks below are covered by
+      this script; run it and drill into a specific failure with the manual checks if
+      needed.
 - [ ] `GET /api/v1/platform/status` returns `200` with the expected `version`/`commit`.
 - [ ] `GET /actuator/health/readiness` returns `200`/`UP`.
 - [ ] `GET /` (frontend) loads the real app shell, not a blank page or nginx default.

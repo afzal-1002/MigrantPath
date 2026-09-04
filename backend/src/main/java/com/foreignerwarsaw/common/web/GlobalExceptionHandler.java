@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
@@ -55,6 +56,27 @@ public class GlobalExceptionHandler {
             "VALIDATION_ERROR",
             "Request validation failed",
             violations);
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+  }
+
+  @ExceptionHandler(HttpMessageNotReadableException.class)
+  public ResponseEntity<ApiError> handleUnreadableBody(HttpMessageNotReadableException ex) {
+    // Canonical Phase 13 (Deployment) real finding: malformed JSON, or a required
+    // *primitive* field (boolean/int/etc - a wrapper type instead would just bind to
+    // null and let @NotNull/bean validation handle it normally) missing from the
+    // request body - e.g. RegisterRequest.acceptTerms omitted entirely - previously
+    // fell through to the generic Exception handler below as a 500, discovered by
+    // actually curling a real registration request without every field through the
+    // deployed reverse proxy, not assumed from reading the code. This is a client
+    // input error (400), not a server fault - never ex.getMessage() in the body
+    // (brief §97 still applies: no internal deserialization detail like field/class
+    // names leaks to the client), full detail stays server-side only.
+    log.warn("Unreadable/malformed request body", ex);
+    ApiError body =
+        ApiError.of(
+            HttpStatus.BAD_REQUEST.value(),
+            "MALFORMED_REQUEST_BODY",
+            "The request body is missing a required field or is not valid JSON");
     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
   }
 

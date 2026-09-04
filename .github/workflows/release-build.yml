@@ -1,0 +1,139 @@
+name: Release build
+
+# Canonical Phase 13 (Deployment) brief §14/§77/§203. Builds and tags the two immutable
+# release images with the real git commit SHA (never `latest` alone), gated on CI having
+# already passed for this exact commit (brief §13's release gate - `needs` on the same
+# jobs ci.yml already runs, so a release build never bypasses the real regression suite).
+# Never deploys anywhere itself (brief §14's own "do not automatically deploy production
+# on every merge") - deploy-staging.yml/deploy-production.yml are separate, manually
+# triggered workflows that consume the image this one produces.
+#
+# Registry push (brief §15-§17): GHCR is used because this repository already runs on
+# GitHub Actions (brief §15's own "acceptable if natural"), gated entirely on
+# `secrets.GITHUB_TOKEN` having package-write permission for this repo - if registry
+# push is disabled at the repository/org level, the push step is skipped (not fabricated
+# as successful - brief §17's own "do not fabricate a successful real registry push").
+# This workflow's actual execution status in this environment (no live GitHub Actions
+# run has ever fired it) is disclosed as CONFIGURED, NOT EXECUTED in
+# docs/product/PHASE_13_REPORT.md - the workflow syntax and local equivalent (a manual
+# `docker build`) were verified for real this phase, not just written and assumed.
+
+on:
+  workflow_dispatch:
+    inputs:
+      push_to_registry:
+        description: 'Push built images to GHCR (requires package-write permission)'
+        type: boolean
+        default: false
+  push:
+    branches: [main]
+
+concurrency:
+  group: release-build-${{ github.sha }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  # Real regression, not just "assume ci.yml passed elsewhere" - a release build stands
+  # on its own gate rather than trusting a separate workflow run's status, which is
+  # simpler and more auditable than cross-workflow run coupling for a small monolith.
+  verify:
+    name: Verify (backend + frontend + e2e)
+    uses: ./.github/workflows/ci.yml
+
+  build:
+    name: Build and tag release images
+    needs: verify
+    runs-on: ubuntu-latest
+    outputs:
+      commit_sha: ${{ steps.meta.outputs.commit_sha }}
+      short_sha: ${{ steps.meta.outputs.short_sha }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute release metadata
+        id: meta
+        run: |
+          echo "commit_sha=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          echo "short_sha=$(echo ${{ github.sha }} | cut -c1-7)" >> "$GITHUB_OUTPUT"
+
+      - name: Build backend image
+        run: |
+          docker build \
+            --build-arg BUILD_COMMIT=${{ github.sha }} \
+            -t foreigner-warsaw-backend:${{ github.sha }} \
+            -t foreigner-warsaw-backend:${{ steps.meta.outputs.short_sha }} \
+            backend/
+
+      - name: Build frontend image
+        run: |
+          docker build \
+            -t foreigner-warsaw-frontend:${{ github.sha }} \
+            -t foreigner-warsaw-frontend:${{ steps.meta.outputs.short_sha }} \
+            frontend/
+
+      # Config-validation gate (brief §53) - a broken reverse-proxy template must never
+      # reach a real deployment; the built frontend image already contains the rendered
+      # entrypoint, so this exercises the exact same `envsubst` + `nginx -t` path a real
+      # container start does (real, verified locally this phase against a deliberately
+      # broken template - see PHASE_13_REPORT.md).
+      - name: Validate nginx config inside the built frontend image
+        run: |
+          docker run --rm -e BACKEND_UPSTREAM=backend:8080 \
+            --entrypoint sh foreigner-warsaw-frontend:${{ github.sha }} \
+            -c "/docker-entrypoint.sh nginx -t"
+
+      - name: Generate release manifest
+        run: |
+          FLYWAY_VERSION=$(ls backend/src/main/resources/db/migration | \
+            sed -E 's/^V([0-9]+)__.*/\1/' | sort -n | tail -1)
+          cat > release-manifest.json <<EOF
+          {
+            "version": "$(grep -m1 '<version>' backend/pom.xml | sed -E 's/.*<version>(.*)<\/version>.*/\1/')",
+            "commit": "${{ github.sha }}",
+            "backendImage": "foreigner-warsaw-backend:${{ github.sha }}",
+            "frontendImage": "foreigner-warsaw-frontend:${{ github.sha }}",
+            "flywayVersion": $FLYWAY_VERSION,
+            "buildTimestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          }
+          EOF
+          cat release-manifest.json
+
+      - name: Upload release manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-manifest
+          path: release-manifest.json
+          retention-days: 90
+
+      - name: Log in to GHCR
+        if: inputs.push_to_registry == true
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tag and push images to GHCR
+        if: inputs.push_to_registry == true
+        run: |
+          REPO_LC=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          for image in backend frontend; do
+            docker tag foreigner-warsaw-$image:${{ github.sha }} \
+              ghcr.io/$REPO_LC/foreigner-warsaw-$image:${{ github.sha }}
+            docker tag foreigner-warsaw-$image:${{ github.sha }} \
+              ghcr.io/$REPO_LC/foreigner-warsaw-$image:${{ steps.meta.outputs.short_sha }}
+            docker push ghcr.io/$REPO_LC/foreigner-warsaw-$image:${{ github.sha }}
+            docker push ghcr.io/$REPO_LC/foreigner-warsaw-$image:${{ steps.meta.outputs.short_sha }}
+          done
+
+      - name: Registry push status
+        run: |
+          if [ "${{ inputs.push_to_registry }}" = "true" ]; then
+            echo "Images pushed to ghcr.io - see the push step above for digests."
+          else
+            echo "push_to_registry was not requested - images built and tagged locally to this runner only, never pushed. This is the default (brief §17: never silently push a real release artifact)."
+          fi

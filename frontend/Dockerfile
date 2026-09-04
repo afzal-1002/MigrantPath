@@ -38,8 +38,19 @@ COPY security-headers.conf /etc/nginx/security-headers.conf
 ENV BACKEND_UPSTREAM=backend:8080
 
 EXPOSE 8080
+# Canonical Phase 13 (Deployment) real finding: `http://localhost:8080` here - found by
+# actually inspecting a real running container, not assumed - resolves inside this
+# Alpine/musl image to `::1` (IPv6) first; nginx's own `listen 8080;` in
+# nginx.conf.template is IPv4-only (no dual-stack `listen [::]:8080;`), so the
+# healthcheck failed with "Connection refused" on every single run since the container
+# started (confirmed via `docker inspect`'s own health log - FailingStreak in the
+# dozens, `docker ps` still showed the container "Up" throughout only because nothing
+# in `infra/docker-compose.prod.yml` currently gates on the *frontend* container's own
+# health via `depends_on`) - a real orchestrator/platform that does gate traffic or
+# restarts on container health would never have routed to this image. 127.0.0.1
+# resolves unambiguously to the IPv4 loopback nginx actually listens on.
 HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=5 \
-    CMD wget -q -O /dev/null http://localhost:8080/healthz || exit 1
+    CMD wget -q -O /dev/null http://127.0.0.1:8080/healthz || exit 1
 
 # nginx:1.27's own entrypoint already envsubst's every *.template file in
 # /etc/nginx/templates/ into /etc/nginx/conf.d/ before starting nginx in the

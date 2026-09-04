@@ -1,0 +1,72 @@
+name: Deploy to staging
+
+# Canonical Phase 13 (Deployment) brief §18/§20/§203. Manual trigger only (brief §18's
+# own "preferred: manual workflow dispatch") - never an automatic side effect of a
+# merge. `image_tag` is the exact git SHA (or short SHA) a release-build.yml run already
+# built and tagged - never an arbitrary shell-injection-prone free-text field executed
+# directly (brief §18's own warning); it is only ever interpolated into environment
+# variables consumed by `docker compose`, never into a shell command string.
+#
+# This workflow's actual execution status in this environment is disclosed as
+# CONFIGURED, NOT EXECUTED (docs/product/PHASE_13_REPORT.md) - no real staging host
+# exists to deploy to yet (STAGING.md). The steps below are the real, intended sequence
+# (pull -> migration gate is Flyway-at-startup, already verified this phase ->
+# readiness wait -> non-destructive smoke via scripts/release-smoke.sh) - written to be
+# copy-paste-executable against a real host once one is provisioned, via an
+# `appleboy/ssh-action`-style remote-command step or a self-hosted runner already on
+# that host (left as a TODO placeholder below rather than fabricating a specific
+# provider's connection details this repository does not have).
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Image tag to deploy (git SHA from a release-build.yml run)'
+        required: true
+        type: string
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy ${{ inputs.image_tag }} to staging
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate image_tag looks like a real commit SHA
+        run: |
+          if ! [[ "${{ inputs.image_tag }}" =~ ^[0-9a-f]{7,40}$ ]]; then
+            echo "image_tag must be a 7-40 character hex git SHA, got: '${{ inputs.image_tag }}'" >&2
+            exit 1
+          fi
+
+      # TODO(real staging host): replace this placeholder with the actual remote
+      # deployment step once a host/platform is provisioned (docs/operations/STAGING.md)
+      # - e.g. an SSH step running:
+      #   docker compose -f infra/docker-compose.prod.yml --env-file infra/.env.staging \
+      #     pull && docker compose -f infra/docker-compose.prod.yml \
+      #     --env-file infra/.env.staging up -d
+      # IMAGE_TAG=${{ inputs.image_tag }} would be exported into that remote shell's
+      # environment (docs/operations/DEPLOYMENT.md's own env-file precedence gotcha
+      # applies there too - never a stray shell DB_*/MAIL_* var shadowing the file).
+      - name: Deploy (not yet executable - no real staging host provisioned)
+        run: |
+          echo "No real staging host is provisioned yet - see docs/operations/STAGING.md."
+          echo "Intended command once one exists:"
+          echo "  IMAGE_TAG=${{ inputs.image_tag }} docker compose -f infra/docker-compose.prod.yml --env-file infra/.env.staging up -d"
+          exit 0
+
+      - name: Wait for readiness (placeholder - real host has no reachable URL yet)
+        run: |
+          echo "Would poll https://staging.example.com/actuator/health/readiness here."
+
+      - name: Non-destructive smoke (placeholder)
+        run: |
+          echo "Would run: BASE_URL=https://staging.example.com ./scripts/release-smoke.sh"

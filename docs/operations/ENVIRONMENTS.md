@@ -1,7 +1,10 @@
 # Environment Matrix
 
 Status: reflects the actual committed `application-{local,test,staging,production}.yml`
-profiles and `infra/docker-compose.prod.yml` - not aspirational.
+profiles and `infra/docker-compose.prod.yml` - not aspirational. See
+`ENVIRONMENT_VARIABLES.md` for every variable's exact name, requiredness, and
+secret/public classification, and `STAGING.md`/`FIRST_PRODUCTION_DEPLOYMENT.md` for the
+deploy procedures themselves.
 
 | | Local | Test | Staging | Production |
 |---|---|---|---|---|

@@ -7,7 +7,17 @@ import { defineConfig, devices } from '@playwright/test';
  * NOT started here (docker-compose + `mvnw spring-boot:run` are separate, documented
  * in docs/development/LOCAL_SETUP.md) - a test that needs it skips gracefully if it
  * isn't running rather than failing the whole suite.
+ *
+ * Canonical Phase 13 (Deployment) brief §59/§63: BASE_URL, when set, points the whole
+ * suite at an already-deployed stack (e.g. `BASE_URL=https://staging.example.com npx
+ * playwright test` - docs/operations/STAGING.md) instead of the local dev server - no
+ * code change needed per environment. `webServer` is only started when BASE_URL is
+ * unset, since a real deployed target already runs its own frontend and starting a
+ * second, local `npm start` alongside it would be pointless (and, against a real
+ * remote origin, `webServer.url`'s own readiness probe would never resolve to it).
  */
+const baseURL = process.env['BASE_URL'] ?? 'http://localhost:4200';
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
@@ -23,14 +33,16 @@ export default defineConfig({
   retries: process.env['CI'] ? 2 : 0,
   reporter: 'list',
   use: {
-    baseURL: 'http://localhost:4200',
+    baseURL,
     trace: 'on-first-retry',
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
-  webServer: {
-    command: 'npm start',
-    url: 'http://localhost:4200',
-    reuseExistingServer: !process.env['CI'],
-    timeout: 120_000,
-  },
+  webServer: process.env['BASE_URL']
+    ? undefined
+    : {
+        command: 'npm start',
+        url: baseURL,
+        reuseExistingServer: !process.env['CI'],
+        timeout: 120_000,
+      },
 });

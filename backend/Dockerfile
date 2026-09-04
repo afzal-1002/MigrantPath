@@ -64,8 +64,13 @@ ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75.0 -XX:+ExitOnOutOfMemoryError"
 
 # Actuator health, not a shell-only "is the process alive" check - matches what the
 # reverse proxy/orchestrator should also use for readiness (docs/operations/DEPLOYMENT.md).
+# 127.0.0.1, not localhost - Tomcat binds dual-stack by default so this container's
+# healthcheck was never actually observed to fail via IPv6 the way the frontend
+# container's did (see frontend/Dockerfile's own Phase 13 finding), but pinning the
+# unambiguous address here too is the same real fix applied defensively, not
+# environment/JVM-default-dependent.
 HEALTHCHECK --interval=10s --timeout=3s --start-period=40s --retries=5 \
-    CMD curl -sf http://localhost:8080/actuator/health/readiness || exit 1
+    CMD curl -sf http://127.0.0.1:8080/actuator/health/readiness || exit 1
 
 # Exec form (not shell form) so SIGTERM reaches the JVM directly for graceful shutdown
 # (brief §67 - server.shutdown=graceful is set in application.yml) rather than being

@@ -1361,19 +1361,33 @@ PHASE_12_REPORT.md for the full account.
 
 ---
 
-## Phase 13 — Deployment — ⏳ PARTIALLY COMPLETE (see [PHASE_11_REPORT.md](PHASE_11_REPORT.md))
+## Phase 13 — Deployment — ✅ SUBSTANTIALLY COMPLETE (see [PHASE_13_REPORT.md](PHASE_13_REPORT.md))
 
-13.1 (production Dockerfiles) ✅, 13.2 (reverse proxy, same-origin topology) ✅ built
-and smoke-tested, HTTPS itself is a deployment-time/hosting-provider concern outside
-this repo (ADR-013), 13.3 (hosting decision) ✅ — provider-neutral Docker Compose,
-documented in ADR-013/DEPLOYMENT.md rather than a specific provider chosen, 13.4
-(backup + a **tested** restore drill) ✅ real drill performed against dev data, 13.5
-(secrets management) ✅ `.env.production.example` placeholders only, real secrets never
-committed, 13.6 (staging environment) ⏳ defined/documented (`ENVIRONMENTS.md`) but never
-actually deployed to. **Not done**: 13.7 (a real production environment stood up behind
-a real domain — no production deploy has happened), 13.8 (a CD pipeline with a staging
-auto-deploy and a gated production-approval step — no `.github/workflows/cd.yml`
-exists yet, a disclosed gap, not "coming soon" filler).
+13.1 (production Dockerfiles) ✅, plus a real bug found and fixed this phase (the
+frontend container's own `HEALTHCHECK` had been failing since Phase 11 — `localhost`
+resolving to IPv6 first against nginx's IPv4-only `listen`). 13.2 (reverse proxy,
+same-origin topology) ✅ built and smoke-tested through a real registration→
+verification→login→export round trip and a real guided-assessment→case flow; HTTPS
+itself remains a deployment-time/hosting-provider concern outside this repo (ADR-013/
+ADR-015). 13.3 (hosting decision) ✅ — provider-neutral Docker Compose, documented in
+ADR-013/ADR-015/DEPLOYMENT.md rather than a specific provider chosen (`HOSTING
+PROVIDER: NOT SELECTED`, deliberately). 13.4 (backup + a **tested** restore drill) ✅ —
+repeated this phase against the current V48 schema (the prior drill was stale,
+pre-Phase-12). 13.5 (secrets management) ✅ `.env.production.example`/new
+`.env.staging.example`, real secrets never committed. 13.6 (staging environment) ✅
+architecture, config, and the full local production-like verification are real
+(`STAGING.md`) — a real remote staging host has still never been provisioned, disclosed
+honestly as `STAGING ARCHITECTURE READY, NOT DEPLOYED`. 13.7 (a real production
+environment) — still not done, correctly: a real cloud deploy was deliberately not
+performed this phase (not requested), but the full procedure is now real, executable,
+and locally proven end to end (`FIRST_PRODUCTION_DEPLOYMENT.md`), including three real
+failure exercises and a real rollback-compatibility test. 13.8 (CD pipeline) ✅ real,
+YAML-valid workflows now exist (`release-build.yml`/`deploy-staging.yml`/
+`deploy-production.yml`) with a manual, environment-gated production approval and no
+merge-to-`main`-deploys-production path — disclosed as CONFIGURED, NOT EXECUTED since
+no live GitHub Actions run has fired them and no registry credentials exist in this
+environment. See PHASE_13_REPORT.md for exact status of every item and the full
+readiness ratings.
 
 #### 13.1 Production Dockerfiles
 - **Backend/Frontend:** multi-stage builds producing minimal production images.

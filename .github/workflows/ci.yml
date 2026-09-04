@@ -14,6 +14,11 @@ on:
   pull_request:
   push:
     branches: [main]
+  # Canonical Phase 13 (Deployment): lets release-build.yml call this workflow as its
+  # own release gate (`uses: ./.github/workflows/ci.yml`) instead of re-declaring the
+  # same three jobs - a release build stands on the exact same real regression suite,
+  # never a separately maintained copy that could silently drift from it.
+  workflow_call:
 
 jobs:
   backend:

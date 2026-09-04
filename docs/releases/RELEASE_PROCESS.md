@@ -1,9 +1,14 @@
 # Release Process
 
-Status: the pipeline described below is **partially implemented** - CI (build/test/e2e
-validation) is real and has been running since Phase 1; the staging/production
-deploy stages, the manual-approval gate, and CD automation do not exist yet. This
-document describes the intended process and marks each stage's actual status.
+Status: **updated Phase 13.** CI (build/test/e2e validation) is real and has been
+running since Phase 1. `release-build.yml`/`deploy-staging.yml`/`deploy-production.yml`
+now exist and are YAML-valid (Phase 13, ADR-015) - `release-build.yml`'s image build/tag/
+config-validation/manifest steps are real, locally-equivalent-verified this phase;
+registry push and the two deploy workflows' actual remote-deployment steps are
+CONFIGURED, NOT EXECUTED - no real staging/production host exists yet to deploy to, and
+no registry credentials exist in this environment to prove a real push. This document
+marks each stage's actual status; see `docs/product/PHASE_13_REPORT.md` for the full
+account.
 
 ## Versioning
 
@@ -16,30 +21,40 @@ forced prematurely (brief §79's own "do not force 1.0"). `pom.xml`'s
 ## Pipeline stages
 
 ```
-Commit/PR
+Pull Request
   ↓
 CI (backend verify, frontend lint/test/build, full Playwright e2e)   -- REAL, existing (.github/workflows/ci.yml)
   ↓
-Build artifacts/images (backend/Dockerfile, frontend/Dockerfile)     -- REAL, build-tested this session
+Merge to main
   ↓
-Staging deploy                                                        -- NOT YET AUTOMATED
+release-build.yml: build immutable images, tag with git SHA,          -- REAL mechanism, build/tag/nginx-config-validation/
+  validate nginx config, generate release-manifest.json,                 manifest-generation all verified locally this
+  optionally push to GHCR                                                phase; registry push CONFIGURED, NOT EXECUTED
   ↓
-Smoke/E2E against staging                                             -- procedure documented (PRODUCTION_RELEASE_CHECKLIST.md), not yet run against a real staging deploy
+deploy-staging.yml (manual workflow_dispatch, image_tag input)        -- workflow exists, YAML-valid; CONFIGURED, NOT
+  ↓                                                                       EXECUTED - no real staging host provisioned yet
+Staging smoke/E2E (scripts/release-smoke.sh; Playwright via BASE_URL) -- both real and locally verified against a real
+  ↓                                                                       production-like stack this phase (PHASE_13_REPORT.md)
+Manual production approval (GitHub `production` Environment)          -- workflow exists; repository-side required-reviewer
+  ↓                                                                       config must be set in GitHub Settings, not this file
+Production backup (docs/operations/DATABASE_BACKUP.md)                -- REAL, drilled mechanism; not yet a scheduled job
   ↓
-Manual production approval                                            -- NOT YET IMPLEMENTED (no CD platform chosen)
+DB migration (docs/operations/DEPLOYMENT.md step 4)                   -- REAL mechanism (Flyway-on-startup), re-verified this phase
   ↓
-DB migration (docs/operations/DEPLOYMENT.md step 4)                   -- REAL mechanism (Flyway-on-startup), verified this session
-  ↓
-Production deploy                                                     -- NOT YET PERFORMED
-  ↓
-Smoke tests                                                            -- procedure documented, not yet run against real production
+deploy-production.yml                                                 -- workflow exists; CONFIGURED, NOT EXECUTED - no real
+  ↓                                                                       production host provisioned yet
+Production non-destructive smoke                                      -- scripts/release-smoke.sh, real and locally verified
 ```
 
-**No commit is ever deployed to production automatically** (brief §75/§76) - even once
-CD exists, production remains an explicit, gated, approved action, never a side effect
-of merging to `main`. Until a CD platform is actually chosen and wired
-(`.github/workflows/cd.yml` does not exist yet - a real, disclosed gap, not "coming
-soon" filler), every deploy is manual, following `docs/operations/DEPLOYMENT.md`.
+**No commit is ever deployed to production automatically** (brief §75/§76) - production
+remains an explicit, gated, approved action (`deploy-production.yml`'s `environment:
+production`), never a side effect of merging to `main`. Every workflow above is real,
+committed YAML (`.github/workflows/release-build.yml`, `deploy-staging.yml`,
+`deploy-production.yml`) - what remains CONFIGURED, NOT EXECUTED is a real remote
+run of any of them (no live GitHub Actions execution has fired them in this
+environment) and the actual remote-deployment commands inside the two deploy
+workflows (placeholder steps, documented as such, until a real host exists - see
+ADR-015 and `docs/product/PHASE_13_REPORT.md`).
 
 ## Image tagging (brief §77)
 

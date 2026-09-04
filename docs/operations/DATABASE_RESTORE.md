@@ -84,6 +84,59 @@ re-running the same drill against whatever the actual production backup store is
 one exists (a stale drill against dev data is not proof a production backup is
 restorable).
 
+## Restore drill repeated against the current schema (2026-09-04, Phase 13)
+
+Schema changed since the drill above (Phase 12 added V48, the `admin_review`
+governance-safe-deletion migration) - the drill was stale relative to the deployed
+schema, so it was repeated against the real dev database at its current state:
+
+```bash
+docker exec foreigner-warsaw-postgres-1 pg_dump -U foreigner_warsaw -d foreigner_warsaw \
+  -Fc -f /tmp/backup-v48.dump
+# -> 462,095 bytes
+docker exec foreigner-warsaw-postgres-1 psql -U foreigner_warsaw -d foreigner_warsaw \
+  -c "CREATE DATABASE restore_drill_v48 OWNER foreigner_warsaw;"
+docker exec foreigner-warsaw-postgres-1 pg_restore -U foreigner_warsaw -d restore_drill_v48 \
+  --no-owner --role=foreigner_warsaw /tmp/backup-v48.dump
+# -> clean restore, no errors/warnings
+
+# Verification:
+#   flyway_schema_history row count: 48  (matches source exactly; max version = 48)
+#   procedures: 48, procedure_versions (PUBLISHED): 36, users: 309, admin_review: 31
+#   (all match the source database exactly)
+#   admin_review rows with submitted_by_actor_ref IS NULL: 0  (V48's backfill intact
+#   through a full dump/restore cycle - the pseudonymous actor reference the whole
+#   governance-safe-deletion design depends on genuinely survives)
+#   admin_review rows with submitted_by IS NULL: 0  (no deleted-submitter rows exist yet
+#   in this dev database, but the column is confirmed nullable in the restored schema -
+#   a deletion recorded before the backup would have survived the restore correctly)
+
+docker exec foreigner-warsaw-postgres-1 psql -U foreigner_warsaw -d foreigner_warsaw \
+  -c "DROP DATABASE restore_drill_v48;"
+```
+
+**Result: PASS.** Confirms the restore mechanism still works correctly against the
+schema that actually ships, not a stale pre-Phase-12 shape.
+
+## Upgrade-path evidence (brief §155 - pre-existing schema → latest, not a fresh create)
+
+A synthetic pre-V48 dump was not fabricated for this - the project's own real dev
+database already **is** the evidence: `flyway_schema_history` in this exact database
+shows all 48 migrations applied incrementally over the life of the project (each with
+its own real `installed_on` timestamp, not a single batch), and the V48 migration itself
+ran against a database that already held real `admin_review` rows created under the
+pre-V48 (NOT NULL, RESTRICT) shape - the backfill (`UPDATE admin_review SET
+submitted_by_actor_ref = submitted_by WHERE submitted_by_actor_ref IS NULL`, see the
+migration) is confirmed to have populated every pre-existing row (0 rows with a null
+`submitted_by_actor_ref`, checked above). This is a real upgrade transition, not a fresh
+single-shot schema creation - stronger evidence than a synthetically constructed old
+dump would have been.
+
+Separately, every `./mvnw verify` run already proves the **fresh-install** path (brief
+§154) exhaustively: Testcontainers starts a brand-new PostgreSQL 18 container per
+integration test class and Flyway applies the full V1→V48 chain from empty every time -
+this happens dozens of times on every single CI run, not just once for this report.
+
 ## What this drill does NOT yet cover (honest gaps)
 
 - Not run against a managed-Postgres provider's own PITR/backup mechanism (see

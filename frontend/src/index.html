@@ -6,13 +6,24 @@
     <base href="/" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" type="image/x-icon" href="favicon.ico" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap"
-      rel="stylesheet"
-    />
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+    <!-- Canonical Phase 13 (Deployment) real finding: these three Google Fonts <link>s
+         were always dead weight in production - frontend/security-headers.conf's own
+         CSP (`style-src 'self' 'unsafe-inline'; font-src 'self'`, a deliberate choice,
+         not an oversight - self-hosting or omitting third-party font/analytics origins
+         entirely, consistent with this project's own privacy posture, ADR-014/
+         docs/privacy) blocks both the stylesheet and the font file every time the app
+         is actually served through the real reverse proxy, confirmed via a Playwright
+         trace's real console output against the built production image (never visible
+         against `ng serve`, which sends no CSP header locally - see ENVIRONMENTS.md).
+         Material Icons was doubly dead - `mat-icon` ligature-font usage is zero
+         anywhere in this codebase (grep-verified), so that link fetched a font family
+         nothing ever rendered with, CSP-blocked or not. Removed rather than loosened
+         the CSP to allow a third-party CDN (which would leak every visitor's IP to
+         Google on first paint) - `mat.theme(... typography: Roboto ...)` already
+         degrades to its own generic sans-serif fallback with no code change needed;
+         self-hosting the two weights actually used is a reasonable future
+         enhancement, not a blocker, and is left as a disclosed, low-priority known
+         gap rather than scope-crept into this deployment-readiness phase. -->
   </head>
   <body>
     <app-root></app-root>

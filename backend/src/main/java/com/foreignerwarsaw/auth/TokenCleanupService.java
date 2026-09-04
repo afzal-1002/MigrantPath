@@ -51,7 +51,21 @@ public class TokenCleanupService {
   }
 
   @Scheduled(fixedDelayString = "${app.token-cleanup.interval:PT1H}")
+  @Transactional
   public void scheduledCleanup() {
+    // Canonical Phase 13 (Deployment) real finding: this @Scheduled entry point calling
+    // cleanupExpiredAndStaleTokens() below is a same-class *self-invocation* - it never
+    // goes through the Spring AOP proxy, so that method's own @Transactional had no
+    // effect when reached this way, only when called externally (exactly how
+    // TokenCleanupServiceTest calls it, on the injected bean, which is why the test
+    // never caught this). The real scheduled trigger threw
+    // jakarta.persistence.TransactionRequiredException on every run in a real
+    // deployed stack (staging/production both hardcode this job enabled) - found by
+    // actually running the built image with the job enabled, not by unit/integration
+    // tests alone. @Transactional here on the proxied entry point itself opens the
+    // transaction before the self-invoked call executes, which is then correctly
+    // covered by the already-bound transactional resources regardless of the inner
+    // call bypassing the proxy.
     if (!properties.enabled()) {
       return;
     }
