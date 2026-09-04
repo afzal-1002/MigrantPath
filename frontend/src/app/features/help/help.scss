@@ -1,0 +1,25 @@
+.help-page {
+  max-width: 720px;
+
+  h1 {
+    margin-bottom: 4px;
+  }
+
+  .intro {
+    color: var(--app-status-neutral);
+    margin-top: 0;
+  }
+
+  section {
+    margin-top: var(--app-space-lg);
+  }
+
+  h2 {
+    font-size: 1.05rem;
+    margin-bottom: var(--app-space-xs);
+  }
+
+  p {
+    line-height: 1.5;
+  }
+}

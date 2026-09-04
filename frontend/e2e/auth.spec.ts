@@ -53,9 +53,11 @@ test('Scenario 1: register, verify, login, dashboard, logout, dashboard unavaila
   await expect(page).toHaveURL(/\/dashboard$/);
   await expect(page.getByRole('heading', { name: `Welcome, ${email}` })).toBeVisible();
 
-  // Two "Logout" buttons exist on /dashboard (the toolbar's and the dashboard card's
-  // own, per brief §29) - scope to the main content area's one specifically.
-  await page.getByRole('main').getByRole('button', { name: 'Logout' }).click();
+  // Post-MVP UX Milestone UX1 - the redesigned authenticated shell (layout/app-shell)
+  // has exactly one Logout action, inside the topbar's account menu (the dashboard's
+  // own former, redundant "Logout" button was removed as part of that redesign).
+  await page.getByRole('button', { name: `Account menu for ${email}` }).click();
+  await page.getByRole('menuitem', { name: 'Logout' }).click();
   await expect(page).toHaveURL(/\/login$/);
 
   await page.goto('/dashboard');

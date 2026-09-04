@@ -4,6 +4,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { CaseService, CaseStatus, CaseSummary } from '../../../core/services/case.service';
+import { formatStatusLabel } from '../../../shared/status-label.util';
 
 const ACTIVE_STATUSES: CaseStatus[] = [
   'DRAFT',
@@ -50,6 +51,6 @@ export class CaseList {
   }
 
   protected statusLabel(status: CaseStatus): string {
-    return status.replaceAll('_', ' ').toLowerCase().replace(/^./, (c) => c.toUpperCase());
+    return formatStatusLabel(status);
   }
 }

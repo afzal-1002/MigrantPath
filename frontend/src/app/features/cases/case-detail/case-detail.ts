@@ -15,6 +15,7 @@ import {
   CaseStepStatus,
   RequirementChangeReport,
 } from '../../../core/services/case.service';
+import { formatStatusLabel } from '../../../shared/status-label.util';
 
 interface ApiErrorBody {
   code?: string;
@@ -123,6 +124,6 @@ export class CaseDetailPage {
   }
 
   protected statusLabel(status: string): string {
-    return status.replaceAll('_', ' ').toLowerCase().replace(/^./, (c) => c.toUpperCase());
+    return formatStatusLabel(status);
   }
 }

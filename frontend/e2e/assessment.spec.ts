@@ -106,7 +106,9 @@ test('Scenario 1: work branch end to end, completes, analyzes with a real produc
   await expect(page.getByText(/Steps?/).first()).toBeVisible();
 
   await page.goto('/dashboard');
-  await page.getByRole('link', { name: 'View my cases' }).click();
+  // Post-MVP UX Milestone UX1 - "My cases" is now the persistent sidebar nav item
+  // (layout/app-shell), reachable the same way from every authenticated page.
+  await page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'My cases' }).click();
   await expect(page).toHaveURL(/\/cases$/);
   await expect(page.getByRole('heading', { name: 'My cases' })).toBeVisible();
   await expect(page.getByText('Temporary residence and work')).toBeVisible();
@@ -152,10 +154,11 @@ test('Scenario 3: logging out mid-assessment and back in resumes with answers pr
   await page.getByRole('radiogroup', { name: 'Are you currently in Poland?' }).getByLabel('Yes').check();
   const assessmentUrl = page.url();
 
-  // The wizard page has no logout button of its own - only the app shell's toolbar
-  // one (unlike /dashboard, which has both - see AuthIntegrationTest's own comment on
-  // that ambiguity), so it's unambiguous here.
-  await page.getByRole('button', { name: 'Logout' }).click();
+  // Post-MVP UX Milestone UX1 - the authenticated shell's only Logout action lives in
+  // the topbar's account menu now (layout/app-shell), reachable from every
+  // authenticated page including the assessment wizard.
+  await page.getByRole('button', { name: `Account menu for ${email}` }).click();
+  await page.getByRole('menuitem', { name: 'Logout' }).click();
   await expect(page).toHaveURL(/\/login$/);
 
   await page.getByLabel('Email').fill(email);
@@ -163,7 +166,10 @@ test('Scenario 3: logging out mid-assessment and back in resumes with answers pr
   await page.getByRole('button', { name: 'Sign in' }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
 
-  await page.getByRole('link', { name: 'Resume assessment' }).click();
+  // The redesigned dashboard's "next action" card CTA reads "Continue" for an
+  // in-progress assessment (matching the UX1 brief's own suggested wording), not the
+  // old dashboard's "Resume assessment" link text.
+  await page.getByRole('link', { name: 'Continue' }).click();
   await expect(page).toHaveURL(assessmentUrl);
   await expect(page.getByRole('radiogroup', { name: 'Are you currently in Poland?' }).getByLabel('Yes')).toBeChecked();
 });

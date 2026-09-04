@@ -74,7 +74,12 @@ test('USER without an admin role is denied the Admin area', async ({ page }) => 
 
   await page.goto('/admin');
   await expect(page).toHaveURL(/\/dashboard$/);
-  await expect(page.getByRole('link', { name: 'Admin' })).toHaveCount(0);
+  // A precise href check, not a text-substring match (Post-MVP UX Milestone UX1's own
+  // real finding: this test's own email-generation helper embeds the word "admin" in
+  // every address it creates, including this deliberately-non-admin one, so a
+  // case-insensitive `name: 'Admin'` search matched the sidebar's user-profile link -
+  // whose accessible name includes the raw email - for an entirely unrelated reason).
+  await expect(page.locator('a[href="/admin"]')).toHaveCount(0);
 
   // Server-side enforcement, not just the frontend guard (brief §69/§A).
   const response = await page.request.get('/api/v1/admin/procedures');

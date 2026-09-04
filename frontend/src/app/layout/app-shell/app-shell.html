@@ -1,0 +1,62 @@
+<mat-sidenav-container class="app-shell">
+  <mat-sidenav
+    #drawer
+    class="app-sidebar"
+    [mode]="sidenavMode()"
+    [opened]="sidenavOpened()"
+    [fixedInViewport]="true"
+  >
+    <div class="sidebar-brand">
+      <a routerLink="/dashboard">Foreigner Warsaw</a>
+    </div>
+
+    <nav class="sidebar-nav" aria-label="Primary">
+      @for (item of navItems; track item.path) {
+        <a
+          [routerLink]="item.path"
+          routerLinkActive="active"
+          [routerLinkActiveOptions]="{ exact: false }"
+          (click)="sidenavMode() === 'over' && drawer.close()"
+          >{{ item.label }}</a
+        >
+      }
+
+      @if (isContentAdmin()) {
+        <div class="sidebar-section-label">Administration</div>
+        <a routerLink="/admin" (click)="sidenavMode() === 'over' && drawer.close()">Content governance</a>
+      }
+    </nav>
+
+    <div class="sidebar-user">
+      <a routerLink="/account" class="sidebar-user-link">
+        <span class="avatar" aria-hidden="true">{{ userInitials() }}</span>
+        <span class="sidebar-user-name">{{ displayName() }}</span>
+      </a>
+    </div>
+  </mat-sidenav>
+
+  <mat-sidenav-content class="app-main">
+    <mat-toolbar class="app-topbar">
+      @if (sidenavMode() === 'over') {
+        <button mat-icon-button type="button" aria-label="Open navigation" (click)="drawer.toggle()">☰</button>
+      }
+      <span class="spacer"></span>
+      <a mat-button routerLink="/help">Help</a>
+      <button mat-icon-button [matMenuTriggerFor]="userMenu" [attr.aria-label]="'Account menu for ' + displayName()">
+        <span class="avatar avatar-sm" aria-hidden="true">{{ userInitials() }}</span>
+      </button>
+      <mat-menu #userMenu="matMenu">
+        <a mat-menu-item routerLink="/account">Account</a>
+        @if (isContentAdmin()) {
+          <a mat-menu-item routerLink="/admin">Administration</a>
+        }
+        <a mat-menu-item routerLink="/help">Help</a>
+        <button mat-menu-item type="button" (click)="logout()">Logout</button>
+      </mat-menu>
+    </mat-toolbar>
+
+    <main class="app-content">
+      <router-outlet />
+    </main>
+  </mat-sidenav-content>
+</mat-sidenav-container>

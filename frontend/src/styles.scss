@@ -57,6 +57,35 @@ mat-label,
   pointer-events: none !important;
 }
 
+/* Post-MVP UX Milestone UX1 - a small, restrained set of shared design tokens
+   (brief §38/§39), layered on top of Angular Material's own system variables rather
+   than replacing them. Semantic status colors only - not a full palette rewrite. */
+:root {
+  --app-sidebar-bg: #101c33;
+  --app-sidebar-fg: #dbe4f3;
+  --app-sidebar-fg-muted: #8fa2c2;
+  --app-sidebar-active-bg: #1e3358;
+  --app-sidebar-width: 248px;
+
+  --app-status-success: #1a7f4b;
+  --app-status-success-bg: #e5f5ec;
+  --app-status-warning: #a15c00;
+  --app-status-warning-bg: #fdf0dc;
+  --app-status-danger: #b3261e;
+  --app-status-danger-bg: #fbe9e7;
+  --app-status-info: #0b5fa5;
+  --app-status-info-bg: #e7f1fb;
+  --app-status-neutral: #55617a;
+  --app-status-neutral-bg: #eef1f6;
+
+  --app-space-xs: 4px;
+  --app-space-sm: 8px;
+  --app-space-md: 16px;
+  --app-space-lg: 24px;
+  --app-space-xl: 32px;
+  --app-radius: 10px;
+}
+
 /* You can add global styles to this file, and also import other style files */
 
 // Phase 9 admin panel - shared, global (not component-scoped, since Angular's per-component
