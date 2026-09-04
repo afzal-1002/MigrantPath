@@ -1,0 +1,23 @@
+// Shared styling for the four draft legal/policy pages
+// (privacy/terms/cookies/disclaimer) - deliberately minimal, matching the rest of the
+// app's current low-chrome styling convention rather than introducing a new design
+// system for four static pages.
+.legal-page {
+  max-width: 760px;
+
+  h1 {
+    margin-bottom: 4px;
+  }
+
+  h2 {
+    margin-top: 32px;
+  }
+
+  .draft-notice {
+    background: #fff8e1;
+    border: 1px solid #f0d878;
+    border-radius: 4px;
+    padding: 12px 16px;
+    margin-bottom: 24px;
+  }
+}

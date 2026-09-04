@@ -19,4 +19,12 @@ public interface UserRepository extends JpaRepository<User, UUID> {
    * Phase 9 admin user search (brief §81) - a simple substring match, no full-text search engine.
    */
   java.util.List<User> findByEmailContainingIgnoreCase(String emailFragment);
+
+  /**
+   * Phase 11 addition (brief §24) - the one-time admin-bootstrap gate: {@link
+   * com.foreignerwarsaw.config.AdminBootstrapRunner} checks this before ever creating a bootstrap
+   * account, so it can never "recreate repeatedly" once a real ADMIN exists (bootstrap-created or
+   * not - any ADMIN at all satisfies it).
+   */
+  boolean existsByRoles_Code(String code);
 }

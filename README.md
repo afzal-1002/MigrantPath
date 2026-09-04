@@ -4,13 +4,19 @@ A guided-eligibility and case-tracking web application for foreigners living in 
 moving to Warsaw, Poland — architected so additional Polish cities (and eventually other
 countries) can be enabled later without rewriting core logic.
 
-**Status: Phase 4 complete** (authentication + user management; public reference/
-geographic data — countries, EU/EEA/EFTA/Schengen classification, Polish regions, Warsaw
-districts, authorities and offices; and versioned, sourced immigration-procedure
-content — procedures, steps, document requirements, fees, thresholds — with a
-DRAFT→IN_REVIEW→APPROVED→PUBLISHED→ARCHIVED publishing workflow). The questionnaire
-engine, rules engine, recommendations, and case tracking arrive in later phases — see
-[docs/product/IMPLEMENTATION_PLAN.md](docs/product/IMPLEMENTATION_PLAN.md).
+**Status: Phase 11 (production readiness / deployment / release hardening) in
+progress.** The full guided-eligibility product flow works end to end — registration,
+the guided questionnaire, the deterministic rules engine, personalized recommendations,
+and case tracking with a checklist — backed by versioned, sourced legal content managed
+through a real admin governance workflow (draft → review → approve → publish). Phase 11
+adds what makes that flow safe to actually run in production: hardened security headers,
+an admin bootstrap mechanism, production Docker images and a Compose stack (reverse
+proxy + backend + frontend, no direct backend exposure), health/readiness probes,
+correlation-ID request tracing, a first real metric, a tested backup/restore drill, and
+the operational/release/security/privacy documentation under `docs/operations/`,
+`docs/releases/`, `docs/security/`, and `docs/privacy/`. See
+[docs/product/IMPLEMENTATION_PLAN.md](docs/product/IMPLEMENTATION_PLAN.md) for the full
+phase-by-phase history and current status.
 
 ## Prerequisites
 
@@ -86,6 +92,27 @@ for the full walkthrough.
   "Browse procedures" page. Content management (draft → published) is behind the
   internal `/api/v1/internal/content/**` API, gated to CONTENT_EDITOR/LEGAL_REVIEWER/
   ADMIN roles — no dedicated admin UI yet (Phase 9).
+
+## Production deployment
+
+Real, tested production Dockerfiles and a Compose stack exist under `backend/`,
+`frontend/`, and `infra/` — same-origin reverse-proxy topology (nginx → static Angular
+build + `/api`/`/actuator` proxy → Spring Boot; no microservices, no Kubernetes). See
+[docs/operations/DEPLOYMENT.md](docs/operations/DEPLOYMENT.md) for the real, step-by-step
+process and [ADR-013](docs/architecture/ADR/ADR-013-production-deployment-architecture.md)
+for why it's shaped this way. Never deploy to production without going through
+[docs/releases/PRODUCTION_RELEASE_CHECKLIST.md](docs/releases/PRODUCTION_RELEASE_CHECKLIST.md).
+
+Further operational reference: environments
+([ENVIRONMENTS.md](docs/operations/ENVIRONMENTS.md)), backup/restore
+([DATABASE_BACKUP.md](docs/operations/DATABASE_BACKUP.md),
+[DATABASE_RESTORE.md](docs/operations/DATABASE_RESTORE.md)), disaster recovery and
+incident response
+([DISASTER_RECOVERY.md](docs/operations/DISASTER_RECOVERY.md),
+[INCIDENT_RESPONSE.md](docs/operations/INCIDENT_RESPONSE.md)), observability
+([OBSERVABILITY.md](docs/operations/OBSERVABILITY.md)), the release process
+([RELEASE_PROCESS.md](docs/releases/RELEASE_PROCESS.md)), and the security review
+([PRODUCTION_SECURITY.md](docs/security/PRODUCTION_SECURITY.md)).
 
 ## Database migrations
 

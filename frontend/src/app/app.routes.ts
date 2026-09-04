@@ -15,38 +15,46 @@ export const routes: Routes = [
   {
     path: 'register',
     canActivate: [guestGuard],
+    data: { noIndex: true },
     loadComponent: () => import('./features/auth/register/register').then((m) => m.Register),
   },
   {
     path: 'login',
     canActivate: [guestGuard],
+    data: { noIndex: true },
     loadComponent: () => import('./features/auth/login/login').then((m) => m.Login),
   },
   {
     path: 'verify-email',
+    data: { noIndex: true },
     loadComponent: () => import('./features/auth/verify-email/verify-email').then((m) => m.VerifyEmail),
   },
   {
     path: 'forgot-password',
     canActivate: [guestGuard],
+    data: { noIndex: true },
     loadComponent: () =>
       import('./features/auth/forgot-password/forgot-password').then((m) => m.ForgotPassword),
   },
   {
     path: 'reset-password',
     canActivate: [guestGuard],
+    data: { noIndex: true },
     loadComponent: () => import('./features/auth/reset-password/reset-password').then((m) => m.ResetPassword),
   },
   {
     path: 'dashboard',
     canActivate: [authGuard],
+    data: { noIndex: true },
     loadComponent: () => import('./features/dashboard/dashboard').then((m) => m.Dashboard),
   },
   {
     // Phase 3 verification page (docs, not a product route) - proves the reference
     // API end to end through real components; no guard needed, same as the public
-    // reference endpoints it calls.
+    // reference endpoints it calls. Not indexed - a dev/QA verification aid, not
+    // real product content (brief §93).
     path: 'reference-demo',
+    data: { noIndex: true },
     loadComponent: () => import('./features/reference-demo/reference-demo').then((m) => m.ReferenceDemo),
   },
   {
@@ -70,11 +78,13 @@ export const routes: Routes = [
     // PHASE_5_REPORT.md "Deviations").
     path: 'assessment/start',
     canActivate: [authGuard],
+    data: { noIndex: true },
     loadComponent: () => import('./features/assessment/assessment-start/assessment-start').then((m) => m.AssessmentStart),
   },
   {
     path: 'assessment/:id',
     canActivate: [authGuard],
+    data: { noIndex: true },
     loadComponent: () =>
       import('./features/assessment/assessment-wizard/assessment-wizard').then((m) => m.AssessmentWizard),
   },
@@ -83,6 +93,7 @@ export const routes: Routes = [
     // assessment routes above; ownership is independently enforced server-side.
     path: 'assessment/:id/results',
     canActivate: [authGuard],
+    data: { noIndex: true },
     loadComponent: () =>
       import('./features/recommendations/recommendation-results/recommendation-results').then(
         (m) => m.RecommendationResults,
@@ -93,20 +104,24 @@ export const routes: Routes = [
     // enforced server-side.
     path: 'cases',
     canActivate: [authGuard],
+    data: { noIndex: true },
     loadComponent: () => import('./features/cases/case-list/case-list').then((m) => m.CaseList),
   },
   {
     path: 'cases/:id',
     canActivate: [authGuard],
+    data: { noIndex: true },
     loadComponent: () => import('./features/cases/case-detail/case-detail').then((m) => m.CaseDetailPage),
   },
   {
     // Phase 9 admin panel (brief §14/§15) - authGuard first (must be logged in at all),
     // adminGuard second (must hold an admin role); every child route is lazy-loaded, same
     // convention as the rest of this file. Server-side authorization is what actually
-    // matters (SecurityConfig) - both guards here are UX only.
+    // matters (SecurityConfig) - both guards here are UX only. `noIndex` here covers
+    // every child route too (RobotsMetaService walks the whole ancestor chain).
     path: 'admin',
     canActivate: [authGuard, adminGuard],
+    data: { noIndex: true },
     loadComponent: () => import('./features/admin/admin-shell/admin-shell').then((m) => m.AdminShell),
     children: [
       {
@@ -201,7 +216,28 @@ export const routes: Routes = [
     ],
   },
   {
+    // Phase 11 brief §192 - draft, honestly-marked legal/policy pages, public and
+    // unauthenticated (no reason to gate a disclosure page behind login), and
+    // deliberately indexable (unlike the private routes above) since they're the
+    // pages a search engine or a curious user should actually be able to find.
+    path: 'privacy',
+    loadComponent: () => import('./features/legal/privacy-policy/privacy-policy').then((m) => m.PrivacyPolicy),
+  },
+  {
+    path: 'terms',
+    loadComponent: () => import('./features/legal/terms-of-service/terms-of-service').then((m) => m.TermsOfService),
+  },
+  {
+    path: 'cookies',
+    loadComponent: () => import('./features/legal/cookie-policy/cookie-policy').then((m) => m.CookiePolicy),
+  },
+  {
+    path: 'disclaimer',
+    loadComponent: () => import('./features/legal/disclaimer/disclaimer').then((m) => m.Disclaimer),
+  },
+  {
     path: '**',
+    data: { noIndex: true },
     loadComponent: () => import('./features/not-found/not-found').then((m) => m.NotFound),
   },
 ];

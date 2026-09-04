@@ -1,0 +1,133 @@
+name: foreigner-warsaw-prod
+
+# Production-oriented Compose (Phase 11 brief §165-§169). Provider-neutral (brief §4):
+# this file runs unmodified on a single Docker-capable VPS, or with `postgres` disabled
+# (see the `self-hosted-db` profile note below) against any managed PostgreSQL 18
+# instance (brief §26/§166's recommendation) - business code and this file never assume
+# which one. No Mailpit here (brief §167) - production always uses a real SMTP
+# provider, configured entirely through environment variables (docs/operations/
+# EMAIL_PRODUCTION.md), never hard-coded.
+#
+# Run from the repo root:
+#   docker compose -f infra/docker-compose.prod.yml --env-file .env.production up -d
+#
+# `.env.production` is never committed (see repo .gitignore) - copy
+# infra/.env.production.example and fill in real values, or inject the same variables
+# through your deployment platform's own secret store instead of a file at all.
+#
+# Self-hosted Postgres: add `--profile self-hosted-db` to the command above (and point
+# DB_HOST at the `postgres` service name, e.g. DB_HOST=postgres) to also start the
+# bundled Postgres container. Omit the profile flag entirely when DB_HOST already
+# points at a managed database - the `postgres` service then simply never starts.
+
+services:
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+      args:
+        BUILD_COMMIT: ${BUILD_COMMIT:-unknown}
+    image: ${BACKEND_IMAGE:-foreigner-warsaw-backend}:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: production
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_NAME: ${DB_NAME}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      FRONTEND_URL: ${APP_PUBLIC_URL}
+      MAIL_HOST: ${MAIL_HOST}
+      MAIL_PORT: ${MAIL_PORT}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      # Admin bootstrap (brief §24) - leave unset/false on every startup after the
+      # first real ADMIN account exists; see docs/operations/DEPLOYMENT.md.
+      APP_ADMIN_BOOTSTRAP_ENABLED: ${APP_ADMIN_BOOTSTRAP_ENABLED:-false}
+      ADMIN_BOOTSTRAP_EMAIL: ${ADMIN_BOOTSTRAP_EMAIL:-}
+      ADMIN_BOOTSTRAP_PASSWORD: ${ADMIN_BOOTSTRAP_PASSWORD:-}
+    # Only actually enforced when the self-hosted-db profile is active (an external/
+    # managed database has no `postgres` service here to depend on) - found to be
+    # missing by a real smoke test of this exact file, where the backend happened to
+    # win a race against Postgres's own healthcheck once, but that's luck, not the
+    # "use health dependencies correctly" brief §168 asks for.
+    depends_on:
+      postgres:
+        condition: service_healthy
+        required: false
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/actuator/health/readiness"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      # Real, measured cold-start time against this exact image was ~50s (first
+      # migration run included) - 60s leaves headroom rather than being tuned to the
+      # exact measurement.
+      start_period: 60s
+    # Baseline sizing assumption for a first, low-traffic deployment (brief §65/§112) -
+    # revisit with real measured usage, not a guess dressed up as a promise. Comment out
+    # if the host itself is already resource-constrained enough that Docker's own
+    # accounting is unnecessary.
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 768M
+        reservations:
+          memory: 384M
+    # No ports: published here - only the frontend/reverse-proxy container is reachable
+    # externally; the backend is reached exclusively via the Docker network below,
+    # exactly mirroring the same-origin production topology (ARCHITECTURE.md §13).
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    image: ${FRONTEND_IMAGE:-foreigner-warsaw-frontend}:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      BACKEND_UPSTREAM: backend:8080
+    ports:
+      - "${HTTP_PORT:-8080}:8080"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8080/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 128M
+
+  # Opt-in only (see the file-level comment above) - a managed PostgreSQL instance is
+  # the recommended default for production (brief §166); this stays available for a
+  # single-VPS deployment or local rehearsal of the full production topology.
+  postgres:
+    image: postgres:18
+    restart: unless-stopped
+    profiles: ["self-hosted-db"]
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      # UTC throughout, matching the application's own timezone policy
+      # (docs/database/DATABASE.md, brief §117) - never inherit the host's local zone.
+      TZ: UTC
+      PGTZ: UTC
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    # No ports: published - only reachable from other containers on this Compose
+    # network, never directly from the internet.
+
+volumes:
+  postgres_prod_data:

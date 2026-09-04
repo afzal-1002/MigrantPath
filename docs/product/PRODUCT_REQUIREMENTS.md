@@ -157,6 +157,14 @@ Phase 7 Recommendation Engine → Phase 8 Cases/Checklist → Phase 9 Admin Pane
 Phase 10 Warsaw Content → Phase 11 Testing → Phase 12 Security → Phase 13 Deployment →
 Phase 14 Analytics/Monitoring → Phase 15 Monetisation → Phase 16 Additional Cities.
 
+> Note: a production-readiness/deployment/release-hardening effort was carried out
+> immediately after Phase 10.5 under the name "Phase 11," ahead of and separately from
+> this roadmap's own Phase 11 (Testing), and corresponds almost entirely to this
+> roadmap's Phase 12 + Phase 13 + part of Phase 14 instead. See
+> [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)'s reconciliation note and
+> [PHASE_11_REPORT.md](PHASE_11_REPORT.md) for the full account. Phase numbers here are
+> left as originally written, not renumbered.
+
 ## 10. Risks
 
 - **Legal accuracy risk**: immigration rules change and vary by nationality; publishing

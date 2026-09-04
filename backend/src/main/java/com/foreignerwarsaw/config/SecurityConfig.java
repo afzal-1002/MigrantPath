@@ -52,6 +52,9 @@ public class SecurityConfig {
     "/actuator/health/**",
     "/actuator/info",
     "/api/v1/platform/status",
+    // Phase 11 brief §91 - the public sitemap must be reachable by search-engine
+    // crawlers, which never authenticate.
+    "/sitemap.xml",
     // Read-only reference data (brief §32): populating a registration/onboarding
     // country or district dropdown must never require a session. No write endpoint
     // exists under this prefix at all in Phase 3 (brief §66) - admin editing is
@@ -88,6 +91,51 @@ public class SecurityConfig {
                     .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler()))
         .addFilterAfter(new CsrfCookieFilter(), BasicAuthenticationFilter.class)
         .cors(Customizer.withDefaults())
+        .headers(
+            headers ->
+                headers
+                    // Spring Security's own defaults already cover X-Content-Type-Options:
+                    // nosniff, X-Frame-Options: DENY, X-XSS-Protection: 0, and a
+                    // request-is-secure-conditional HSTS header (HstsHeaderWriter checks
+                    // request.isSecure() itself, so it never appears over plain HTTP in
+                    // local/dev - confirmed by curl against the running dev backend) - no
+                    // code needed for any of those (Phase 11 brief §11/§16). This adds only
+                    // the three headers Spring Security does not set by default.
+                    .contentSecurityPolicy(
+                        csp ->
+                            csp.policyDirectives(
+                                // Angular's production build is self-hosted, same-origin
+                                // (ARCHITECTURE.md §13) - no third-party script/style/font
+                                // origin is needed. 'unsafe-inline' on style-src is Angular
+                                // Material's own component styles (inserted at runtime via
+                                // the CDK) - documented here, not silently added: tightening
+                                // this further needs Angular's own CSP nonce/hash support,
+                                // out of scope for this pass. connect-src stays 'self' - the
+                                // frontend only ever calls its own /api (never a third-party
+                                // API) per the same same-origin design.
+                                "default-src 'self'; "
+                                    + "script-src 'self'; "
+                                    + "style-src 'self' 'unsafe-inline'; "
+                                    + "img-src 'self' data:; "
+                                    + "font-src 'self'; "
+                                    + "connect-src 'self'; "
+                                    + "frame-ancestors 'none'; "
+                                    + "base-uri 'self'; "
+                                    + "form-action 'self'"))
+                    .referrerPolicy(
+                        referrer ->
+                            referrer.policy(
+                                org.springframework.security.web.header.writers
+                                    .ReferrerPolicyHeaderWriter.ReferrerPolicy
+                                    .STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
+                    .permissionsPolicyHeader(
+                        permissions ->
+                            // No camera/microphone/geolocation/payment feature is used
+                            // anywhere in this application - deny all of them outright
+                            // rather than list only the ones happened to be tested.
+                            permissions.policy(
+                                "camera=(), microphone=(), geolocation=(), payment=(), "
+                                    + "usb=(), interest-cohort=()")))
         .httpBasic(AbstractHttpConfigurer::disable)
         .formLogin(AbstractHttpConfigurer::disable)
         .exceptionHandling(

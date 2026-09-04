@@ -1,0 +1,115 @@
+# Production reverse-proxy + static-asset config (Phase 11 brief §8/§17/§18). Rendered
+# by nginx's own envsubst-templating entrypoint at container start. ${BACKEND_UPSTREAM}
+# is the only substituted variable - the entrypoint's own envsubst invocation only
+# touches "${VAR}"-braced tokens whose name matches an actually-set environment
+# variable, so nginx's own unbraced, lowercase $host/$remote_addr/$uri/etc. below pass
+# through completely untouched with no escaping needed (a real, build-tested finding -
+# an earlier version of this file over-escaped them as "$$host" etc. on the mistaken
+# assumption envsubst needed shell/Make-style "$$" escaping; that broke nginx's own
+# config parser with "invalid variable name", caught by actually running the built
+# image, not assumed).
+#
+# Responsibilities kept here, deliberately no business logic (brief §8's own warning):
+# serve the compiled Angular app, proxy /api and /actuator to the backend, gzip, SPA
+# route fallback, cache-control split between hashed assets and index.html, and the
+# security headers in security-headers.conf (see that file's own comment for why it's
+# `include`d repeatedly rather than set once).
+
+server {
+    listen 8080;
+    server_name _;
+    root /usr/share/nginx/html;
+    index index.html;
+
+    include /etc/nginx/security-headers.conf;
+
+    # Request size limit (brief §52) - this application has no file upload; a login/
+    # register/answer payload is a few KB at most.
+    client_max_body_size 1m;
+
+    # Timeouts (brief §53) - no request should hang indefinitely.
+    proxy_connect_timeout 5s;
+    proxy_send_timeout 30s;
+    proxy_read_timeout 30s;
+
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript text/javascript application/xml image/svg+xml;
+    gzip_min_length 1024;
+
+    # A lightweight, non-sensitive container healthcheck target (brief §171) - distinct
+    # from the backend's own /actuator/health/*, and never proxied to the backend.
+    location = /healthz {
+        access_log off;
+        default_type text/plain;
+        return 200 "ok\n";
+    }
+
+    # robots.txt is a static file built alongside the Angular app (see
+    # frontend/public/robots.txt) - no special nginx handling needed beyond the root
+    # above; listed here only as a reminder it exists (brief §92).
+
+    location /api/ {
+        # Deliberately NOT including security-headers.conf here (unlike the static-
+        # content locations below): SecurityConfig already sets every one of these
+        # headers on the backend's own response, and nginx's add_header *appends*
+        # rather than replaces when proxying an upstream response that already carries
+        # the same header name - doing both produced literally duplicated
+        # Content-Security-Policy/X-Content-Type-Options headers on every /api/
+        # response, caught by actually curling the full stack through this proxy, not
+        # assumed (brief §16's own "do not duplicate/conflict... define where each
+        # header is controlled" - the backend controls this half).
+        proxy_pass http://${BACKEND_UPSTREAM};
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        # API responses are per-user/authenticated - never let an intermediate cache
+        # store them (brief §17), on top of Spring Security's own Cache-Control
+        # defaults on the backend response itself.
+        add_header Cache-Control "no-store" always;
+    }
+
+    # Backend-generated (SitemapController), not a static file in the Angular build -
+    # must be proxied explicitly or the SPA fallback below would swallow it into
+    # index.html.
+    location = /sitemap.xml {
+        proxy_pass http://${BACKEND_UPSTREAM}/sitemap.xml;
+        proxy_set_header Host $host;
+    }
+
+    location /actuator/ {
+        proxy_pass http://${BACKEND_UPSTREAM};
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Angular's build hashes every JS/CSS filename (main-<hash>.js) - safe to cache
+    # those aggressively and immutably (brief §18/§107); index.html itself must never
+    # be cached, since it's what references the current hashed filenames.
+    location ~* \.(?:js|css|woff2?|ttf|svg|png|jpg|jpeg|gif|ico)$ {
+        include /etc/nginx/security-headers.conf;
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+        try_files $uri =404;
+    }
+
+    location = /index.html {
+        include /etc/nginx/security-headers.conf;
+        add_header Cache-Control "no-cache" always;
+    }
+
+    # SPA route fallback (brief §8) - any path not matched above (an Angular client
+    # route like /assessment/123) serves index.html; Angular's own router then renders
+    # the right page. Real, non-UI 404s (a genuinely missing static asset) still 404
+    # via try_files' own last resort. This location has no add_header of its own, so it
+    # correctly inherits the server-level include above - but note the `index` directive
+    # triggers an *internal redirect* to /index.html for a bare "/" request, which then
+    # re-matches the `location = /index.html` block above (with its own explicit
+    # include), not this one - exactly the mechanism that originally hid this bug.
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}

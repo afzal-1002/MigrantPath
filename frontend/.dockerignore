@@ -1,0 +1,12 @@
+# Phase 11 brief §177 - never send these into the build context.
+node_modules/
+dist/
+.angular/
+.git/
+playwright-report/
+test-results/
+blob-report/
+e2e/
+*.log
+.idea/
+.vscode/

@@ -19,6 +19,17 @@ app:
     frontend-base-url: ${FRONTEND_URL}
 
 server:
+  # Trust X-Forwarded-* headers from the reverse proxy in front of this instance
+  # (Phase 11 brief §51/§119-§122) so generated redirect/absolute URLs, and Spring
+  # Security's isSecure()-conditional HSTS header, correctly see "https" even though
+  # the reverse proxy terminates TLS and forwards plain HTTP internally. Safe only
+  # because production/staging are deployed so that this instance is never reachable
+  # except through that reverse proxy (docs/operations/DEPLOYMENT.md) - the proxy is
+  # what's actually responsible for stripping/overwriting any client-supplied
+  # X-Forwarded-* header before this ever sees it; this instance itself does not (and
+  # architecturally cannot) verify that a "reverse proxy" set these. Deliberately not
+  # enabled in local/test, where no reverse proxy sits in front of the app.
+  forward-headers-strategy: framework
   servlet:
     session:
       cookie:

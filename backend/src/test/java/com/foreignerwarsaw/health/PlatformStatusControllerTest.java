@@ -20,7 +20,10 @@ class PlatformStatusControllerTest extends AbstractIntegrationTest {
         .perform(MockMvcRequestBuilders.get("/api/v1/platform/status"))
         .andExpect(MockMvcResultMatchers.status().isOk())
         .andExpect(MockMvcResultMatchers.jsonPath("$.status", is("UP")))
-        .andExpect(MockMvcResultMatchers.jsonPath("$.application", is("Foreigner Warsaw")));
+        .andExpect(MockMvcResultMatchers.jsonPath("$.application", is("Foreigner Warsaw")))
+        // Phase 11 addition (brief §78) - always present, "unknown" for a test/local
+        // build with no -Dbuild.commit override, never absent/null.
+        .andExpect(MockMvcResultMatchers.jsonPath("$.commit").exists());
   }
 
   @Test

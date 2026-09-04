@@ -1,0 +1,26 @@
+# Phase 11 brief §92: disallow indexing of personalized/admin routes. This is not a
+# security boundary (robots.txt is advisory, honored only by well-behaved crawlers) -
+# every one of these routes is already independently protected by real authentication/
+# authorization on the backend (SecurityConfig) regardless of what's listed here.
+User-agent: *
+Disallow: /dashboard
+Disallow: /assessment
+Disallow: /cases
+Disallow: /recommendations
+Disallow: /admin
+Disallow: /login
+Disallow: /register
+Disallow: /verify-email
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /reference-demo
+
+# Public, informational content stays crawlable.
+Allow: /$
+Allow: /procedures
+Allow: /privacy
+Allow: /terms
+Allow: /cookies
+Allow: /disclaimer
+
+Sitemap: /sitemap.xml

@@ -1,6 +1,16 @@
 # Secrets / environment
 .env
 .env.*.local
+# Phase 11 real per-environment env files (infra/.env.production, .env.staging, etc.)
+# - deliberately explicit patterns, not a broad ".env.*" + negation (gitignore's
+# negation-after-wildcard-exclusion interaction is easy to get subtly wrong - verified
+# these specific patterns behave correctly with `git check-ignore -v`, unlike an
+# earlier ".env.*" + "!*.example" attempt that did not). *.example files (committed,
+# placeholders only) are never matched by any pattern below.
+.env.production
+.env.staging
+infra/.env.production
+infra/.env.staging
 
 # Claude Code harness session/task state (not project source)
 .claude/

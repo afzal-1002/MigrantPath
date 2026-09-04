@@ -1,0 +1,12 @@
+# Phase 11 brief §177 - never send these into the build context (smaller/faster build,
+# and none of them belong in the image regardless).
+target/
+.git/
+.mvn/wrapper/maven-wrapper.jar
+*.log
+.idea/
+*.iml
+.vscode/
+.classpath
+.project
+.settings/

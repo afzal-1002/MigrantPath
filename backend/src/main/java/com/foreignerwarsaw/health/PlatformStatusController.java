@@ -37,6 +37,8 @@ public class PlatformStatusController {
     // skips that goal, so this falls back to a clearly-labeled dev placeholder
     // rather than throwing.
     String version = buildProperties != null ? buildProperties.getVersion() : "dev-local";
-    return new PlatformStatusResponse("UP", "Foreigner Warsaw", version);
+    String commit = buildProperties != null ? buildProperties.get("commit") : null;
+    return new PlatformStatusResponse(
+        "UP", "Foreigner Warsaw", version, commit != null ? commit : "unknown");
   }
 }

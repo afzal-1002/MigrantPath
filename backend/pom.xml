@@ -30,6 +30,10 @@
 		<java.version>25</java.version>
 		<springdoc-openapi.version>3.1.0</springdoc-openapi.version>
 		<spotless-maven-plugin.version>3.10.1</spotless-maven-plugin.version>
+		<!-- Overridden via -Dbuild.commit=$(git rev-parse HEAD) by CI/the production
+		     Dockerfile (Phase 11 brief §78) - see spring-boot-maven-plugin's build-info
+		     execution below. -->
+		<build.commit>unknown</build.commit>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -168,6 +172,30 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+				<executions>
+					<!-- Phase 11 brief §78: populates BuildProperties (version, and with the
+					     extra properties below, the git commit) so /api/v1/platform/status
+					     reports a real version/commit for an image built via `mvnw package`,
+					     instead of always falling back to "dev-local". `mvnw spring-boot:run`
+					     in local dev still skips this goal, so the dev-local fallback in
+					     PlatformStatusController remains correct there. -->
+					<execution>
+						<goals>
+							<goal>build-info</goal>
+						</goals>
+						<configuration>
+							<additionalProperties>
+								<!-- No git-commit-id plugin dependency needed: CI/the production
+								     Dockerfile passes the real commit via
+								     `-Dbuild.commit=$(git rev-parse HEAD)` (see
+								     backend/Dockerfile and .github/workflows/ci.yml); a local
+								     `mvnw package` with no override gets "unknown", which is
+								     honest rather than a fabricated value. -->
+								<commit>${build.commit}</commit>
+							</additionalProperties>
+						</configuration>
+					</execution>
+				</executions>
 			</plugin>
 			<plugin>
 				<!-- Auto-fixable formatting only (googleJavaFormat) - `mvn spotless:apply`

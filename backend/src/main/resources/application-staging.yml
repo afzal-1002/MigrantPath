@@ -20,6 +20,9 @@ app:
     frontend-base-url: ${FRONTEND_URL}
 
 server:
+  # See application-production.yml's own comment - staging sits behind the same kind
+  # of reverse proxy.
+  forward-headers-strategy: framework
   servlet:
     session:
       cookie:

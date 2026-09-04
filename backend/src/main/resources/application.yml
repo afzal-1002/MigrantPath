@@ -4,6 +4,10 @@
 spring:
   application:
     name: foreigner-warsaw-backend
+  lifecycle:
+    # How long graceful shutdown (above) waits for in-flight requests before forcing
+    # exit - long enough for a normal request, short enough that a deploy doesn't hang.
+    timeout-per-shutdown-phase: 20s
   jpa:
     # Flyway owns the schema; Hibernate only ever validates it against the entities.
     # Never create/update here - see ARCHITECTURE.md §4 / IMPLEMENTATION_PLAN.md §8.
@@ -36,6 +40,11 @@ spring:
     timeout: 30m
 
 server:
+  # Graceful shutdown (Phase 11 brief §67): stop accepting new requests, let in-flight
+  # ones finish within the timeout below, then exit - so a rolling deploy/restart never
+  # cuts off a request mid-flight. Spring Boot's own SmartLifecycle-based
+  # implementation, no custom code.
+  shutdown: graceful
   servlet:
     session:
       cookie:
@@ -58,6 +67,15 @@ management:
       # Overridden to "always" in local only - never leak internal component
       # details (datasource URLs, disk paths) publicly.
       show-details: never
+      probes:
+        # Phase 11 brief §38/§39: explicit liveness/readiness groups
+        # (/actuator/health/liveness, /actuator/health/readiness) rather than relying
+        # on Spring Boot's own auto-detection (which only enables this automatically
+        # inside a detected Kubernetes environment) - the production Dockerfile's own
+        # HEALTHCHECK and any orchestrator/reverse-proxy probe both need these to exist
+        # regardless of the deployment target (brief §4's "no Kubernetes unless
+        # demonstrated need").
+        enabled: true
   health:
     mail:
       # A transient SMTP hiccup is not "the application is unhealthy" - it's a
@@ -74,6 +92,12 @@ springdoc:
     path: /v3/api-docs
 
 app:
+  admin-bootstrap:
+    # Off everywhere by default (brief §24: "no default admin/admin"). An operator
+    # opts in explicitly for exactly one first-deployment startup - see
+    # docs/operations/DEPLOYMENT.md - typically via APP_ADMIN_BOOTSTRAP_ENABLED=true
+    # plus ADMIN_BOOTSTRAP_EMAIL/ADMIN_BOOTSTRAP_PASSWORD, all unset again afterward.
+    enabled: ${APP_ADMIN_BOOTSTRAP_ENABLED:false}
   cors:
     # Empty by default - CORS fails safe (denies cross-origin) unless a profile
     # explicitly configures allowed origins. Never "*" (see ARCHITECTURE.md §11 /

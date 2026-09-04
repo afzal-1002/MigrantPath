@@ -1188,6 +1188,21 @@ PHASE_10_5_REPORT.md.
 
 ---
 
+> **Phase-numbering reconciliation.** The session that did production-readiness work
+> immediately after Phase 10.5 called that work **"Phase 11"** in its own brief, without
+> reference to this roadmap's pre-existing numbering (`PRODUCT_REQUIREMENTS.md`'s own
+> "Phase 10 → 11 Testing → 12 Security → 13 Deployment → 14 Analytics/Monitoring"
+> sequence, set out before that session started). What actually got built —
+> security headers, admin bootstrap, production Docker/Compose, backup/restore, health/
+> observability basics, release-process and privacy documentation — corresponds almost
+> entirely to **this roadmap's Phase 12 (Security/GDPR) + Phase 13 (Deployment) + part of
+> Phase 14 (Monitoring)**, done ahead of and without Phase 11 (Testing) below, which
+> remains not-yet-done. See [PHASE_11_REPORT.md](PHASE_11_REPORT.md) for the full,
+> honest account, and the per-item ✅/⏳ annotations added to Phase 12/13/14 below. This
+> plan's own phase *numbers* are left as originally written (Phase 11 is still
+> "Testing") rather than silently renumbered — only that report and these annotations
+> record what was actually consolidated out of order.
+
 ## Phase 11 — Testing
 
 #### 11.1 Backend unit coverage pass
@@ -1241,7 +1256,18 @@ PHASE_10_5_REPORT.md.
 
 ---
 
-## Phase 12 — Security / GDPR hardening
+## Phase 12 — Security / GDPR hardening — ⏳ PARTIALLY COMPLETE (see [PHASE_11_REPORT.md](PHASE_11_REPORT.md))
+
+Most of the security-hardening half of this phase was done as part of the
+production-readiness work described in PHASE_11_REPORT.md: 12.1 (CSP/Referrer-Policy/
+Permissions-Policy headers) ✅, 12.2 (CSRF posture) ✅ already correct pre-existing,
+re-verified not re-built, 12.7 (log-scrub audit) ✅, 12.8 (security posture doc) ✅ as
+`docs/security/PRODUCTION_SECURITY.md`. **Not done**: 12.3 (rate-limit tuning with real
+numbers — the existing in-memory limiter's single-instance limitation is documented, not
+tuned), 12.4 (dependency scanning wired into CI — named as a follow-up, not wired),
+12.5/12.6 (GDPR self-service export/deletion endpoints — a real, disclosed gap, see
+`docs/privacy/DATA_INVENTORY.md`'s "Data subject rights"), 12.9 (a dedicated external
+pre-launch security review — only an internal manual review was done).
 
 #### 12.1 Security headers + production CORS lockdown
 - **Backend:** CSP, `X-Content-Type-Options`, `Referrer-Policy`, HSTS; CORS restricted
@@ -1301,7 +1327,19 @@ PHASE_10_5_REPORT.md.
 
 ---
 
-## Phase 13 — Deployment
+## Phase 13 — Deployment — ⏳ PARTIALLY COMPLETE (see [PHASE_11_REPORT.md](PHASE_11_REPORT.md))
+
+13.1 (production Dockerfiles) ✅, 13.2 (reverse proxy, same-origin topology) ✅ built
+and smoke-tested, HTTPS itself is a deployment-time/hosting-provider concern outside
+this repo (ADR-013), 13.3 (hosting decision) ✅ — provider-neutral Docker Compose,
+documented in ADR-013/DEPLOYMENT.md rather than a specific provider chosen, 13.4
+(backup + a **tested** restore drill) ✅ real drill performed against dev data, 13.5
+(secrets management) ✅ `.env.production.example` placeholders only, real secrets never
+committed, 13.6 (staging environment) ⏳ defined/documented (`ENVIRONMENTS.md`) but never
+actually deployed to. **Not done**: 13.7 (a real production environment stood up behind
+a real domain — no production deploy has happened), 13.8 (a CD pipeline with a staging
+auto-deploy and a gated production-approval step — no `.github/workflows/cd.yml`
+exists yet, a disclosed gap, not "coming soon" filler).
 
 #### 13.1 Production Dockerfiles
 - **Backend/Frontend:** multi-stage builds producing minimal production images.
@@ -1349,7 +1387,18 @@ PHASE_10_5_REPORT.md.
 
 ---
 
-## Phase 14 — Monitoring / analytics
+## Phase 14 — Monitoring / analytics — ⏳ PARTIALLY COMPLETE (see [PHASE_11_REPORT.md](PHASE_11_REPORT.md))
+
+14.1 (correlation ID) ✅ real, tested (`CorrelationIdFilter`) — the "structured logging"
+half is explicitly not yet done (still plain-text console logs; JSON logging tracked as
+a scoped follow-up, see `docs/operations/OBSERVABILITY.md`). 14.3 (Actuator restricted
+to internal use) ✅, verified stronger than originally planned (non-exposed paths return
+401 before route resolution, not just "not publicly documented"). **Not done**: 14.2
+(error-tracking service integration — the integration point is named, nothing is
+wired), 14.4 (analytics event emission — explicitly out of this session's scope per its
+own "no analytics added" instruction), 14.5 (source-freshness dashboard), 14.6 (uptime/
+health alerting — health/readiness endpoints exist and are correct, but nothing pages an
+operator yet).
 
 #### 14.1 Correlation ID / structured logging review
 - **Goal:** Confirm 1.6's baseline actually threads a correlation ID through every
