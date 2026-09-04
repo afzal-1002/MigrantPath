@@ -9,6 +9,27 @@
   font-size: 0.9rem;
 }
 
+.procedure-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 420px;
+  margin-top: 12px;
+  padding: 8px 12px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: var(--app-radius, 10px);
+  color: var(--mat-sys-on-surface-variant, #666);
+
+  input {
+    flex: 1 1 auto;
+    border: none;
+    outline: none;
+    font: inherit;
+    background: transparent;
+    color: var(--mat-sys-on-surface, inherit);
+  }
+}
+
 .procedure-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));

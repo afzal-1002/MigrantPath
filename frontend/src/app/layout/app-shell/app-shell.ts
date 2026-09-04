@@ -1,87 +1,102 @@
-import { Component, computed, inject } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { Component, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { BreakpointObserver } from '@angular/cdk/layout';
-import { MatSidenavModule } from '@angular/material/sidenav';
-import { MatToolbarModule } from '@angular/material/toolbar';
-import { MatButtonModule } from '@angular/material/button';
 import { MatMenuModule } from '@angular/material/menu';
-import { MatListModule } from '@angular/material/list';
-import { map } from 'rxjs';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { AuthService } from '../../core/services/auth.service';
+import { Dashboard as DashboardData, DashboardApiService, DashboardNextAction } from '../../core/services/dashboard.service';
+import { Icon, IconName } from '../../shared/icon/icon';
 
 const ADMIN_ROLES = ['CONTENT_EDITOR', 'LEGAL_REVIEWER', 'ADMIN'];
 
 interface NavItem {
   label: string;
+  icon: IconName;
   path: string;
 }
 
-// No mat-icon here, deliberately - this codebase's CSP (font-src 'self') already
-// blocks the third-party font `mat-icon`'s ligature usage would need, and the icon
-// font was removed in an earlier phase specifically because nothing used it
-// (frontend/src/index.html's own real finding, Canonical Phase 13). Wayfinding
-// instead comes from clear labels + a strong active-route visual treatment
-// (app-shell.scss) - the same text-only pattern the existing admin shell already
-// uses successfully.
+/** brief §7 - the suggested nav list, renamed/reordered from UX1 pass 1's wide-sidebar
+ * version ("Overview"→"Dashboard", "Browse procedures"→"Procedures") plus one new item
+ * ("Recommendations", whose actual destination is resolved dynamically - see
+ * {@link AppShell.recommendationsLink}, since there is no standalone "recommendations"
+ * route independent of an assessment). */
 const PRIMARY_NAV: NavItem[] = [
-  { label: 'Overview', path: '/dashboard' },
-  { label: 'Find my pathway', path: '/assessment/start' },
-  { label: 'My cases', path: '/cases' },
-  { label: 'Browse procedures', path: '/procedures' },
-  { label: 'Account', path: '/account' },
-  { label: 'Help', path: '/help' },
+  { label: 'Dashboard', icon: 'dashboard', path: '/dashboard' },
+  { label: 'Find my pathway', icon: 'pathway', path: '/assessment/start' },
+  { label: 'My Cases', icon: 'cases', path: '/cases' },
+  { label: 'Procedures', icon: 'procedures', path: '/procedures' },
+  { label: 'Help', icon: 'help', path: '/help' },
+  { label: 'Account', icon: 'account', path: '/account' },
 ];
 
 /**
- * Post-MVP UX Milestone UX1 - the real authenticated application shell (brief §3):
- * a persistent left sidebar + a top bar, replacing the previous "disconnected pages
- * behind one thin toolbar" experience for every logged-in route. Deliberately
- * separate from both the public {@link import('../shell/shell').Shell} (anonymous
- * pages keep their own simple toolbar - no reason to show case/account navigation to
- * a visitor who isn't logged in) and the existing admin shell (brief §45 - "user
- * dashboard != admin dashboard," kept as two genuinely separate layouts).
+ * Post-MVP UX Milestone UX1 (redesign pass) - the real authenticated application shell,
+ * rebuilt around a thin (`--app-rail-width`, 64px) icon-only rail + a slim header,
+ * replacing pass 1's wide labeled sidebar (brief §2/§3: "very close to" the reference
+ * screenshot's own dense, icon-rail structure). Every icon is self-hosted inline SVG via
+ * {@link Icon} - `mat-icon`'s ligature font is unusable under this app's CSP (`font-src
+ * 'self'`, no icon font bundled - frontend/src/index.html's own Phase 13 finding).
  *
- * Sidebar behavior (brief §5): permanent/"side" mode at desktop widths, an overlay
- * drawer ("over" mode, closed by default) below ~900px - `BreakpointObserver` decides
- * which, not a CSS-only trick, so the drawer's open/close state and backdrop actually
- * work correctly on mobile.
+ * Fetches the same dashboard summary the Dashboard page itself renders (brief §27's
+ * "prefer one endpoint" extends here too - the shell reuses it rather than adding a
+ * second, shell-only summary call) once per session, purely to drive two small,
+ * genuinely data-backed affordances: the header's attention indicator (brief §15 - never
+ * a fake badge) and the "Recommendations" nav item's actual target. A failure here never
+ * blocks the shell itself - both affordances simply fall back to their empty/default
+ * state.
  */
 @Component({
   selector: 'app-authenticated-shell',
-  imports: [
-    RouterOutlet,
-    RouterLink,
-    RouterLinkActive,
-    MatSidenavModule,
-    MatToolbarModule,
-    MatButtonModule,
-    MatMenuModule,
-    MatListModule,
-  ],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, MatMenuModule, MatTooltipModule, Icon],
   templateUrl: './app-shell.html',
   styleUrl: './app-shell.scss',
 })
 export class AppShell {
   protected readonly authService = inject(AuthService);
   private readonly router = inject(Router);
-  private readonly breakpointObserver = inject(BreakpointObserver);
+  private readonly dashboardApi = inject(DashboardApiService);
 
   protected readonly navItems = PRIMARY_NAV;
+  protected readonly mobileNavOpen = signal(false);
 
-  /** brief §5 - "over" (overlay drawer, closed by default) below ~900px, "side"
-   * (permanent, always open) at desktop widths. `Breakpoints.Handset`/`.Tablet` alone
-   * are portrait-orientation-biased in a way that doesn't match this app's own actual
-   * layout needs, so an explicit max-width query is used instead. */
-  private readonly isCompact = toSignal(
-    this.breakpointObserver.observe('(max-width: 900px)').pipe(map((state) => state.matches)),
-    { initialValue: false },
+  private readonly dashboardSummary = signal<DashboardData | null>(null);
+
+  constructor() {
+    this.dashboardApi.get().subscribe({
+      next: (summary) => this.dashboardSummary.set(summary),
+      error: () => this.dashboardSummary.set(null),
+    });
+  }
+
+  /** brief §15 - only real, currently-open "needs attention" items, never a fabricated
+   * count. */
+  protected readonly attentionActions = computed<DashboardNextAction[]>(
+    () => this.dashboardSummary()?.nextActions.filter((a) => a.severity === 'ATTENTION') ?? [],
   );
-  protected readonly sidenavMode = computed(() => (this.isCompact() ? 'over' : 'side'));
-  protected readonly sidenavOpened = computed(() => !this.isCompact());
+
+  /** Recommendations only exist attached to a completed assessment (there is no
+   * standalone "my recommendations" list) - this nav item goes to the latest completed
+   * assessment's results if one exists, otherwise to starting an assessment. Never an
+   * invented "no recommendations" page. */
+  protected readonly recommendationsLink = computed<string[]>(() => {
+    const status = this.dashboardSummary()?.assessmentStatus;
+    if (status?.status === 'COMPLETED') {
+      return ['/assessment', status.assessmentId, 'results'];
+    }
+    return ['/assessment/start'];
+  });
+
+  protected actionLink(action: DashboardNextAction): string[] {
+    if (action.caseId) {
+      return ['/cases', action.caseId];
+    }
+    if (action.assessmentId) {
+      return ['/assessment', action.assessmentId];
+    }
+    return ['/dashboard'];
+  }
 
   /** Phase 9's own admin-role check (brief §4/§14) - unchanged logic, reused here so the
-   * "Administration" section only ever appears for an account that actually holds one of
+   * "Administration" icon only ever appears for an account that actually holds one of
    * these roles; independently and authoritatively enforced again server-side regardless. */
   protected readonly isContentAdmin = computed(() =>
     (this.authService.currentUser()?.roles ?? []).some((role) => ADMIN_ROLES.includes(role)),
@@ -96,6 +111,16 @@ export class AppShell {
   protected readonly displayName = computed(
     () => this.authService.currentUser()?.firstName ?? this.authService.currentUser()?.email ?? '',
   );
+
+  protected closeMobileNav(): void {
+    this.mobileNavOpen.set(false);
+  }
+
+  protected onSearchSubmit(term: string): void {
+    const trimmed = term.trim();
+    this.closeMobileNav();
+    this.router.navigate(['/procedures'], trimmed ? { queryParams: { q: trimmed } } : {});
+  }
 
   logout(): void {
     this.authService.logout().subscribe(() => this.router.navigateByUrl('/login'));

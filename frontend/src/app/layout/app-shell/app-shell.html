@@ -1,62 +1,146 @@
-<mat-sidenav-container class="app-shell">
-  <mat-sidenav
-    #drawer
-    class="app-sidebar"
-    [mode]="sidenavMode()"
-    [opened]="sidenavOpened()"
-    [fixedInViewport]="true"
-  >
-    <div class="sidebar-brand">
-      <a routerLink="/dashboard">Foreigner Warsaw</a>
-    </div>
+<div class="shell">
+  <nav class="rail" aria-label="Primary">
+    <a routerLink="/dashboard" class="rail-brand" matTooltip="Foreigner Warsaw" matTooltipPosition="right">FW</a>
 
-    <nav class="sidebar-nav" aria-label="Primary">
+    <ul class="rail-nav">
       @for (item of navItems; track item.path) {
+        <li>
+          <a
+            [routerLink]="item.path"
+            routerLinkActive="active"
+            [routerLinkActiveOptions]="{ exact: false }"
+            [matTooltip]="item.label"
+            matTooltipPosition="right"
+            [attr.aria-label]="item.label"
+          >
+            <app-icon [name]="item.icon" />
+          </a>
+        </li>
+      }
+      <li>
         <a
-          [routerLink]="item.path"
+          [routerLink]="recommendationsLink()"
           routerLinkActive="active"
-          [routerLinkActiveOptions]="{ exact: false }"
-          (click)="sidenavMode() === 'over' && drawer.close()"
-          >{{ item.label }}</a
+          matTooltip="Recommendations"
+          matTooltipPosition="right"
+          aria-label="Recommendations"
         >
-      }
+          <app-icon name="recommendations" />
+        </a>
+      </li>
+    </ul>
 
+    <div class="rail-bottom">
       @if (isContentAdmin()) {
-        <div class="sidebar-section-label">Administration</div>
-        <a routerLink="/admin" (click)="sidenavMode() === 'over' && drawer.close()">Content governance</a>
+        <a routerLink="/admin" matTooltip="Administration" matTooltipPosition="right" aria-label="Administration">
+          <app-icon name="admin" />
+        </a>
       }
-    </nav>
-
-    <div class="sidebar-user">
-      <a routerLink="/account" class="sidebar-user-link">
-        <span class="avatar" aria-hidden="true">{{ userInitials() }}</span>
-        <span class="sidebar-user-name">{{ displayName() }}</span>
-      </a>
-    </div>
-  </mat-sidenav>
-
-  <mat-sidenav-content class="app-main">
-    <mat-toolbar class="app-topbar">
-      @if (sidenavMode() === 'over') {
-        <button mat-icon-button type="button" aria-label="Open navigation" (click)="drawer.toggle()">☰</button>
-      }
-      <span class="spacer"></span>
-      <a mat-button routerLink="/help">Help</a>
-      <button mat-icon-button [matMenuTriggerFor]="userMenu" [attr.aria-label]="'Account menu for ' + displayName()">
-        <span class="avatar avatar-sm" aria-hidden="true">{{ userInitials() }}</span>
+      <button type="button" (click)="logout()" matTooltip="Logout" matTooltipPosition="right" aria-label="Logout">
+        <app-icon name="logout" />
       </button>
-      <mat-menu #userMenu="matMenu">
-        <a mat-menu-item routerLink="/account">Account</a>
-        @if (isContentAdmin()) {
-          <a mat-menu-item routerLink="/admin">Administration</a>
-        }
-        <a mat-menu-item routerLink="/help">Help</a>
-        <button mat-menu-item type="button" (click)="logout()">Logout</button>
-      </mat-menu>
-    </mat-toolbar>
+    </div>
+  </nav>
+
+  @if (mobileNavOpen()) {
+    <div
+      class="mobile-backdrop"
+      role="button"
+      tabindex="0"
+      aria-label="Close navigation"
+      (click)="closeMobileNav()"
+      (keydown.enter)="closeMobileNav()"
+      (keydown.space)="closeMobileNav()"
+    ></div>
+    <nav class="mobile-drawer" aria-label="Primary">
+      <div class="mobile-drawer-header">
+        <span class="rail-brand small">FW</span>
+        <button type="button" class="icon-btn" (click)="closeMobileNav()" aria-label="Close navigation">
+          <app-icon name="close" />
+        </button>
+      </div>
+      @for (item of navItems; track item.path) {
+        <a [routerLink]="item.path" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: false }" (click)="closeMobileNav()">
+          <app-icon [name]="item.icon" />
+          <span>{{ item.label }}</span>
+        </a>
+      }
+      <a [routerLink]="recommendationsLink()" routerLinkActive="active" (click)="closeMobileNav()">
+        <app-icon name="recommendations" />
+        <span>Recommendations</span>
+      </a>
+      @if (isContentAdmin()) {
+        <a routerLink="/admin" (click)="closeMobileNav()">
+          <app-icon name="admin" />
+          <span>Administration</span>
+        </a>
+      }
+      <button type="button" class="mobile-logout" (click)="logout()">
+        <app-icon name="logout" />
+        <span>Logout</span>
+      </button>
+    </nav>
+  }
+
+  <div class="shell-main">
+    <header class="topbar">
+      <button type="button" class="icon-btn mobile-menu-btn" (click)="mobileNavOpen.set(true)" aria-label="Open navigation">
+        <app-icon name="menu" />
+      </button>
+
+      <form class="search" (submit)="$event.preventDefault(); onSearchSubmit(searchInput.value)">
+        <app-icon name="search" [size]="16" />
+        <input #searchInput type="search" placeholder="Search procedures &amp; help" aria-label="Search procedures and help" />
+      </form>
+
+      <div class="topbar-actions">
+        <button
+          type="button"
+          class="icon-btn bell-btn"
+          [matMenuTriggerFor]="alertsMenu"
+          [attr.aria-label]="attentionActions().length + ' items need your attention'"
+        >
+          <app-icon name="bell" />
+          @if (attentionActions().length > 0) {
+            <span class="bell-badge">{{ attentionActions().length }}</span>
+          }
+        </button>
+        <mat-menu #alertsMenu="matMenu">
+          @if (attentionActions().length === 0) {
+            <div class="alerts-empty">Nothing needs your attention right now.</div>
+          } @else {
+            @for (action of attentionActions(); track action.heading) {
+              <a mat-menu-item [routerLink]="actionLink(action)">
+                <strong>{{ action.heading }}</strong>
+                <span class="alert-detail">{{ action.detail }}</span>
+              </a>
+            }
+          }
+        </mat-menu>
+
+        <button
+          type="button"
+          class="icon-btn user-btn"
+          [matMenuTriggerFor]="userMenu"
+          [attr.aria-label]="'Account menu for ' + displayName()"
+        >
+          <span class="avatar" aria-hidden="true">{{ userInitials() }}</span>
+          <span class="user-name">{{ displayName() }}</span>
+          <app-icon name="chevron-down" [size]="14" />
+        </button>
+        <mat-menu #userMenu="matMenu">
+          <a mat-menu-item routerLink="/account">Account</a>
+          @if (isContentAdmin()) {
+            <a mat-menu-item routerLink="/admin">Administration</a>
+          }
+          <a mat-menu-item routerLink="/help">Help</a>
+          <button mat-menu-item type="button" (click)="logout()">Logout</button>
+        </mat-menu>
+      </div>
+    </header>
 
     <main class="app-content">
       <router-outlet />
     </main>
-  </mat-sidenav-content>
-</mat-sidenav-container>
+  </div>
+</div>

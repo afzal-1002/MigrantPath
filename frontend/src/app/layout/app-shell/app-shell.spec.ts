@@ -29,6 +29,24 @@ describe('AppShell', () => {
     httpMock.expectOne(`${environment.apiBaseUrl}/auth/login`).flush(user);
   }
 
+  /** The shell's own constructor fires one dashboard summary fetch (brief §27's "reuse
+   * one endpoint" - see app-shell.ts's own doc comment) - every test must account for
+   * it or `httpMock.verify()` below fails on an unflushed request. */
+  function flushDashboard(body: Partial<Record<string, unknown>> = {}): void {
+    httpMock.expectOne(`${environment.apiBaseUrl}/dashboard`).flush({
+      profile: { displayName: 'Test', email: 'user@example.com', accountVerified: true, city: 'Warsaw' },
+      primaryCase: null,
+      activeCases: [],
+      nextActions: [],
+      importantDates: [],
+      completedMilestones: [],
+      latestRecommendations: [],
+      recentActivity: [],
+      assessmentStatus: null,
+      ...body,
+    });
+  }
+
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [AppShell],
@@ -43,34 +61,80 @@ describe('AppShell', () => {
 
   afterEach(() => httpMock.verify());
 
-  it('renders every primary navigation item', () => {
+  it('renders every primary navigation item as an accessible, labeled rail icon', () => {
     fixture.detectChanges();
-    const text = fixture.nativeElement.textContent as string;
-    for (const label of ['Overview', 'Find my pathway', 'My cases', 'Browse procedures', 'Account', 'Help']) {
-      expect(text).toContain(label);
+    flushDashboard();
+    fixture.detectChanges();
+
+    const rail: HTMLElement = fixture.nativeElement.querySelector('.rail');
+    for (const label of ['Dashboard', 'Find my pathway', 'My Cases', 'Procedures', 'Help', 'Account', 'Recommendations']) {
+      expect(rail.querySelector(`[aria-label="${label}"]`), label).toBeTruthy();
     }
   });
 
-  it('never shows the Administration section for a plain USER account', () => {
+  it('never shows the Administration icon for a plain USER account', () => {
     loginAs(baseUser);
     fixture.detectChanges();
-    expect((fixture.nativeElement.textContent as string)).not.toContain('Administration');
+    flushDashboard();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('a[href="/admin"]')).toBeNull();
   });
 
-  it('shows the Administration section for an ADMIN account', () => {
+  it('shows the Administration icon for an ADMIN account', () => {
     loginAs({ ...baseUser, roles: ['USER', 'ADMIN'] });
     fixture.detectChanges();
-    expect((fixture.nativeElement.textContent as string)).toContain('Administration');
+    flushDashboard();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('a[href="/admin"]')).toBeTruthy();
   });
 
   it("shows the caller's own display name and initial, never another account's", () => {
     loginAs(baseUser);
     fixture.detectChanges();
+    flushDashboard();
+    fixture.detectChanges();
+
     expect((fixture.nativeElement.textContent as string)).toContain('Test');
     expect(fixture.componentInstance['userInitials']()).toBe('T');
   });
 
+  it('shows a bell badge only when the dashboard reports a real ATTENTION next action', () => {
+    fixture.detectChanges();
+    flushDashboard({
+      nextActions: [
+        { heading: 'Requirements have changed', detail: 'Review it', severity: 'ATTENTION', ctaLabel: 'Review', caseId: 'case-1', assessmentId: null },
+        { heading: 'Continue your checklist', detail: 'Keep going', severity: 'NEXT', ctaLabel: 'Open', caseId: 'case-1', assessmentId: null },
+      ],
+    });
+    fixture.detectChanges();
+
+    const badge: HTMLElement | null = fixture.nativeElement.querySelector('.bell-badge');
+    expect(badge?.textContent?.trim()).toBe('1');
+  });
+
+  it("links the Recommendations item to the caller's latest completed assessment when one exists", () => {
+    fixture.detectChanges();
+    flushDashboard({ assessmentStatus: { assessmentId: 'assessment-9', status: 'COMPLETED', progressPercent: 100 } });
+    fixture.detectChanges();
+
+    const link: HTMLAnchorElement = fixture.nativeElement.querySelector('[aria-label="Recommendations"]');
+    expect(link.getAttribute('href')).toBe('/assessment/assessment-9/results');
+  });
+
+  it('never blocks rendering if the dashboard summary fetch fails', () => {
+    fixture.detectChanges();
+    httpMock.expectOne(`${environment.apiBaseUrl}/dashboard`).error(new ProgressEvent('error'));
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.rail')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.bell-badge')).toBeNull();
+  });
+
   it('logout navigates to /login once the backend confirms', () => {
+    fixture.detectChanges();
+    flushDashboard();
     fixture.detectChanges();
     const navigateSpy = vi.spyOn(router, 'navigateByUrl');
 

@@ -57,15 +57,28 @@ mat-label,
   pointer-events: none !important;
 }
 
-/* Post-MVP UX Milestone UX1 - a small, restrained set of shared design tokens
-   (brief §38/§39), layered on top of Angular Material's own system variables rather
-   than replacing them. Semantic status colors only - not a full palette rewrite. */
+/* Post-MVP UX Milestone UX1 (redesign pass) - a small, restrained set of shared design
+   tokens (brief §38/§39), layered on top of Angular Material's own system variables
+   rather than replacing them. Semantic status colors only - not a full palette rewrite.
+   `--app-sidebar-*` names are kept (rather than renamed to "-rail-") so every existing
+   component that already references them keeps working; `--app-rail-width` is the new,
+   additional token the thin icon rail itself uses. */
 :root {
   --app-sidebar-bg: #101c33;
   --app-sidebar-fg: #dbe4f3;
   --app-sidebar-fg-muted: #8fa2c2;
   --app-sidebar-active-bg: #1e3358;
-  --app-sidebar-width: 248px;
+  --app-rail-width: 64px;
+  --app-mobile-drawer-width: 260px;
+
+  --app-primary: #0b5fa5;
+  --app-primary-dark: #084a82;
+  --app-accent-teal: #0f8a80;
+
+  --app-page-bg: #f5f6f8;
+  --app-surface: #ffffff;
+  --app-border: rgba(15, 23, 42, 0.1);
+  --app-shadow-card: 0 1px 2px rgba(15, 23, 42, 0.06);
 
   --app-status-success: #1a7f4b;
   --app-status-success-bg: #e5f5ec;

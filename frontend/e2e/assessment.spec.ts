@@ -106,9 +106,10 @@ test('Scenario 1: work branch end to end, completes, analyzes with a real produc
   await expect(page.getByText(/Steps?/).first()).toBeVisible();
 
   await page.goto('/dashboard');
-  // Post-MVP UX Milestone UX1 - "My cases" is now the persistent sidebar nav item
-  // (layout/app-shell), reachable the same way from every authenticated page.
-  await page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'My cases' }).click();
+  // Post-MVP UX Milestone UX1 (redesign pass) - "My Cases" is now an icon-only rail
+  // item (layout/app-shell) whose accessible name comes from its aria-label, reachable
+  // the same way from every authenticated page.
+  await page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'My Cases' }).click();
   await expect(page).toHaveURL(/\/cases$/);
   await expect(page.getByRole('heading', { name: 'My cases' })).toBeVisible();
   await expect(page.getByText('Temporary residence and work')).toBeVisible();

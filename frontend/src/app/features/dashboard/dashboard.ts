@@ -1,184 +1,145 @@
+import { DatePipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { forkJoin } from 'rxjs';
-import { MatButtonModule } from '@angular/material/button';
-import { MatCardModule } from '@angular/material/card';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { AuthService } from '../../core/services/auth.service';
-import { AssessmentService, AssessmentSummary } from '../../core/services/assessment.service';
-import { CaseService, CaseSummary } from '../../core/services/case.service';
-import { Recommendation, RecommendationService } from '../../core/services/recommendation.service';
-import { ProcedureService, ProcedureSummary } from '../../core/services/procedure.service';
+import {
+  Dashboard as DashboardData,
+  DashboardApiService,
+  DashboardCase,
+  DashboardNextAction,
+} from '../../core/services/dashboard.service';
 import { formatStatusLabel } from '../../shared/status-label.util';
+import { Icon, IconName } from '../../shared/icon/icon';
 
-/** A single, human-readable "what should I do next" card - never more than one shown
- * at a time (brief §11). Priority policy (brief §78, chosen and documented, not an
- * unpredictable if/else maze):
- *   1. An active case with a requirement-changed flag ("review changes")
- *   2. An active case with an incomplete checklist ("continue checklist")
- *   3. A completed assessment with no case yet ("view recommendation")
- *   4. An assessment in progress ("continue assessment")
- *   5. No assessment at all ("start assessment") */
-interface NextAction {
-  heading: string;
-  detail: string;
-  ctaLabel: string;
-  ctaLink: string[];
+/** brief §31/§50 - severity drives color, never the raw backend string. */
+const SEVERITY_ICON: Record<DashboardNextAction['severity'], IconName> = {
+  ATTENTION: 'alert',
+  NEXT: 'chevron-right',
+  INFO: 'info',
+};
+
+interface CalendarDay {
+  date: Date | null;
+  isToday: boolean;
+  hasEvent: boolean;
 }
 
-/** Post-MVP UX Milestone UX1 - the real, state-derived core dashboard (brief §9-§21),
- * replacing the previous three-static-cards placeholder. Every section below reflects
- * only the caller's own data (brief §23/§33 - no arbitrary userId, `AuthService`'s
- * `/users/me`-derived state is the only identity involved) and only real backend state
- * - no invented deadlines, no fabricated progress, no eligibility percentage (brief
- * §16/§25/§54/§55). Fetches stay bounded (brief §30/§34): the two list calls always
- * run; at most one further call (an assessment detail for its progress percentage, or
- * the latest recommendation run, or the public procedure list for a brand-new visitor)
- * runs after that, chosen by what the first two calls already revealed - never N+1
- * across every case/assessment.
+interface CalendarMonth {
+  label: string;
+  weeks: CalendarDay[][];
+}
+
+interface HelpTopic {
+  label: string;
+  link: string;
+}
+
+const HELP_TOPICS: HelpTopic[] = [
+  { label: 'How recommendations work', link: '/help' },
+  { label: 'How case checklists work', link: '/help' },
+  { label: 'Why official sources matter', link: '/help' },
+  { label: 'Privacy and your data', link: '/privacy' },
+];
+
+/** brief §12/§13 - the same 5-stage mapping DashboardService documents on the backend,
+ * mirrored here only for display labels/order (the backend's own `stageIndex`/
+ * `stageLabel` on `primaryCase` are what's actually shown - this array exists only so
+ * the timeline can render every stage, not only the reached ones). */
+const TIMELINE_STAGES = ['Started', 'Ready to submit', 'Submitted', 'Decision pending', 'Decision received'];
+
+/**
+ * Post-MVP UX Milestone UX1 (redesign pass) - the dense, 42-Intra-inspired authenticated
+ * dashboard (brief §1-§40), replacing pass 1's generic SaaS four-KPI-cards layout. Every
+ * number, date, and status here comes straight from the single {@code GET /api/v1/dashboard}
+ * aggregation ({@link DashboardApiService}) - this component never computes eligibility,
+ * invents a deadline, or shows a raw backend enum (brief §41-§55). The same structural shell
+ * (hero, timeline, 3x2 card grid) renders for every user state - new user, assessment in
+ * progress, recommendation ready, one active case, or several - only the content inside each
+ * region changes (brief §56-§60).
  */
 @Component({
   selector: 'app-dashboard',
-  imports: [MatCardModule, MatButtonModule, MatProgressSpinnerModule, RouterLink],
+  imports: [RouterLink, Icon, DatePipe],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.scss',
 })
 export class Dashboard {
   protected readonly authService = inject(AuthService);
   private readonly router = inject(Router);
-  private readonly assessmentService = inject(AssessmentService);
-  private readonly caseService = inject(CaseService);
-  private readonly recommendationService = inject(RecommendationService);
-  private readonly procedureService = inject(ProcedureService);
+  private readonly dashboardApi = inject(DashboardApiService);
 
   protected readonly loading = signal(true);
   protected readonly error = signal(false);
+  protected readonly data = signal<DashboardData | null>(null);
+  protected readonly helpQuery = signal('');
 
-  protected readonly assessments = signal<AssessmentSummary[]>([]);
-  protected readonly cases = signal<CaseSummary[]>([]);
-  protected readonly popularProcedures = signal<ProcedureSummary[]>([]);
-  protected readonly assessmentProgressPercent = signal<number | null>(null);
-  protected readonly latestRecommendations = signal<Recommendation[]>([]);
+  protected readonly severityIcon = SEVERITY_ICON;
+  protected readonly timelineStages = TIMELINE_STAGES;
 
-  protected readonly isNewUser = computed(() => this.assessments().length === 0 && this.cases().length === 0);
+  protected readonly displayName = computed(
+    () => this.authService.currentUser()?.firstName ?? this.authService.currentUser()?.email ?? '',
+  );
 
-  /** Same "in-progress wins, else most recent completed" precedence the original
-   * Phase 5 dashboard used (unchanged logic, still correct). */
-  protected readonly relevantAssessment = computed(() => {
-    const list = this.assessments();
-    return list.find((a) => a.status === 'IN_PROGRESS') ?? list.find((a) => a.status === 'COMPLETED') ?? null;
+  protected readonly primaryCase = computed<DashboardCase | null>(() => this.data()?.primaryCase ?? null);
+
+  protected readonly userInitials = computed(() => {
+    const name = this.data()?.profile.displayName ?? '';
+    return name.slice(0, 1).toUpperCase() || '?';
   });
 
-  private readonly activeStatuses = new Set([
-    'DRAFT',
-    'PREPARING',
-    'READY_TO_SUBMIT',
-    'SUBMITTED',
-    'WAITING',
-    'ADDITIONAL_DOCUMENTS_REQUIRED',
-    'DECISION_RECEIVED',
-    'APPROVED',
-    'REJECTED',
-    'APPEAL',
-  ]);
-  protected readonly activeCases = computed(() => this.cases().filter((c) => this.activeStatuses.has(c.status)));
-
-  /** brief §61 - a bounded subset, not the full case history; "View all cases" links to
-   * the real full list. */
-  protected readonly visibleActiveCases = computed(() => this.activeCases().slice(0, 4));
-
-  protected readonly casesNeedingAttention = computed(() => this.activeCases().filter((c) => c.hasRequirementUpdates));
-
-  /** brief §12 - only meaningful, non-vanity counters. */
-  protected readonly checklistProgressPercent = computed(() => {
-    const cases = this.activeCases();
-    const stepsTotal = cases.reduce((sum, c) => sum + c.stepsTotal, 0);
-    const stepsDone = cases.reduce((sum, c) => sum + c.stepsCompleted, 0);
-    if (stepsTotal === 0) {
+  /** brief §17 - checklist completion only (steps + documents), never a legal-probability
+   * or eligibility percentage. Fees are tracked separately (mini-bar) since an unpaid fee
+   * doesn't mean a step wasn't completed. */
+  protected readonly caseProgressPercent = computed<number | null>(() => {
+    const c = this.primaryCase();
+    if (!c) {
       return null;
     }
-    return Math.round((stepsDone / stepsTotal) * 100);
+    const total = c.stepsTotal + c.documentsTotal;
+    if (total === 0) {
+      return null;
+    }
+    return Math.round(((c.stepsCompleted + c.documentsCompleted) / total) * 100);
   });
 
-  /** brief §60 - recent activity derived from data already fetched (case last-updated
-   * timestamps), never a separate per-case event-history fetch just for a dashboard
-   * summary. */
-  protected readonly recentActivity = computed(() =>
-    [...this.cases()]
-      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-      .slice(0, 5),
-  );
-
-  protected readonly primaryMatches = computed(() =>
-    this.latestRecommendations().filter((r) => r.recommendationType === 'PRIMARY_MATCH'),
-  );
-
-  protected readonly nextAction = computed<NextAction | null>(() => {
-    const withUpdates = this.casesNeedingAttention()[0];
-    if (withUpdates) {
-      return {
-        heading: 'Requirements have changed',
-        detail: `${withUpdates.procedureTitle} has an updated requirement to review.`,
-        ctaLabel: 'Review changes',
-        ctaLink: ['/cases', withUpdates.id],
-      };
+  protected readonly primaryPathwayTitle = computed<string | null>(() => {
+    const c = this.primaryCase();
+    if (c) {
+      return c.procedureTitle;
     }
+    const primaryMatch = this.data()?.latestRecommendations.find((r) => r.recommendationType === 'PRIMARY_MATCH');
+    return primaryMatch?.procedureTitle ?? this.data()?.latestRecommendations[0]?.procedureTitle ?? null;
+  });
 
-    const incomplete = this.activeCases().find((c) => c.stepsCompleted < c.stepsTotal || c.documentsReady < c.documentsTotal);
-    if (incomplete) {
-      return {
-        heading: 'Continue your checklist',
-        detail: `${incomplete.procedureTitle}: ${incomplete.stepsCompleted}/${incomplete.stepsTotal} steps, ${incomplete.documentsReady}/${incomplete.documentsTotal} documents ready.`,
-        ctaLabel: 'Open checklist',
-        ctaLink: ['/cases', incomplete.id],
-      };
+  protected readonly activeCaseCount = computed(() => this.data()?.activeCases.length ?? 0);
+  protected readonly openActionCount = computed(() => this.data()?.nextActions.length ?? 0);
+
+  protected readonly currentStageIndex = computed(() => this.primaryCase()?.stageIndex ?? null);
+
+  protected readonly primaryAuthority = computed(() => this.primaryCase()?.authorities[0] ?? null);
+  protected readonly primaryOffice = computed(() => this.primaryCase()?.offices[0] ?? null);
+
+  protected readonly visibleHelpTopics = computed(() => {
+    const term = this.helpQuery().trim().toLowerCase();
+    if (!term) {
+      return HELP_TOPICS;
     }
+    return HELP_TOPICS.filter((t) => t.label.toLowerCase().includes(term));
+  });
 
-    const assessment = this.relevantAssessment();
-    if (assessment?.status === 'COMPLETED' && this.cases().length === 0) {
-      const primary = this.primaryMatches()[0];
-      return {
-        heading: primary ? 'Your recommended pathway is ready' : 'Your assessment results are ready',
-        detail: primary
-          ? `${primary.procedureTitle} appears relevant based on your answers.`
-          : 'Review which pathways may be relevant to your situation.',
-        ctaLabel: 'View recommendations',
-        ctaLink: ['/assessment', assessment.id, 'results'],
-      };
-    }
-
-    if (assessment?.status === 'IN_PROGRESS') {
-      const percent = this.assessmentProgressPercent();
-      return {
-        heading: 'Continue your assessment',
-        detail: percent !== null ? `${percent}% of the visible questions answered.` : 'Pick up where you left off.',
-        ctaLabel: 'Continue',
-        ctaLink: ['/assessment', assessment.id],
-      };
-    }
-
-    if (this.assessments().length === 0) {
-      return {
-        heading: 'Find the right pathway for you',
-        detail: 'Answer a few questions to see which procedures may be relevant to your situation.',
-        ctaLabel: 'Start assessment',
-        ctaLink: ['/assessment/start'],
-      };
-    }
-
-    return null;
+  /** brief §35 - a compact, real, 2-month calendar; a day is only ever marked if it
+   * matches one of the backend's own `importantDates` (never a fabricated deadline). */
+  protected readonly calendarMonths = computed<CalendarMonth[]>(() => {
+    const importantDays = new Set((this.data()?.importantDates ?? []).map((d) => this.dayKey(new Date(d.date))));
+    const today = new Date();
+    return [0, 1].map((offset) => this.buildMonth(today.getFullYear(), today.getMonth() + offset, importantDays));
   });
 
   constructor() {
-    forkJoin({
-      assessments: this.assessmentService.list(),
-      cases: this.caseService.list(),
-    }).subscribe({
-      next: ({ assessments, cases }) => {
-        this.assessments.set(assessments);
-        this.cases.set(cases);
+    this.dashboardApi.get().subscribe({
+      next: (data) => {
+        this.data.set(data);
         this.loading.set(false);
-        this.loadSecondaryData(assessments, cases);
       },
       error: () => {
         this.error.set(true);
@@ -187,57 +148,76 @@ export class Dashboard {
     });
   }
 
-  /** The single, state-chosen follow-up fetch described in this class's own doc
-   * comment - never more than one, and never fired for state the primary fetch
-   * already ruled out. */
-  private loadSecondaryData(assessments: AssessmentSummary[], cases: CaseSummary[]): void {
-    const relevant =
-      assessments.find((a) => a.status === 'IN_PROGRESS') ?? assessments.find((a) => a.status === 'COMPLETED') ?? null;
-
-    if (relevant?.status === 'IN_PROGRESS') {
-      this.assessmentService.get(relevant.id).subscribe({
-        next: (detail) => this.assessmentProgressPercent.set(detail.progressPercent),
-        error: () => this.assessmentProgressPercent.set(null),
-      });
-      return;
-    }
-
-    if (relevant?.status === 'COMPLETED' && cases.length === 0) {
-      this.recommendationService.getLatest(relevant.id).subscribe({
-        next: (run) => this.latestRecommendations.set(run.recommendations),
-        error: () => this.latestRecommendations.set([]),
-      });
-      return;
-    }
-
-    if (assessments.length === 0 && cases.length === 0) {
-      this.procedureService.getProcedures().subscribe({
-        next: (procedures) => this.popularProcedures.set(procedures.slice(0, 4)),
-        error: () => this.popularProcedures.set([]),
-      });
-    }
-  }
-
   protected statusLabel(status: string): string {
     return formatStatusLabel(status);
   }
 
-  protected caseProgressPercent(c: CaseSummary): number {
-    if (c.stepsTotal === 0) {
+  protected caseSummaryProgressPercent(stepsCompleted: number, stepsTotal: number): number {
+    if (stepsTotal === 0) {
       return 0;
     }
-    return Math.round((c.stepsCompleted / c.stepsTotal) * 100);
+    return Math.round((stepsCompleted / stepsTotal) * 100);
+  }
+
+  protected onHelpQueryInput(value: string): void {
+    this.helpQuery.set(value);
+  }
+
+  protected actionLink(action: DashboardNextAction): string[] {
+    if (action.caseId) {
+      return ['/cases', action.caseId];
+    }
+    if (action.assessmentId) {
+      return ['/assessment', action.assessmentId];
+    }
+    return ['/assessment/start'];
+  }
+
+  private dayKey(date: Date): string {
+    return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+  }
+
+  private buildMonth(year: number, month: number, importantDays: Set<string>): CalendarMonth {
+    const normalizedYear = year + Math.floor(month / 12);
+    const normalizedMonth = ((month % 12) + 12) % 12;
+    const firstOfMonth = new Date(normalizedYear, normalizedMonth, 1);
+    const daysInMonth = new Date(normalizedYear, normalizedMonth + 1, 0).getDate();
+    // Monday-first grid (ISO-style, matching this codebase's other date displays).
+    const leadingBlanks = (firstOfMonth.getDay() + 6) % 7;
+    const today = new Date();
+
+    const days: CalendarDay[] = [];
+    for (let i = 0; i < leadingBlanks; i++) {
+      days.push({ date: null, isToday: false, hasEvent: false });
+    }
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(normalizedYear, normalizedMonth, day);
+      days.push({
+        date,
+        isToday:
+          date.getFullYear() === today.getFullYear() && date.getMonth() === today.getMonth() && date.getDate() === today.getDate(),
+        hasEvent: importantDays.has(this.dayKey(date)),
+      });
+    }
+    while (days.length % 7 !== 0) {
+      days.push({ date: null, isToday: false, hasEvent: false });
+    }
+
+    const weeks: CalendarDay[][] = [];
+    for (let i = 0; i < days.length; i += 7) {
+      weeks.push(days.slice(i, i + 7));
+    }
+
+    return {
+      label: firstOfMonth.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }),
+      weeks,
+    };
   }
 
   logout(): void {
     this.authService.logout().subscribe(() => this.router.navigateByUrl('/login'));
   }
 
-  /** brief §50 - the dashboard error state's "Try again" action. A full reload rather
-   * than re-issuing just the two failed HTTP calls - simplest correct fix for a
-   * component this size, and consistent with how a real user would recover from "the
-   * page failed to load" (unchanged real product behavior, not new complexity to
-   * later maintain for an edge case). */
   protected reload(): void {
     window.location.reload();
   }

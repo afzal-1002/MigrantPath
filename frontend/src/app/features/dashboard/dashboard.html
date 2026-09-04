@@ -1,189 +1,241 @@
 @if (loading()) {
   <div class="dashboard-loading" role="status">
-    <mat-spinner diameter="32" />
     <p>Loading your dashboard…</p>
   </div>
 } @else if (error()) {
   <div class="dashboard-error" role="alert">
     <h1>We couldn't load your dashboard.</h1>
     <p>Please try again in a moment.</p>
-    <button mat-flat-button color="primary" type="button" (click)="reload()">Try again</button>
+    <button type="button" class="btn-primary" (click)="reload()">Try again</button>
   </div>
-} @else {
-  <header class="dashboard-welcome">
-    <h1 tabindex="-1">Welcome, {{ authService.currentUser()?.firstName ?? authService.currentUser()?.email }}</h1>
-    <p class="subtitle">Here's what needs your attention.</p>
-  </header>
-
-  @if (nextAction(); as action) {
-    <mat-card class="next-action-card" appearance="outlined">
-      <mat-card-content>
-        <span class="eyebrow">Next action</span>
-        <h2>{{ action.heading }}</h2>
-        <p>{{ action.detail }}</p>
-        <a mat-flat-button color="primary" [routerLink]="action.ctaLink">{{ action.ctaLabel }}</a>
-      </mat-card-content>
-    </mat-card>
-  }
-
-  @if (isNewUser()) {
-    <mat-card class="onboarding-card" appearance="outlined">
-      <mat-card-content>
-        <h2>How it works</h2>
-        <ol class="how-it-works">
-          <li>Tell us about your situation</li>
-          <li>See which procedures may be relevant</li>
-          <li>Start a checklist</li>
-          <li>Track your progress</li>
-        </ol>
-      </mat-card-content>
-    </mat-card>
-
-    @if (popularProcedures().length > 0) {
-      <section aria-labelledby="popular-heading">
-        <h2 id="popular-heading">Popular procedures</h2>
-        <div class="procedure-grid">
-          @for (procedure of popularProcedures(); track procedure.code) {
-            <mat-card appearance="outlined" class="procedure-card">
-              <mat-card-content>
-                <h3>{{ procedure.name }}</h3>
-                @if (procedure.summary) {
-                  <p>{{ procedure.summary }}</p>
-                }
-                <a mat-button [routerLink]="['/procedures', procedure.code]">Learn more →</a>
-              </mat-card-content>
-            </mat-card>
-          }
-        </div>
-      </section>
-    }
-  } @else {
-    <div class="stats-row">
-      <mat-card appearance="outlined" class="stat-card">
-        <mat-card-content>
-          <span class="stat-value">{{ activeCases().length }}</span>
-          <span class="stat-label">Active cases</span>
-        </mat-card-content>
-      </mat-card>
-      @if (checklistProgressPercent(); as percent) {
-        <mat-card appearance="outlined" class="stat-card">
-          <mat-card-content>
-            <span class="stat-value">{{ percent }}%</span>
-            <span class="stat-label">Checklist progress</span>
-          </mat-card-content>
-        </mat-card>
-      }
-      <mat-card appearance="outlined" class="stat-card">
-        <mat-card-content>
-          <span class="stat-value">{{ casesNeedingAttention().length }}</span>
-          <span class="stat-label">Needs attention</span>
-        </mat-card-content>
-      </mat-card>
-      @if (primaryMatches().length > 0) {
-        <mat-card appearance="outlined" class="stat-card">
-          <mat-card-content>
-            <span class="stat-value">{{ primaryMatches().length }}</span>
-            <span class="stat-label">Recommendations</span>
-          </mat-card-content>
-        </mat-card>
-      }
-    </div>
-
-    <div class="dashboard-grid">
-      <section aria-labelledby="cases-heading" class="dashboard-section">
-        <div class="section-heading-row">
-          <h2 id="cases-heading">My active cases</h2>
-          @if (cases().length > 0) {
-            <a mat-button routerLink="/cases">View all</a>
-          }
-        </div>
-        @if (visibleActiveCases().length === 0) {
-          <p class="empty-hint">
-            No active cases yet.
-            @if (relevantAssessment()?.status === 'COMPLETED') {
-              <a routerLink="/cases">Start one from your recommendations</a>.
+} @else if (data(); as dashboard) {
+  <div class="dashboard">
+    <!-- Hero: brief §17-§24 -->
+    <section class="hero" aria-label="Your overview">
+      <div class="hero-panel profile-panel">
+        <span class="avatar avatar-lg" aria-hidden="true">{{ userInitials() }}</span>
+        <div class="profile-info">
+          <h1>Welcome back, {{ displayName() }}</h1>
+          <p class="profile-meta">{{ dashboard.profile.city }}</p>
+          <p class="profile-pathway">
+            @if (primaryPathwayTitle(); as title) {
+              Pathway: <strong>{{ title }}</strong>
             } @else {
-              <a routerLink="/assessment/start">Find your pathway</a> to get started.
+              No pathway yet — <a routerLink="/assessment/start">find yours</a>
             }
           </p>
-        } @else {
-          @for (c of visibleActiveCases(); track c.id) {
-            <mat-card appearance="outlined" class="case-card">
-              <mat-card-content>
-                <h3>{{ c.procedureTitle }}</h3>
-                <span class="status-chip" [class.attention]="c.hasRequirementUpdates">{{ statusLabel(c.status) }}</span>
-                <div class="progress-bar" [attr.aria-label]="'Checklist ' + caseProgressPercent(c) + '% complete'">
-                  <div class="progress-fill" [style.width.%]="caseProgressPercent(c)"></div>
-                </div>
-                <p class="progress-detail">
-                  Steps {{ c.stepsCompleted }}/{{ c.stepsTotal }} · Documents {{ c.documentsReady }}/{{ c.documentsTotal }}
-                </p>
-                @if (c.hasRequirementUpdates) {
-                  <p class="update-flag" role="status">Requirements have changed since you started this case.</p>
-                }
-                <a mat-button [routerLink]="['/cases', c.id]">Open case →</a>
-              </mat-card-content>
-            </mat-card>
-          }
-        }
-      </section>
+          <div class="profile-counters">
+            <span><strong>{{ activeCaseCount() }}</strong> active case{{ activeCaseCount() === 1 ? '' : 's' }}</span>
+            <span><strong>{{ openActionCount() }}</strong> open action{{ openActionCount() === 1 ? '' : 's' }}</span>
+          </div>
+        </div>
+      </div>
 
-      <section aria-labelledby="attention-heading" class="dashboard-section">
-        <h2 id="attention-heading">Needs your attention</h2>
-        @if (casesNeedingAttention().length === 0) {
-          <p class="empty-hint">Nothing needs your attention right now.</p>
+      <div class="hero-panel progress-panel">
+        <h2>Case progress</h2>
+        @if (primaryCase(); as pc) {
+          <div class="progress-ring" [style.--pct]="caseProgressPercent() ?? 0" role="img" [attr.aria-label]="'Checklist ' + (caseProgressPercent() ?? 0) + '% complete'">
+            <span class="progress-ring-value">{{ caseProgressPercent() ?? 0 }}%</span>
+          </div>
+          <p class="progress-caption">{{ pc.daysActive === 0 ? 'Started today' : 'Active for ' + pc.daysActive + ' day' + (pc.daysActive === 1 ? '' : 's') }}</p>
+          <div class="mini-bars">
+            <div class="mini-bar">
+              <span class="mini-bar-label">Steps {{ pc.stepsCompleted }}/{{ pc.stepsTotal }}</span>
+              <div class="mini-bar-track"><div class="mini-bar-fill" [style.width.%]="caseSummaryProgressPercent(pc.stepsCompleted, pc.stepsTotal)"></div></div>
+            </div>
+            <div class="mini-bar">
+              <span class="mini-bar-label">Documents {{ pc.documentsCompleted }}/{{ pc.documentsTotal }}</span>
+              <div class="mini-bar-track"><div class="mini-bar-fill" [style.width.%]="caseSummaryProgressPercent(pc.documentsCompleted, pc.documentsTotal)"></div></div>
+            </div>
+            <div class="mini-bar">
+              <span class="mini-bar-label">Fees {{ pc.feesCompleted }}/{{ pc.feesTotal }}</span>
+              <div class="mini-bar-track"><div class="mini-bar-fill" [style.width.%]="caseSummaryProgressPercent(pc.feesCompleted, pc.feesTotal)"></div></div>
+            </div>
+          </div>
+        } @else if (dashboard.assessmentStatus; as status) {
+          <div class="progress-ring" [style.--pct]="status.progressPercent" role="img" [attr.aria-label]="'Assessment ' + status.progressPercent + '% complete'">
+            <span class="progress-ring-value">{{ status.progressPercent }}%</span>
+          </div>
+          <p class="progress-caption">Assessment in progress</p>
         } @else {
-          @for (c of casesNeedingAttention(); track c.id) {
-            <p class="attention-item">
-              <a [routerLink]="['/cases', c.id]">{{ c.procedureTitle }}</a> has an updated requirement to review.
+          <p class="empty-hint">No case yet. Once you start one, your progress appears here.</p>
+        }
+      </div>
+
+      <div class="hero-panel authority-panel">
+        <h2>Responsible authority</h2>
+        @if (primaryAuthority(); as authority) {
+          <p class="authority-name">{{ authority.name }}</p>
+          @if (authority.officialWebsite) {
+            <a [href]="authority.officialWebsite" target="_blank" rel="noopener" class="authority-link">Official website ↗</a>
+          }
+          @if (primaryOffice(); as office) {
+            <p class="office-address">
+              {{ office.name }}
+              @if (office.street) {
+                <br />{{ office.street }} {{ office.buildingNumber }}
+              }
             </p>
           }
-        }
-      </section>
-
-      @if (primaryMatches().length > 0) {
-        <section aria-labelledby="recommendations-heading" class="dashboard-section">
-          <h2 id="recommendations-heading">Recommended pathways</h2>
-          @for (r of primaryMatches(); track r.id) {
-            <mat-card appearance="outlined" class="recommendation-card">
-              <mat-card-content>
-                <span class="status-chip primary">Primary match</span>
-                <h3>{{ r.procedureTitle }}</h3>
-                <p>This pathway appears relevant based on your answers.</p>
-                @if (relevantAssessment(); as assessment) {
-                  <a mat-button [routerLink]="['/assessment', assessment.id, 'results']">View details →</a>
-                }
-              </mat-card-content>
-            </mat-card>
-          }
-        </section>
-      }
-
-      <section aria-labelledby="activity-heading" class="dashboard-section">
-        <h2 id="activity-heading">Recent activity</h2>
-        @if (recentActivity().length === 0) {
-          <p class="empty-hint">No activity yet.</p>
         } @else {
-          <ul class="activity-list">
-            @for (c of recentActivity(); track c.id) {
-              <li>
-                <a [routerLink]="['/cases', c.id]">{{ c.procedureTitle }}</a>
-                updated · {{ statusLabel(c.status) }}
+          <p class="empty-hint">Once your pathway is known, its responsible office appears here.</p>
+        }
+      </div>
+    </section>
+
+    <!-- Timeline: brief §25-§28 -->
+    <section class="timeline" [attr.aria-label]="'Case timeline' + (primaryCase() ? ': ' + primaryCase()!.stageLabel : '')">
+      @for (stage of timelineStages; track stage; let i = $index) {
+        <div
+          class="timeline-stage"
+          [class.reached]="currentStageIndex() !== null && i <= currentStageIndex()!"
+          [class.current]="currentStageIndex() === i"
+        >
+          <span class="timeline-dot"></span>
+          <span class="timeline-label">{{ stage }}</span>
+        </div>
+      }
+      @if (currentStageIndex() === null) {
+        <p class="timeline-empty">Start a pathway to begin tracking your case here.</p>
+      }
+    </section>
+
+    <!-- Main grid: brief §29-§40 -->
+    <section class="card-grid">
+      <article class="card next-actions-card">
+        <h2>Next actions</h2>
+        @if (dashboard.nextActions.length === 0) {
+          <p class="empty-hint">Nothing needs your attention right now.</p>
+        } @else {
+          <ul class="action-list">
+            @for (action of dashboard.nextActions; track action.heading) {
+              <li class="action-item" [class]="'severity-' + action.severity.toLowerCase()">
+                <app-icon [name]="severityIcon[action.severity]" [size]="18" />
+                <div class="action-body">
+                  <p class="action-heading">{{ action.heading }}</p>
+                  <p class="action-detail">{{ action.detail }}</p>
+                  <a [routerLink]="actionLink(action)" class="action-cta">{{ action.ctaLabel }} →</a>
+                </div>
               </li>
             }
           </ul>
         }
-      </section>
+      </article>
 
-      <section aria-labelledby="help-heading" class="dashboard-section">
-        <h2 id="help-heading">Help &amp; guides</h2>
+      <article class="card checklist-card">
+        <h2>Pending checklist</h2>
+        @if (primaryCase(); as pc) {
+          <ul class="checklist-summary">
+            <li>{{ pc.stepsTotal - pc.stepsCompleted }} step{{ pc.stepsTotal - pc.stepsCompleted === 1 ? '' : 's' }} remaining</li>
+            <li>{{ pc.documentsTotal - pc.documentsCompleted }} document{{ pc.documentsTotal - pc.documentsCompleted === 1 ? '' : 's' }} remaining</li>
+            <li>{{ pc.feesTotal - pc.feesCompleted }} fee{{ pc.feesTotal - pc.feesCompleted === 1 ? '' : 's' }} remaining</li>
+          </ul>
+          <a [routerLink]="['/cases', pc.id]" class="card-link">Open checklist →</a>
+        } @else {
+          <p class="empty-hint">
+            No case yet.
+            @if (dashboard.assessmentStatus?.status === 'COMPLETED') {
+              <a routerLink="/cases">Start one from your recommendations</a>.
+            } @else {
+              <a routerLink="/assessment/start">Complete an assessment</a> to get a personalized checklist.
+            }
+          </p>
+        }
+      </article>
+
+      <article class="card dates-card">
+        <h2>Important dates</h2>
+        @if (dashboard.importantDates.length === 0) {
+          <p class="empty-hint">No deadlines currently tracked.</p>
+        } @else {
+          <ul class="date-list">
+            @for (d of dashboard.importantDates; track d.type) {
+              <li>{{ d.label }} — {{ d.date | date: 'mediumDate' }}</li>
+            }
+          </ul>
+        }
+        <div class="mini-calendar">
+          @for (month of calendarMonths(); track month.label) {
+            <div class="mini-calendar-month">
+              <p class="mini-calendar-title">{{ month.label }}</p>
+              <div class="mini-calendar-grid">
+                @for (week of month.weeks; track $index) {
+                  @for (day of week; track $index) {
+                    <span class="mini-calendar-day" [class.today]="day.isToday" [class.has-event]="day.hasEvent">
+                      {{ day.date ? day.date.getDate() : '' }}
+                    </span>
+                  }
+                }
+              </div>
+            </div>
+          }
+        </div>
+      </article>
+
+      <article class="card milestones-card">
+        <h2>Completed milestones</h2>
+        @if (dashboard.completedMilestones.length === 0) {
+          <p class="empty-hint">Nothing completed yet — your progress will show up here.</p>
+        } @else {
+          <ul class="milestone-list">
+            @for (m of dashboard.completedMilestones; track m.label + m.occurredAt) {
+              <li>
+                <app-icon name="check-circle" [size]="16" />
+                <span>{{ m.label }}</span>
+                <span class="milestone-date">{{ m.occurredAt | date: 'mediumDate' }}</span>
+              </li>
+            }
+          </ul>
+        }
+      </article>
+
+      <article class="card cases-card">
+        <div class="card-heading-row">
+          <h2>Active cases</h2>
+          @if (dashboard.activeCases.length > 0) {
+            <a routerLink="/cases" class="card-link">View all →</a>
+          }
+        </div>
+        @if (dashboard.activeCases.length === 0) {
+          <p class="empty-hint">No active cases yet.</p>
+        } @else {
+          <ul class="case-list">
+            @for (c of dashboard.activeCases; track c.id) {
+              <li>
+                <a [routerLink]="['/cases', c.id]">
+                  <span class="case-title">{{ c.procedureTitle }}</span>
+                  <span class="status-chip" [class.attention]="c.hasRequirementUpdates">{{ statusLabel(c.status) }}</span>
+                  <div class="progress-bar" [attr.aria-label]="'Checklist ' + caseSummaryProgressPercent(c.stepsCompleted, c.stepsTotal) + '% complete'">
+                    <div class="progress-fill" [style.width.%]="caseSummaryProgressPercent(c.stepsCompleted, c.stepsTotal)"></div>
+                  </div>
+                </a>
+              </li>
+            }
+          </ul>
+        }
+      </article>
+
+      <article class="card help-card">
+        <h2>Help &amp; guidance</h2>
+        <div class="help-search">
+          <app-icon name="search" [size]="16" />
+          <input
+            type="search"
+            [value]="helpQuery()"
+            (input)="onHelpQueryInput($any($event.target).value)"
+            placeholder="Search help topics"
+            aria-label="Search help topics"
+          />
+        </div>
         <ul class="help-links">
-          <li><a routerLink="/help">How recommendations work</a></li>
-          <li><a routerLink="/help">How case checklists work</a></li>
-          <li><a routerLink="/help">Why official sources matter</a></li>
-          <li><a routerLink="/privacy">Privacy and your data</a></li>
+          @for (topic of visibleHelpTopics(); track topic.label) {
+            <li><a [routerLink]="topic.link">{{ topic.label }}</a></li>
+          }
+          @if (visibleHelpTopics().length === 0) {
+            <li class="empty-hint">No help topics match your search.</li>
+          }
         </ul>
-      </section>
-    </div>
-  }
+      </article>
+    </section>
+  </div>
 }

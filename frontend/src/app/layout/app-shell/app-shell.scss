@@ -1,44 +1,139 @@
-.app-shell {
+.shell {
+  display: flex;
   height: 100vh;
+  background: var(--app-page-bg);
 }
 
-.app-sidebar {
-  width: var(--app-sidebar-width);
+// --- desktop icon rail (brief §4-§8) ---
+
+.rail {
+  width: var(--app-rail-width);
+  flex: 0 0 var(--app-rail-width);
   background: var(--app-sidebar-bg);
   color: var(--app-sidebar-fg);
-  border-right: none;
   display: flex;
   flex-direction: column;
-}
+  align-items: center;
+  padding: var(--app-space-sm) 0;
 
-.sidebar-brand {
-  padding: var(--app-space-lg) var(--app-space-md);
-  font-weight: 700;
-  font-size: 1.05rem;
-
-  a {
-    color: #fff;
-    text-decoration: none;
+  @media (max-width: 900px) {
+    display: none;
   }
 }
 
-.sidebar-nav {
+.rail-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--app-radius);
+  background: var(--app-sidebar-active-bg);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.85rem;
+  text-decoration: none;
+  margin-bottom: var(--app-space-md);
+
+  &.small {
+    margin-bottom: 0;
+  }
+}
+
+.rail-nav {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  padding: var(--app-space-sm) 0;
+  gap: 4px;
   flex: 1 1 auto;
-  overflow-y: auto;
 
   a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--app-radius);
     color: var(--app-sidebar-fg);
     text-decoration: none;
-    padding: 10px var(--app-space-md);
-    margin: 2px var(--app-space-sm);
-    border-radius: var(--app-radius);
-    font-size: 0.95rem;
 
     &:hover {
-      background: rgba(255, 255, 255, 0.06);
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    &.active {
+      background: var(--app-sidebar-active-bg);
+      color: #fff;
+    }
+  }
+}
+
+.rail-bottom {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: var(--app-space-sm);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+
+  a,
+  button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--app-radius);
+    color: var(--app-sidebar-fg);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+  }
+}
+
+// --- mobile drawer (brief §9 - a real drawer, not a squeezed rail) ---
+
+.mobile-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.4);
+  z-index: 20;
+}
+
+.mobile-drawer {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: var(--app-mobile-drawer-width);
+  background: var(--app-sidebar-bg);
+  color: var(--app-sidebar-fg);
+  z-index: 21;
+  display: flex;
+  flex-direction: column;
+  padding: var(--app-space-sm);
+  overflow-y: auto;
+
+  a,
+  button {
+    display: flex;
+    align-items: center;
+    gap: var(--app-space-sm);
+    padding: 10px var(--app-space-md);
+    border-radius: var(--app-radius);
+    color: var(--app-sidebar-fg);
+    text-decoration: none;
+    background: transparent;
+    border: none;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.08);
     }
 
     &.active {
@@ -49,87 +144,173 @@
   }
 }
 
-.sidebar-section-label {
-  margin: var(--app-space-md) var(--app-space-md) var(--app-space-xs);
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--app-sidebar-fg-muted);
-}
-
-.sidebar-user {
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  padding: var(--app-space-sm);
-}
-
-.sidebar-user-link {
+.mobile-drawer-header {
   display: flex;
   align-items: center;
-  gap: var(--app-space-sm);
-  padding: var(--app-space-sm);
-  border-radius: var(--app-radius);
-  color: var(--app-sidebar-fg);
-  text-decoration: none;
+  justify-content: space-between;
+  padding: var(--app-space-sm) var(--app-space-md) var(--app-space-md);
+}
+
+.mobile-logout {
+  margin-top: auto;
+}
+
+// --- main column + topbar (brief §10-§16) ---
+
+.shell-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: var(--app-space-md);
+  height: 60px;
+  padding: 0 var(--app-space-lg);
+  background: var(--app-surface);
+  border-bottom: 1px solid var(--app-border);
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.06);
+    background: rgba(15, 23, 42, 0.06);
   }
 }
 
-.sidebar-user-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.mobile-menu-btn {
+  display: none;
+
+  @media (max-width: 900px) {
+    display: inline-flex;
+  }
+}
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: var(--app-space-sm);
+  flex: 1 1 auto;
+  max-width: 420px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--app-page-bg);
+  color: var(--app-sidebar-fg-muted, #667);
+
+  input {
+    flex: 1 1 auto;
+    border: none;
+    outline: none;
+    background: transparent;
+    font: inherit;
+    color: var(--mat-sys-on-surface, inherit);
+  }
+
+  @media (max-width: 600px) {
+    max-width: none;
+  }
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--app-space-sm);
+  margin-left: auto;
+}
+
+.bell-btn {
+  position: relative;
+}
+
+.bell-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: var(--app-status-danger);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.alerts-empty {
+  padding: var(--app-space-sm) var(--app-space-md);
+  color: var(--mat-sys-on-surface-variant, #666);
   font-size: 0.9rem;
+  max-width: 260px;
+}
+
+.alert-detail {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--mat-sys-on-surface-variant, #666);
+  white-space: normal;
+}
+
+.user-btn {
+  width: auto;
+  height: auto;
+  padding: 4px 8px 4px 4px;
+  border-radius: 999px;
+  gap: 6px;
+
+  .user-name {
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.9rem;
+
+    @media (max-width: 600px) {
+      display: none;
+    }
+  }
 }
 
 .avatar {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  min-width: 32px;
-  border-radius: 50%;
-  background: var(--app-status-info);
-  color: #fff;
-  font-weight: 600;
-  font-size: 0.85rem;
-}
-
-.avatar-sm {
   width: 28px;
   height: 28px;
-  min-width: 28px;
-}
-
-.app-main {
-  display: flex;
-  flex-direction: column;
-}
-
-.app-topbar {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  background: #fff;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-}
-
-.spacer {
-  flex: 1 1 auto;
+  border-radius: 50%;
+  background: var(--app-primary);
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.8rem;
 }
 
 .app-content {
-  padding: var(--app-space-lg);
-  max-width: 1200px;
+  flex: 1 1 auto;
   width: 100%;
-  margin: 0 auto;
   box-sizing: border-box;
-}
+  padding: var(--app-space-lg) 24px;
 
-@media (max-width: 600px) {
-  .app-content {
+  @media (max-width: 600px) {
     padding: var(--app-space-md);
   }
 }

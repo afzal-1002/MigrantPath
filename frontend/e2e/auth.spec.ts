@@ -51,7 +51,7 @@ test('Scenario 1: register, verify, login, dashboard, logout, dashboard unavaila
   await page.getByRole('button', { name: 'Sign in' }).click();
 
   await expect(page).toHaveURL(/\/dashboard$/);
-  await expect(page.getByRole('heading', { name: `Welcome, ${email}` })).toBeVisible();
+  await expect(page.getByRole('heading', { name: `Welcome back, ${email}` })).toBeVisible();
 
   // Post-MVP UX Milestone UX1 - the redesigned authenticated shell (layout/app-shell)
   // has exactly one Logout action, inside the topbar's account menu (the dashboard's
@@ -131,7 +131,7 @@ test('Scenario 3: session persists across a page reload', async ({ page }) => {
   await page.reload();
 
   await expect(page).toHaveURL(/\/dashboard$/);
-  await expect(page.getByRole('heading', { name: `Welcome, ${email}` })).toBeVisible();
+  await expect(page.getByRole('heading', { name: `Welcome back, ${email}` })).toBeVisible();
 });
 
 test('Scenario 4: an unauthenticated visitor opening /dashboard is redirected to /login', async ({ page }) => {
