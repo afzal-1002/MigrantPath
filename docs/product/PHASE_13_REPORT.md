@@ -5,6 +5,12 @@ requested, and this phase's own brief explicitly forbids it without explicit
 instruction) — everything below is either a real, locally-verified mechanism or an
 honestly-labeled `CONFIGURED, NOT EXECUTED` / `DOCUMENTED, NOT EXECUTED` gap.
 
+> **Update (Phase 13.5):** the one open finding this report disclosed below — a
+> deterministic, production-build-only regression in the Assessment flow's "current
+> legal status" dropdown — has since been root-caused and fixed. See
+> [PHASE_13_5_REPORT.md](PHASE_13_5_REPORT.md). The account below is left exactly as
+> originally written, as the honest historical record of what was known at the time.
+
 ## Executive summary
 
 Phase 11's earlier, out-of-order production-readiness work already built the

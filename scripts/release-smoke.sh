@@ -70,6 +70,25 @@ check "Terms route"                "/terms"                     200 '<html'
 check "Actuator env is not public" "/actuator/env"               401
 check "Actuator beans not public"  "/actuator/beans"              401
 
+# --- Phase 13.5 real regression: the global stylesheet must load as a normal blocking
+# <link>, never Angular's deferred "media=print, onload=this.media='all'" pattern. That
+# pattern relies on an inline event-handler attribute, which this app's own CSP
+# (script-src 'self', no unsafe-inline) silently blocks - the entire global stylesheet
+# (styles.scss, including the pointer-events fix Phase 5 already shipped once for a
+# Material floating-label click-interception bug) then never applies on screen, with no
+# console error a casual smoke check would catch (the CSP violation is easy to miss
+# among routine noise). This exact regression shipped once (PHASE_13_REPORT.md's open
+# finding) and is the most direct possible test of the real root cause, not just one
+# symptom of it - see docs/product/PHASE_13_5_REPORT.md.
+body="$(curl -sS "${BASE_URL}/" 2>/dev/null || true)"
+if echo "${body}" | grep -q 'media="print"'; then
+  echo "FAIL  Global stylesheet is not deferred via media=print (/) - CSP silently blocks its onload handler, disabling every global style in production"
+  fail=$((fail + 1))
+else
+  echo "PASS  Global stylesheet is not deferred via media=print (/)"
+  pass=$((pass + 1))
+fi
+
 echo "== ${pass} passed, ${fail} failed =="
 rm -f /tmp/release-smoke-body /tmp/release-smoke-err
 if [[ "${fail}" -gt 0 ]]; then
