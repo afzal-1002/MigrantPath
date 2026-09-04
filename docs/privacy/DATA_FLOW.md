@@ -30,6 +30,31 @@ Spring Boot backend
    |     note below for the deletion/backup interaction)
 ```
 
+## Candidate concrete topology (Post-MVP Milestone L1 - recommended, not yet selected/deployed)
+
+The generic diagram above stays accurate regardless of provider. If the Milestone L1
+recommendation (`docs/launch/PRODUCTION_ARCHITECTURE_DECISION.md`) is approved, the
+concrete providers filling each generic box above would be:
+
+```text
+User
+  |
+  v
+DNS (registrar's own, or DigitalOcean DNS, once a domain is chosen) + TLS
+  |
+  v
+DigitalOcean Droplet (Frankfurt/Amsterdam) - nginx + Spring Boot, same topology as above
+  |
+  v
+DigitalOcean Managed PostgreSQL (same VPC, private networking, EU region)
+  |
+  v (email only, verification/reset links)
+Amazon SES (can send from an EU region; AWS account/billing structure is global -
+  flagged for legal review, docs/launch/LEGAL_REVIEW_HANDOFF.md)
+```
+
+No account has been created for any of the above - see `docs/launch/PROVIDER_DECISIONS.md`.
+
 ## No other personal-data egress exists
 
 No analytics beacon, no advertising pixel, no error-monitoring SDK, no CDN that sees
