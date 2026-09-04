@@ -1435,18 +1435,32 @@ readiness ratings.
 
 ---
 
-## Phase 14 — Monitoring / analytics — ⏳ PARTIALLY COMPLETE (see [PHASE_11_REPORT.md](PHASE_11_REPORT.md))
+## Phase 14 — Monitoring / analytics — ⏳ SUBSTANTIALLY COMPLETE (see [PHASE_14_REPORT.md](PHASE_14_REPORT.md); prior status history in [PHASE_11_REPORT.md](PHASE_11_REPORT.md))
 
-14.1 (correlation ID) ✅ real, tested (`CorrelationIdFilter`) — the "structured logging"
-half is explicitly not yet done (still plain-text console logs; JSON logging tracked as
-a scoped follow-up, see `docs/operations/OBSERVABILITY.md`). 14.3 (Actuator restricted
-to internal use) ✅, verified stronger than originally planned (non-exposed paths return
-401 before route resolution, not just "not publicly documented"). **Not done**: 14.2
-(error-tracking service integration — the integration point is named, nothing is
-wired), 14.4 (analytics event emission — explicitly out of this session's scope per its
-own "no analytics added" instruction), 14.5 (source-freshness dashboard), 14.6 (uptime/
-health alerting — health/readiness endpoints exist and are correct, but nothing pages an
-operator yet).
+Canonical Phase 14 (Observability) closed the largest part of this roadmap phase's gap.
+14.1 (correlation ID / structured logging) ✅ — real, tested, and now including the
+structured-JSON half this item's own DoD called for (staging/production only,
+`logback-spring.xml`, an intentional field whitelist, `correlationId` now also in the
+`ApiError` response body, not just the header). 14.3 (Actuator restricted to internal
+use) ✅ — extended this phase to also cover the new `/actuator/prometheus` endpoint
+(same 401-before-route-resolution guarantee, `ActuatorExposureTest`). A real Micrometer/
+Prometheus metric catalog (`docs/operations/METRICS.md`), an initial alert catalogue
+(`ALERTS.md`, explicitly `INITIAL/TUNING_REQUIRED`), and an optional local Grafana
+dashboard (`DASHBOARDS.md`) were added — none of these existed as named subtasks when
+this roadmap section was first written, but they are the concrete mechanism 14.6's own
+"an operator is notified" goal depends on. 14.2 (error-tracking integration) — the
+integration point is real and tested on both backend (`GlobalExceptionHandler`) and
+frontend (`GlobalErrorHandler`, new this phase) but **no service is connected** — no
+real account exists, disclosed honestly as `DOCUMENTED_ONLY` (`ERROR_TRACKING.md`)
+rather than fabricated. **Still not done**: 14.4 (analytics event emission — a distinct,
+product-facing concern from the operational metrics this phase added; remains out of
+scope, not requested), 14.5 (an admin-facing source-freshness *screen* — the backend
+health *signal* it would read from now exists, `legal.sources.outdated`/
+`legal.content.with_outdated_source`, but no UI was built), 14.6 (uptime/health
+alerting — the catalogue and thresholds are specified, but nothing pages an operator
+yet; no alerting tool is wired, consistent with `docs/operations/INCIDENT_RESPONSE.md`'s
+own standing "no paging system" disclosure). See PHASE_14_REPORT.md for full detail and
+per-category observability-readiness ratings.
 
 #### 14.1 Correlation ID / structured logging review
 - **Goal:** Confirm 1.6's baseline actually threads a correlation ID through every

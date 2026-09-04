@@ -1,6 +1,7 @@
 package com.foreignerwarsaw.email;
 
 import com.foreignerwarsaw.config.AuthProperties;
+import com.foreignerwarsaw.observability.EmailMetrics;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -25,6 +26,7 @@ public class VerificationEmailService {
         <p>This link expires in %d hours. If you didn't create this account, you can ignore this email.</p>
         """
             .formatted(link, authProperties.emailVerificationTokenTtl().toHours());
-    emailService.send(toEmail, "Verify your Foreigner Warsaw account", body);
+    emailService.send(
+        toEmail, "Verify your Foreigner Warsaw account", body, EmailMetrics.Type.VERIFICATION);
   }
 }

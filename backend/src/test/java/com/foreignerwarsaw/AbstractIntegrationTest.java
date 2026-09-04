@@ -19,8 +19,6 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 /**
@@ -31,17 +29,34 @@ import org.testcontainers.utility.DockerImageName;
  * anything manually first (brief §39). Email content is fetched through Mailpit's own JSON API
  * ({@link #findLatestMessageTo}), never assumed - the same "prove it" standard as everything else
  * in this phase.
+ *
+ * <p>{@code mailpit} deliberately does <em>not</em> use {@code @Testcontainers}/{@code @Container}
+ * (Canonical Phase 14 - a real bug this phase found and fixed): that annotation pair ties the
+ * container's start/stop to each individual test <em>class's</em> JUnit lifecycle (started in
+ * {@code @BeforeAll}, stopped in {@code @AfterAll}), which is completely independent of Spring's
+ * own {@code ApplicationContext} cache. Once enough integration test classes existed to make Spring
+ * reuse a cached context across classes, a later class ran against a context whose
+ * {@code @DynamicPropertySource}-supplied {@code spring.mail.port} was baked in from an
+ * <em>earlier</em>, already-JUnit-stopped-and-restarted container instance with a different mapped
+ * port - every email send in that class failed with a real connection-refused, and every test
+ * calling {@link #findLatestMessageTo} then NPE'd on a null response. Fixed with the standard
+ * Testcontainers "singleton container" pattern below: start once, eagerly, in a static initializer,
+ * and never explicitly stop it - Testcontainers' own Ryuk reaper cleans it up when the JVM exits,
+ * exactly matching how {@link TestcontainersConfiguration}'s Postgres {@code @ServiceConnection}
+ * bean already behaves (alive for as long as any cached context referencing it is alive).
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)
-@Testcontainers
 public abstract class AbstractIntegrationTest {
 
-  @Container
   static final GenericContainer<?> mailpit =
       new GenericContainer<>(DockerImageName.parse("axllent/mailpit:latest"))
           .withExposedPorts(1025, 8025);
+
+  static {
+    mailpit.start();
+  }
 
   @DynamicPropertySource
   static void mailProperties(DynamicPropertyRegistry registry) {

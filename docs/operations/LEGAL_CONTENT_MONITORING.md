@@ -4,6 +4,28 @@ Status: a manual, recurring process, deliberately not automated (brief §135 - "
 implement a crawler"). No legal fact is ever changed by anything other than a human
 going through the real Admin governance workflow (CLAUDE.md's own standing rule).
 
+## Automated health signals (Canonical Phase 14)
+
+Two Micrometer gauges, refreshed every 30 minutes (`LegalContentHealthMetrics`), give
+this manual process an early prompt instead of relying purely on the monthly calendar
+cadence below:
+
+- `legal.sources.outdated` - count of `OfficialSource` rows whose most recent
+  `SourceVerification` status is `NEEDS_REVIEW`/`OUTDATED`.
+- `legal.content.with_outdated_source` - count of currently-`PUBLISHED`
+  `ProcedureVersion` rows that cite at least one such source
+  (`ProcedureVersionSourceRepository.countPublishedVersionsWithOutdatedSource`).
+
+Both are exposed at `/actuator/prometheus` (internal-only, see `METRICS.md`) and
+visualized on the optional local Grafana dashboard (`DASHBOARDS.md`). **Per this
+project's own explicit design decision, neither gauge - nor anything derived from
+them - is ever wired into `/actuator/health/readiness`.** A source going stale is a
+content-governance fact, not an application outage; conflating the two would make a
+routine, expected state (content review cadence lagging slightly) fail a production
+health probe, which is exactly the anti-pattern already avoided for mail
+(`OBSERVABILITY.md`). Treat a nonzero value as a LOW-severity prompt to run the
+review below early (`ALERTS.md`), never as an incident.
+
 ## Recurring review process
 
 **Monthly** (the five real MVP procedures are low in volume - monthly is proportionate;

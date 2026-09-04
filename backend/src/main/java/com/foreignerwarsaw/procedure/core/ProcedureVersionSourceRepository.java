@@ -35,4 +35,16 @@ public interface ProcedureVersionSourceRepository
           + " AND s.procedureVersion.status IN (com.foreignerwarsaw.procedure.PublicationStatus.PUBLISHED,"
           + " com.foreignerwarsaw.procedure.PublicationStatus.ARCHIVED)")
   boolean existsUsedByPublishedVersion(@Param("officialSourceId") UUID officialSourceId);
+
+  /**
+   * Canonical Phase 14 (Observability) brief §33/§34 - legal-content health signal, not technical
+   * readiness (brief §35 - never wired into {@code /actuator/health/readiness}). Only ever called
+   * from a scheduled refresh (brief §150 - "prefer cached/cheap gauges... do not execute expensive
+   * multi-join legal audit every 15 seconds"), never per-scrape.
+   */
+  @Query(
+      "SELECT COUNT(DISTINCT s.procedureVersion.id) FROM ProcedureVersionSource s"
+          + " WHERE s.procedureVersion.status = com.foreignerwarsaw.procedure.PublicationStatus.PUBLISHED"
+          + " AND s.officialSource.verificationStatus = com.foreignerwarsaw.procedure.source.VerificationStatus.OUTDATED")
+  long countPublishedVersionsWithOutdatedSource();
 }

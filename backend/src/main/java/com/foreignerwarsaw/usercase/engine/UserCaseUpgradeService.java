@@ -1,6 +1,7 @@
 package com.foreignerwarsaw.usercase.engine;
 
 import com.foreignerwarsaw.common.web.ApiException;
+import com.foreignerwarsaw.observability.CaseMetrics;
 import com.foreignerwarsaw.procedure.core.ProcedureVersion;
 import com.foreignerwarsaw.procedure.core.ProcedureVersionRepository;
 import com.foreignerwarsaw.user.User;
@@ -56,6 +57,7 @@ public class UserCaseUpgradeService {
   private final UserCaseDocumentRepository documentRepository;
   private final UserCaseFeeRepository feeRepository;
   private final UserCaseEventRepository eventRepository;
+  private final CaseMetrics caseMetrics;
   private final Clock clock;
 
   public UserCaseUpgradeService(
@@ -68,6 +70,7 @@ public class UserCaseUpgradeService {
       UserCaseDocumentRepository documentRepository,
       UserCaseFeeRepository feeRepository,
       UserCaseEventRepository eventRepository,
+      CaseMetrics caseMetrics,
       Clock clock) {
     this.accessService = accessService;
     this.changeService = changeService;
@@ -78,6 +81,7 @@ public class UserCaseUpgradeService {
     this.documentRepository = documentRepository;
     this.feeRepository = feeRepository;
     this.eventRepository = eventRepository;
+    this.caseMetrics = caseMetrics;
     this.clock = clock;
   }
 
@@ -100,51 +104,64 @@ public class UserCaseUpgradeService {
           "This case is already based on the current procedure content");
     }
 
-    ProcedureVersion newProcedureVersion =
-        procedureVersionRepository
-            .findByIdFetchingProcedure(report.newActiveProcedureVersionId())
-            .orElseThrow();
-    UserCaseSnapshotRevision oldRevision = userCase.getCurrentRevision();
+    // Canonical Phase 14 (Observability) brief §26/§147 - the two ApiException checks
+    // above (already-CANCELLED/COMPLETED, already-current) are expected client-visible
+    // 409 conflicts, never counted as an upgrade "failure" (brief §14's own "expected
+    // 4xx do not create noisy ERROR logs") - only a genuinely unexpected exception in
+    // the merge/persist work below increments case.upgrade.failed.
+    try {
+      ProcedureVersion newProcedureVersion =
+          procedureVersionRepository
+              .findByIdFetchingProcedure(report.newActiveProcedureVersionId())
+              .orElseThrow();
+      UserCaseSnapshotRevision oldRevision = userCase.getCurrentRevision();
 
-    List<UserCaseStep> oldSteps =
-        stepRepository.findBySnapshotRevision_IdOrderBySortOrderAsc(oldRevision.getId());
-    List<UserCaseDocument> oldDocuments =
-        documentRepository.findBySnapshotRevision_IdOrderBySortOrderAsc(oldRevision.getId());
-    List<UserCaseFee> oldFees =
-        feeRepository.findBySnapshotRevision_IdOrderBySortOrderAsc(oldRevision.getId());
+      List<UserCaseStep> oldSteps =
+          stepRepository.findBySnapshotRevision_IdOrderBySortOrderAsc(oldRevision.getId());
+      List<UserCaseDocument> oldDocuments =
+          documentRepository.findBySnapshotRevision_IdOrderBySortOrderAsc(oldRevision.getId());
+      List<UserCaseFee> oldFees =
+          feeRepository.findBySnapshotRevision_IdOrderBySortOrderAsc(oldRevision.getId());
 
-    int nextRevisionNumber = revisionRepository.findMaxRevisionNumber(userCase.getId()) + 1;
-    Instant now = clock.instant();
-    LocalDate today = LocalDate.now(clock);
-    UserCaseSnapshotRevision newRevision =
-        snapshotService.buildRevision(
-            userCase,
-            nextRevisionNumber,
-            newProcedureVersion,
-            today,
-            SnapshotRevisionReason.UPGRADE,
-            actor,
-            oldRevision,
-            now);
+      int nextRevisionNumber = revisionRepository.findMaxRevisionNumber(userCase.getId()) + 1;
+      Instant now = clock.instant();
+      LocalDate today = LocalDate.now(clock);
+      UserCaseSnapshotRevision newRevision =
+          snapshotService.buildRevision(
+              userCase,
+              nextRevisionNumber,
+              newProcedureVersion,
+              today,
+              SnapshotRevisionReason.UPGRADE,
+              actor,
+              oldRevision,
+              now);
 
-    mergeSteps(oldSteps, newRevision, now);
-    mergeDocuments(oldDocuments, newRevision, now);
-    mergeFees(oldFees, newRevision, now);
+      mergeSteps(oldSteps, newRevision, now);
+      mergeDocuments(oldDocuments, newRevision, now);
+      mergeFees(oldFees, newRevision, now);
 
-    userCase.attachRevision(newRevision);
-    userCase.touch(now);
-    eventRepository.save(
-        new UserCaseEvent(
-            userCase,
-            UserCaseEventType.CASE_UPDATED_TO_NEW_VERSION,
-            now,
-            actor,
-            "revision "
-                + oldRevision.getRevisionNumber()
-                + " -> "
-                + newRevision.getRevisionNumber()));
+      userCase.attachRevision(newRevision);
+      userCase.touch(now);
+      eventRepository.save(
+          new UserCaseEvent(
+              userCase,
+              UserCaseEventType.CASE_UPDATED_TO_NEW_VERSION,
+              now,
+              actor,
+              "revision "
+                  + oldRevision.getRevisionNumber()
+                  + " -> "
+                  + newRevision.getRevisionNumber()));
 
-    return userCase;
+      caseMetrics.recordCaseUpgrade();
+      return userCase;
+    } catch (ApiException e) {
+      throw e;
+    } catch (RuntimeException e) {
+      caseMetrics.recordCaseUpgradeFailed();
+      throw e;
+    }
   }
 
   private void mergeSteps(

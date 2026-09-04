@@ -1,6 +1,7 @@
 package com.foreignerwarsaw.recommendation.engine;
 
 import com.foreignerwarsaw.common.web.ApiException;
+import com.foreignerwarsaw.observability.RecommendationMetrics;
 import com.foreignerwarsaw.procedure.core.Procedure;
 import com.foreignerwarsaw.procedure.core.ProcedureRepository;
 import com.foreignerwarsaw.procedure.core.ProcedureVersion;
@@ -67,6 +68,7 @@ public class RecommendationService {
   private final RecommendationRepository recommendationRepository;
   private final RecommendationReasonRepository recommendationReasonRepository;
   private final RuleVersionRepository ruleVersionRepository;
+  private final RecommendationMetrics recommendationMetrics;
   private final Clock clock;
 
   public RecommendationService(
@@ -82,6 +84,7 @@ public class RecommendationService {
       RecommendationRepository recommendationRepository,
       RecommendationReasonRepository recommendationReasonRepository,
       RuleVersionRepository ruleVersionRepository,
+      RecommendationMetrics recommendationMetrics,
       Clock clock) {
     this.assessmentService = assessmentService;
     this.assessmentFactsService = assessmentFactsService;
@@ -95,6 +98,7 @@ public class RecommendationService {
     this.recommendationRepository = recommendationRepository;
     this.recommendationReasonRepository = recommendationReasonRepository;
     this.ruleVersionRepository = ruleVersionRepository;
+    this.recommendationMetrics = recommendationMetrics;
     this.clock = clock;
   }
 
@@ -132,11 +136,20 @@ public class RecommendationService {
               ? RecommendationRunStatus.PARTIAL
               : RecommendationRunStatus.COMPLETED;
       run.complete(status, clock.instant());
+      // Canonical Phase 14 (Observability) brief §24/§25 - recorded once per completed
+      // run, after the outcome is final; zero_candidates is a separate, purely
+      // diagnostic signal (brief §25's own "do not treat all zero-candidate runs as
+      // errors") - a COMPLETED run with no candidate is not itself a failure.
+      recommendationMetrics.recordRun(status);
+      if (ranked.isEmpty()) {
+        recommendationMetrics.recordZeroCandidates();
+      }
       return run;
     } catch (ApiException e) {
       throw e;
     } catch (Exception e) {
       run.complete(RecommendationRunStatus.FAILED, clock.instant());
+      recommendationMetrics.recordRun(RecommendationRunStatus.FAILED);
       throw new ApiException(
           HttpStatus.INTERNAL_SERVER_ERROR,
           "RECOMMENDATION_ANALYSIS_FAILED",

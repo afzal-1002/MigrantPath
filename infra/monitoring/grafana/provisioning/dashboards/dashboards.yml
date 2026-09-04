@@ -1,0 +1,13 @@
+# Canonical Phase 14 (Observability) - local-only, auto-loads the dashboard JSON
+# from /var/lib/grafana/dashboards (bind-mounted from ../dashboards).
+apiVersion: 1
+
+providers:
+  - name: foreigner-warsaw
+    orgId: 1
+    folder: ""
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    options:
+      path: /var/lib/grafana/dashboards

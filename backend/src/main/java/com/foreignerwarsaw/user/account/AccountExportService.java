@@ -6,6 +6,7 @@ import com.foreignerwarsaw.common.audit.AuditActionType;
 import com.foreignerwarsaw.common.audit.AuditEntityType;
 import com.foreignerwarsaw.common.audit.AuditService;
 import com.foreignerwarsaw.common.security.SecurityEventLogger;
+import com.foreignerwarsaw.observability.PrivacyMetrics;
 import com.foreignerwarsaw.questionnaire.assessment.AssessmentAnswer;
 import com.foreignerwarsaw.questionnaire.assessment.AssessmentAnswerRepository;
 import com.foreignerwarsaw.questionnaire.assessment.AssessmentRepository;
@@ -49,6 +50,7 @@ public class AccountExportService {
   private final UserCaseEventRepository userCaseEventRepository;
   private final AuditService auditService;
   private final SecurityEventLogger securityEventLogger;
+  private final PrivacyMetrics privacyMetrics;
   private final Clock clock;
 
   public AccountExportService(
@@ -65,6 +67,7 @@ public class AccountExportService {
       UserCaseEventRepository userCaseEventRepository,
       AuditService auditService,
       SecurityEventLogger securityEventLogger,
+      PrivacyMetrics privacyMetrics,
       Clock clock) {
     this.userRepository = userRepository;
     this.userConsentRepository = userConsentRepository;
@@ -79,6 +82,7 @@ public class AccountExportService {
     this.userCaseEventRepository = userCaseEventRepository;
     this.auditService = auditService;
     this.securityEventLogger = securityEventLogger;
+    this.privacyMetrics = privacyMetrics;
     this.clock = clock;
   }
 
@@ -100,16 +104,25 @@ public class AccountExportService {
         null,
         "Personal data export requested");
 
-    AccountExportResponse response =
-        new AccountExportResponse(
-            AccountExportResponse.SCHEMA_VERSION,
-            clock.instant(),
-            userId,
-            mapAccount(user),
-            mapConsents(userId),
-            mapAssessments(userId),
-            mapRecommendationRuns(userId),
-            mapCases(userId));
+    AccountExportResponse response;
+    try {
+      response =
+          new AccountExportResponse(
+              AccountExportResponse.SCHEMA_VERSION,
+              clock.instant(),
+              userId,
+              mapAccount(user),
+              mapConsents(userId),
+              mapAssessments(userId),
+              mapRecommendationRuns(userId),
+              mapCases(userId));
+    } catch (RuntimeException e) {
+      // Canonical Phase 14 (Observability) brief §79 - the request audit row above
+      // already recorded the attempt; this counts the unexpected-failure signal a
+      // human operator would need without ever touching the payload itself.
+      privacyMetrics.recordExportFailed();
+      throw e;
+    }
 
     auditService.record(
         user,
@@ -120,6 +133,7 @@ public class AccountExportService {
         null,
         "Personal data export completed");
     securityEventLogger.log(SecurityEventLogger.Event.PERSONAL_DATA_EXPORTED, userId.toString());
+    privacyMetrics.recordExportCompleted();
 
     return response;
   }

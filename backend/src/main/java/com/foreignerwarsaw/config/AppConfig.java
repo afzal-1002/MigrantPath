@@ -18,7 +18,8 @@ import org.springframework.context.annotation.Configuration;
 @EnableConfigurationProperties({
   AuthProperties.class,
   MailProperties.class,
-  TokenCleanupProperties.class
+  TokenCleanupProperties.class,
+  ObservabilityProperties.class
 })
 @EnableCaching
 public class AppConfig {

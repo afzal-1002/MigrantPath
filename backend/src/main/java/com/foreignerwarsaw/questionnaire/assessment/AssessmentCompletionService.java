@@ -2,6 +2,7 @@ package com.foreignerwarsaw.questionnaire.assessment;
 
 import com.foreignerwarsaw.common.web.ApiError;
 import com.foreignerwarsaw.common.web.ApiException;
+import com.foreignerwarsaw.observability.AssessmentMetrics;
 import com.foreignerwarsaw.questionnaire.dependency.QuestionDependency;
 import com.foreignerwarsaw.questionnaire.dependency.QuestionDependencyRepository;
 import com.foreignerwarsaw.questionnaire.question.QuestionnaireQuestion;
@@ -32,6 +33,7 @@ public class AssessmentCompletionService {
   private final AssessmentAnswerRepository assessmentAnswerRepository;
   private final AssessmentAnswerService assessmentAnswerService;
   private final QuestionVisibilityService questionVisibilityService;
+  private final AssessmentMetrics assessmentMetrics;
   private final Clock clock;
 
   public AssessmentCompletionService(
@@ -41,6 +43,7 @@ public class AssessmentCompletionService {
       AssessmentAnswerRepository assessmentAnswerRepository,
       AssessmentAnswerService assessmentAnswerService,
       QuestionVisibilityService questionVisibilityService,
+      AssessmentMetrics assessmentMetrics,
       Clock clock) {
     this.assessmentRepository = assessmentRepository;
     this.questionnaireQuestionRepository = questionnaireQuestionRepository;
@@ -48,6 +51,7 @@ public class AssessmentCompletionService {
     this.assessmentAnswerRepository = assessmentAnswerRepository;
     this.assessmentAnswerService = assessmentAnswerService;
     this.questionVisibilityService = questionVisibilityService;
+    this.assessmentMetrics = assessmentMetrics;
     this.clock = clock;
   }
 
@@ -140,5 +144,6 @@ public class AssessmentCompletionService {
               .toList());
     }
     assessment.complete(Instant.now(clock));
+    assessmentMetrics.recordCompleted();
   }
 }

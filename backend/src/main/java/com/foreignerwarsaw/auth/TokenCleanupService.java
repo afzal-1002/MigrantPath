@@ -1,6 +1,7 @@
 package com.foreignerwarsaw.auth;
 
 import com.foreignerwarsaw.config.TokenCleanupProperties;
+import com.foreignerwarsaw.observability.TokenCleanupMetrics;
 import java.time.Clock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,16 +38,19 @@ public class TokenCleanupService {
   private final EmailVerificationTokenRepository emailVerificationTokenRepository;
   private final PasswordResetTokenRepository passwordResetTokenRepository;
   private final TokenCleanupProperties properties;
+  private final TokenCleanupMetrics metrics;
   private final Clock clock;
 
   public TokenCleanupService(
       EmailVerificationTokenRepository emailVerificationTokenRepository,
       PasswordResetTokenRepository passwordResetTokenRepository,
       TokenCleanupProperties properties,
+      TokenCleanupMetrics metrics,
       Clock clock) {
     this.emailVerificationTokenRepository = emailVerificationTokenRepository;
     this.passwordResetTokenRepository = passwordResetTokenRepository;
     this.properties = properties;
+    this.metrics = metrics;
     this.clock = clock;
   }
 
@@ -69,7 +73,19 @@ public class TokenCleanupService {
     if (!properties.enabled()) {
       return;
     }
-    cleanupExpiredAndStaleTokens();
+    // Canonical Phase 14 (Observability) brief §30/§70/§71 - exactly the visibility
+    // that would have surfaced the Phase 13 self-invocation bug immediately: a metric
+    // for every real run, a dedicated failure counter if it throws (re-thrown
+    // afterward so Spring's own scheduled-task error logging - already real, already
+    // confirmed working in Phase 13's own investigation - still sees it too), and the
+    // actual count of rows removed.
+    metrics.recordRun();
+    try {
+      cleanupExpiredAndStaleTokens();
+    } catch (RuntimeException e) {
+      metrics.recordFailure();
+      throw e;
+    }
   }
 
   @Transactional
@@ -79,6 +95,7 @@ public class TokenCleanupService {
     int verificationDeleted =
         emailVerificationTokenRepository.deleteExpiredOrStale(now, usedRetentionCutoff);
     int resetDeleted = passwordResetTokenRepository.deleteExpiredOrStale(now, usedRetentionCutoff);
+    metrics.recordDeleted(verificationDeleted + resetDeleted);
     if (verificationDeleted > 0 || resetDeleted > 0) {
       // No token value, hash, or user identifier logged - only counts (docs/privacy/
       // LOGGING_PRIVACY.md).

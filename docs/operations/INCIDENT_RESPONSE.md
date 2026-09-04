@@ -9,11 +9,20 @@ paging system").
 1. Check `GET /actuator/health/readiness` and `GET /actuator/health/liveness` first -
    they distinguish "can't serve traffic" from "process itself is wedged."
 2. Check container logs (`docker compose logs -f backend` / `frontend` / `postgres`) -
-   stdout/stderr only, no in-container log files (brief §170).
+   stdout/stderr only, no in-container log files (brief §170). In staging/production
+   these are structured JSON (`OBSERVABILITY.md`'s "Structured logging" section) -
+   pipe through `jq` for readability, e.g. `docker compose logs backend | jq
+   'select(.level=="ERROR")'`.
 3. Note the affected request(s)' `X-Correlation-ID` (returned on every response,
-   `CorrelationIdFilter`) if a specific user report is involved - every log line for
-   that request carries the same id.
-4. Fix, verify, document (a brief postmortem note - what happened, what was affected,
+   `CorrelationIdFilter`, and now also inside the JSON body of any error response,
+   `ApiError.correlationId`) if a specific user report is involved - every log line
+   for that request carries the same id; see `DIAGNOSTICS.md`'s "Something went
+   wrong" runbook for the exact search flow.
+4. Check the relevant metric trend for the incident window against `METRICS.md`'s
+   catalog and `ALERTS.md`'s thresholds (the local Grafana profile,
+   `DASHBOARDS.md`, if running, is the fastest way to see this) - confirms
+   scope/duration and whether this matches a known alert condition.
+5. Fix, verify, document (a brief postmortem note - what happened, what was affected,
    what changed).
 
 ## Application down
@@ -51,8 +60,8 @@ paging system").
 
 ## Mail unavailable
 
-- Symptom: registration/password-reset emails aren't arriving; `email.send.failure` log
-  lines (or, once wired, the corresponding metric - `docs/operations/OBSERVABILITY.md`).
+- Symptom: registration/password-reset emails aren't arriving; `email.send.failure`
+  log lines and the `email.send.failure{type=...}` metric climbing (`METRICS.md`).
 - Impact, by design (brief §57, already implemented in `RegistrationService`/
   `PasswordResetService`): a verification-email failure leaves the account `PENDING_
   VERIFICATION` (the user can resend); a password-reset email failure still returns the
@@ -69,7 +78,10 @@ See `LEGAL_CONTENT_MONITORING.md` and the dedicated procedure below.
 ## Rule misconfiguration
 
 - Symptom: a `Recommendation` is unexpectedly `NOT_APPLICABLE`/`MORE_INFORMATION_
-  REQUIRED`/a false `PRIMARY_MATCH` for real users.
+  REQUIRED`/a false `PRIMARY_MATCH` for real users, or `rule.evaluation.error`
+  (`METRICS.md`) climbs for a specific `ruleType`/`errorCategory` tag combination -
+  `DIAGNOSTICS.md`'s "Recommendation missing / unexpected" runbook is the fastest
+  path from a metric spike to the specific rule.
 - Action: **never hand-edit a published `RuleVersion` row.** Use the real Admin
   workflow to create a corrected draft version, get it reviewed/approved, and publish
   it (the same DRAFT → REVIEW → APPROVE → PUBLISH cycle every real Rule in this

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.DecimalNode;
 import com.foreignerwarsaw.common.evaluation.ComparisonOperator;
 import com.foreignerwarsaw.common.evaluation.ConditionEvaluator;
+import com.foreignerwarsaw.observability.RuleMetrics;
 import com.foreignerwarsaw.procedure.threshold.ThresholdService;
 import com.foreignerwarsaw.procedure.threshold.ThresholdVersion;
 import com.foreignerwarsaw.questionnaire.assessment.AssessmentFacts;
@@ -24,6 +25,8 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -59,23 +62,28 @@ public class RuleEvaluator {
    */
   public static final String ENGINE_VERSION = "1";
 
+  private static final Logger log = LoggerFactory.getLogger(RuleEvaluator.class);
+
   private final FactResolver factResolver;
   private final ThresholdService thresholdService;
   private final CountryClassificationService countryClassificationService;
   private final RuleVersionSourceRepository ruleVersionSourceRepository;
   private final ObjectMapper objectMapper;
+  private final RuleMetrics ruleMetrics;
 
   public RuleEvaluator(
       FactResolver factResolver,
       ThresholdService thresholdService,
       CountryClassificationService countryClassificationService,
       RuleVersionSourceRepository ruleVersionSourceRepository,
-      ObjectMapper objectMapper) {
+      ObjectMapper objectMapper,
+      RuleMetrics ruleMetrics) {
     this.factResolver = factResolver;
     this.thresholdService = thresholdService;
     this.countryClassificationService = countryClassificationService;
     this.ruleVersionSourceRepository = ruleVersionSourceRepository;
     this.objectMapper = objectMapper;
+    this.ruleMetrics = ruleMetrics;
   }
 
   /**
@@ -113,6 +121,27 @@ public class RuleEvaluator {
             .map(source -> source.getOfficialSource().getId())
             .toList();
 
+    RuleEvaluationStatus status = toStatus(rootResult);
+    // Canonical Phase 14 (Observability) brief §22/§23 - only the real production
+    // entry point records these; previewEvaluate (admin dry-run rule authoring, brief
+    // §113) deliberately never touches this metric, since a rule author intentionally
+    // testing an incomplete/broken draft condition tree is not an operational
+    // incident and would otherwise pollute rule.evaluation.error with expected noise.
+    ruleMetrics.recordEvaluation(status);
+    for (ConditionTrace error : errors) {
+      RuleMetrics.ErrorCategory category = categorize(error.message());
+      ruleMetrics.recordError(category);
+      // ruleCode/ruleType/errorCategory only - never the raw trace message (brief §15
+      // - it can legitimately embed a fact code from an admin-authored condition
+      // tree, which is operational content, not personal data, but still not
+      // guaranteed free-text-safe long-term; the bounded fields below are).
+      log.warn(
+          "Rule evaluation error: rule={} ruleType={} errorCategory={}",
+          rule.getCode(),
+          rule.getRuleType(),
+          category);
+    }
+
     return new RuleEvaluationResult(
         rule.getId(),
         rule.getCode(),
@@ -122,7 +151,7 @@ public class RuleEvaluator {
         rule.getTargetType(),
         rule.getTargetCode(),
         evaluationDate,
-        toStatus(rootResult),
+        status,
         List.copyOf(passed),
         List.copyOf(failed),
         List.copyOf(missing),
@@ -131,6 +160,27 @@ public class RuleEvaluator {
         List.copyOf(thresholdsUsed),
         sourceIds,
         ruleVersion.getExplanationKey());
+  }
+
+  /**
+   * Categorizes an {@code errors} trace's own, internally-controlled message prefix (never the raw
+   * exception message as a tag value, brief §23) - matched against the three distinct catch sites
+   * in {@link #evaluateTree}/{@link #evaluateLeaf}, the only places that ever add to that list.
+   */
+  private RuleMetrics.ErrorCategory categorize(String message) {
+    if (message == null) {
+      return RuleMetrics.ErrorCategory.UNKNOWN;
+    }
+    if (message.startsWith("Failed to parse or evaluate condition tree")) {
+      return RuleMetrics.ErrorCategory.CONFIGURATION;
+    }
+    if (message.startsWith("Failed to resolve fact")) {
+      return RuleMetrics.ErrorCategory.FACT_RESOLUTION;
+    }
+    if (message.startsWith("Evaluation error") && message.contains("threshold")) {
+      return RuleMetrics.ErrorCategory.THRESHOLD_RESOLUTION;
+    }
+    return RuleMetrics.ErrorCategory.UNKNOWN;
   }
 
   /**

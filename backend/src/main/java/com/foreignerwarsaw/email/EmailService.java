@@ -1,6 +1,7 @@
 package com.foreignerwarsaw.email;
 
 import com.foreignerwarsaw.config.MailProperties;
+import com.foreignerwarsaw.observability.EmailMetrics;
 import jakarta.mail.internet.MimeMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,10 +23,13 @@ public class EmailService {
 
   private final JavaMailSender mailSender;
   private final MailProperties mailProperties;
+  private final EmailMetrics emailMetrics;
 
-  public EmailService(JavaMailSender mailSender, MailProperties mailProperties) {
+  public EmailService(
+      JavaMailSender mailSender, MailProperties mailProperties, EmailMetrics emailMetrics) {
     this.mailSender = mailSender;
     this.mailProperties = mailProperties;
+    this.emailMetrics = emailMetrics;
   }
 
   /**
@@ -33,8 +37,11 @@ public class EmailService {
    * (brief §33) - a failed send here is caught and logged, not rethrown, so it never rolls back an
    * already-committed registration. The user can always request a new email (resend-verification /
    * forgot-password) if the first one didn't arrive.
+   *
+   * <p>{@code type} (Canonical Phase 14 - brief §29) is the only tag either metric carries - never
+   * the recipient address.
    */
-  public void send(String to, String subject, String htmlBody) {
+  public void send(String to, String subject, String htmlBody, EmailMetrics.Type type) {
     try {
       MimeMessage message = mailSender.createMimeMessage();
       MimeMessageHelper helper = new MimeMessageHelper(message, false, "UTF-8");
@@ -43,8 +50,10 @@ public class EmailService {
       helper.setSubject(subject);
       helper.setText(htmlBody, true);
       mailSender.send(message);
+      emailMetrics.recordSuccess(type);
     } catch (Exception e) {
       log.warn("Failed to send email (subject={}): {}", subject, e.getMessage());
+      emailMetrics.recordFailure(type);
     }
   }
 }

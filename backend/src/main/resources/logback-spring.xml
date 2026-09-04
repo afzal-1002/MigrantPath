@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Canonical Phase 14 (Observability) brief §3/§4 - structured JSON logging in
+  staging/production, the existing human-readable console pattern unchanged everywhere
+  else (local/test). The "-spring" filename suffix is required for <springProfile>/
+  <springProperty> to resolve (a plain logback.xml loads too early, before Spring's own
+  Environment exists).
+
+  Every field named in brief §3 that has a real, safe source is included:
+    timestamp, level, logger, message  - LogstashEncoder's own defaults
+    correlationId                      - already in MDC (CorrelationIdFilter, Phase 11)
+    environment                        - the active Spring profile
+    application                        - static, matches spring.application.name
+    buildCommit                        - the real deployed commit (Phase 13's own
+                                          BUILD_COMMIT build-arg/env var), "unknown"
+                                          locally where it's never set
+  requestMethod/requestPath/responseStatus/durationMs are NOT global MDC fields (that
+  would smear them across every log line for a request's whole duration, including
+  ones logged before the response exists) - they are attached as structured arguments
+  on the one-line-per-request summary log only (RequestLoggingFilter, this phase).
+
+  No personal/legal-sensitive field is ever added here (brief §5/§6) - this file adds
+  no field beyond the ones listed above; every application log call already goes
+  through the existing, unchanged manual log-scrub discipline (GlobalExceptionHandler,
+  LoginService, TokenGenerator, SecurityEventLogger - docs/privacy/LOGGING_PRIVACY.md).
+-->
+<configuration>
+  <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+  <springProperty scope="context" name="environment" source="spring.profiles.active" defaultValue="local"/>
+  <springProperty scope="context" name="buildCommit" source="BUILD_COMMIT" defaultValue="unknown"/>
+
+  <!-- local/test (and any profile not explicitly staging/production) - Spring Boot's
+       own standard console appender (the exact one the framework default would have
+       used with no logback-spring.xml present at all), unchanged behavior. -->
+  <springProfile name="!staging &amp; !production">
+    <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+    <root level="INFO">
+      <appender-ref ref="CONSOLE"/>
+    </root>
+  </springProfile>
+
+  <!-- staging/production - one JSON object per line on stdout (brief §140: stdout only,
+       no app-managed log file - the container/host log driver owns collection, see
+       docs/operations/OBSERVABILITY.md). -->
+  <springProfile name="staging | production">
+    <appender name="CONSOLE_JSON" class="ch.qos.logback.core.ConsoleAppender">
+      <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+        <!-- environment/buildCommit are NOT repeated here - <springProperty scope="context">
+             above already registers them as logback Context properties, which
+             LogstashEncoder serializes automatically (a real, observed duplicate-key
+             bug when they were also listed here, found by actually inspecting the
+             emitted JSON, not assumed). -->
+        <customFields>{"application":"foreigner-warsaw-backend"}</customFields>
+        <!-- Never let an unexpected MDC key ride along un-reviewed (brief §6's own
+             "prefer intentional field whitelist rather than dumping request/context
+             maps") - correlationId is the only MDC key this codebase ever sets
+             (CorrelationIdFilter), so an explicit include list here is both the
+             safety net and self-documenting. -->
+        <includeMdcKeyName>correlationId</includeMdcKeyName>
+        <fieldNames>
+          <timestamp>timestamp</timestamp>
+          <level>level</level>
+          <logger>logger</logger>
+          <message>message</message>
+          <thread>[ignore]</thread>
+          <version>[ignore]</version>
+        </fieldNames>
+      </encoder>
+    </appender>
+    <root level="INFO">
+      <appender-ref ref="CONSOLE_JSON"/>
+    </root>
+  </springProfile>
+</configuration>

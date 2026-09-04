@@ -6,6 +6,7 @@ import com.foreignerwarsaw.common.audit.AuditService;
 import com.foreignerwarsaw.common.security.SecurityEventLogger;
 import com.foreignerwarsaw.common.security.SessionInvalidator;
 import com.foreignerwarsaw.common.web.ApiException;
+import com.foreignerwarsaw.observability.PrivacyMetrics;
 import com.foreignerwarsaw.user.User;
 import com.foreignerwarsaw.user.UserRepository;
 import java.time.Clock;
@@ -45,6 +46,7 @@ public class AccountDeletionService {
   private final SessionInvalidator sessionInvalidator;
   private final SecurityEventLogger securityEventLogger;
   private final AuditService auditService;
+  private final PrivacyMetrics privacyMetrics;
   private final Clock clock;
 
   public AccountDeletionService(
@@ -53,12 +55,14 @@ public class AccountDeletionService {
       SessionInvalidator sessionInvalidator,
       SecurityEventLogger securityEventLogger,
       AuditService auditService,
+      PrivacyMetrics privacyMetrics,
       Clock clock) {
     this.userRepository = userRepository;
     this.passwordEncoder = passwordEncoder;
     this.sessionInvalidator = sessionInvalidator;
     this.securityEventLogger = securityEventLogger;
     this.auditService = auditService;
+    this.privacyMetrics = privacyMetrics;
     this.clock = clock;
   }
 
@@ -93,6 +97,19 @@ public class AccountDeletionService {
     UUID accountId = user.getId();
     String email = user.getEmail();
 
+    try {
+      deleteAuthenticatedAccount(user, accountId, email);
+      privacyMetrics.recordDeletionCompleted();
+    } catch (RuntimeException e) {
+      // Canonical Phase 14 (Observability) brief §79 - only a genuinely unexpected
+      // failure past reauthentication counts here; a wrong password never reaches
+      // this catch (it throws above, before accountId/email are even captured).
+      privacyMetrics.recordDeletionFailed();
+      throw e;
+    }
+  }
+
+  private void deleteAuthenticatedAccount(User user, UUID accountId, String email) {
     // A real bug found this phase: passing `user` (or even a separate entityManager.getReference()
     // proxy for the same row - also tried) as the AuditLog actor makes Hibernate's flush-order
     // dependency check throw TransientPropertyValueException, because that same User row is *also*

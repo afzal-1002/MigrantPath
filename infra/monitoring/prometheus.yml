@@ -1,0 +1,11 @@
+# Canonical Phase 14 (Observability) - local-only scrape config. See
+# docs/operations/DASHBOARDS.md.
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: foreigner-warsaw-backend
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["host.docker.internal:8080"]

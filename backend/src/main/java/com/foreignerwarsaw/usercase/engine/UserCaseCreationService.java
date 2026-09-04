@@ -1,5 +1,6 @@
 package com.foreignerwarsaw.usercase.engine;
 
+import com.foreignerwarsaw.observability.CaseMetrics;
 import com.foreignerwarsaw.user.User;
 import com.foreignerwarsaw.usercase.core.SnapshotRevisionReason;
 import com.foreignerwarsaw.usercase.core.UserCase;
@@ -29,16 +30,19 @@ public class UserCaseCreationService {
   private final UserCaseRepository userCaseRepository;
   private final UserCaseSnapshotService snapshotService;
   private final UserCaseEventRepository eventRepository;
+  private final CaseMetrics caseMetrics;
   private final Clock clock;
 
   public UserCaseCreationService(
       UserCaseRepository userCaseRepository,
       UserCaseSnapshotService snapshotService,
       UserCaseEventRepository eventRepository,
+      CaseMetrics caseMetrics,
       Clock clock) {
     this.userCaseRepository = userCaseRepository;
     this.snapshotService = snapshotService;
     this.eventRepository = eventRepository;
+    this.caseMetrics = caseMetrics;
     this.clock = clock;
   }
 
@@ -92,6 +96,7 @@ public class UserCaseCreationService {
             user,
             "procedureVersion=" + validated.procedureVersion().getVersionNumber()));
 
+    caseMetrics.recordCaseCreated();
     return userCase;
   }
 }

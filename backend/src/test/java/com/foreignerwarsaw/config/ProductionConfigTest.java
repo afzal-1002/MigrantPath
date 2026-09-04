@@ -106,10 +106,13 @@ class ProductionConfigTest {
   }
 
   @Test
-  void baseConfig_actuatorExposesOnlyHealthAndInfo() throws Exception {
+  void baseConfig_actuatorExposesOnlyHealthInfoAndPrometheus() throws Exception {
+    // Canonical Phase 14 (Observability) brief §17 - prometheus added; SecurityConfig's
+    // own permitted-path list (unchanged) is what actually keeps it non-public, not
+    // omission from this list alone - see ActuatorExposureTest.
     Map<String, Object> yaml = load("application.yml");
     Object include = path(yaml, "management", "endpoints", "web", "exposure", "include");
-    assertThat(include).asString().isEqualTo("health,info");
+    assertThat(include).asString().isEqualTo("health,info,prometheus");
   }
 
   @Test

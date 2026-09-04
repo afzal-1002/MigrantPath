@@ -14,8 +14,28 @@
 # route fallback, cache-control split between hashed assets and index.html, and the
 # security headers in security-headers.conf (see that file's own comment for why it's
 # `include`d repeatedly rather than set once).
+#
+# Canonical Phase 14 (Observability) brief §65/§66/§125/§126 real finding: the default
+# nginx "combined" access-log format logs `$request`, the full request line including
+# the raw query string - and this app's own real routes
+# (`/verify-email?token=...`, `/reset-password?token=...`, both confirmed frontend
+# GET routes reading `token` from `queryParamMap` - see verify-email.ts/
+# reset-password.ts) would have had their real, single-use verification/reset tokens
+# written straight into this container's own access log on every real email-link
+# click, discovered by inspecting this file, not assumed. `$uri` (used below) is the
+# request path with the query string already stripped by nginx itself - never `$request`
+# or `$request_uri`, both of which still carry it. `$http_referer` is deliberately
+# never logged either: after landing on a token-bearing page, the *next* request
+# (loading a JS/CSS chunk from that same page) has the browser's own `Referer` header
+# set to the token-bearing URL - a second, less obvious way the same token could have
+# leaked into this log even with `$uri` alone protecting the direct request.
+log_format safe '$remote_addr - [$time_local] "$request_method $uri" '
+                 'status=$status bytes=$body_bytes_sent '
+                 'request_time=$request_time upstream_time=$upstream_response_time '
+                 'correlationId=$upstream_http_x_correlation_id';
 
 server {
+    access_log /dev/stdout safe;
     listen 8080;
     server_name _;
     root /usr/share/nginx/html;

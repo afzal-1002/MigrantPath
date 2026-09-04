@@ -59,9 +59,20 @@ management:
   endpoints:
     web:
       exposure:
-        # Only health and info are ever exposed - see ARCHITECTURE.md §11 /
-        # IMPLEMENTATION_PLAN.md 1.6. No metrics/env/beans endpoints publicly.
-        include: health,info
+        # health/info remain the only two endpoints anonymous/unauthenticated callers
+        # can ever reach. `prometheus` (Canonical Phase 14 - brief §17) is deliberately
+        # in this list too - "exposed" here only means Actuator itself will serve the
+        # path *if reached*; SecurityConfig's own permitted-path list (unchanged by
+        # this addition) is what actually decides who reaches it, and
+        # /actuator/prometheus is NOT in that list - a real, unauthenticated request
+        # gets 401 before Actuator's own handler ever runs, exactly like /actuator/env
+        # already does (ActuatorExposureTest / PrometheusEndpointSecurityTest).
+        include: health,info,prometheus
+  metrics:
+    tags:
+      # A bounded, low-cardinality dimension on every metric (brief §84) - never a
+      # per-instance/per-request value.
+      application: foreigner-warsaw-backend
   endpoint:
     health:
       # Overridden to "always" in local only - never leak internal component
@@ -76,6 +87,27 @@ management:
         # regardless of the deployment target (brief §4's "no Kubernetes unless
         # demonstrated need").
         enabled: true
+      group:
+        readiness:
+          # Canonical Phase 14 - a real bug this phase found and fixed: Spring Boot's
+          # `readiness` group, by default, includes ONLY its own internal
+          # `readinessState` indicator (which tracks graceful-shutdown/startup
+          # AvailabilityState, not any actual dependency) - it does NOT automatically
+          # fold in `db` or any other registered HealthIndicator. Every prior claim in
+          # this codebase's own docs that readiness means "database reachable"
+          # (CLAUDE.md, OBSERVABILITY.md, INCIDENT_RESPONSE.md) was therefore wrong in
+          # practice: a real, live Postgres outage AFTER startup left
+          # `/actuator/health/readiness` reporting UP indefinitely, even though the
+          # aggregate `/actuator/health` correctly showed `db: DOWN`. Found via a real
+          # production-like verification exercise (stop the actual Postgres container
+          # while the app is already serving traffic, hit both endpoints) - every prior
+          # failure exercise (Phase 13) only ever tested a DB outage present at
+          # *startup*, which fails for an unrelated reason (Flyway/JPA can't
+          # initialize, so the process never finishes starting at all) and never
+          # exercised this path. `db` is explicitly added below; `mail` is
+          # deliberately never added here (see management.health.mail.enabled above -
+          # a mail outage must never fail readiness).
+          include: readinessState,db
   health:
     mail:
       # A transient SMTP hiccup is not "the application is unhealthy" - it's a
@@ -131,3 +163,9 @@ app:
     forgot-password-cooldown: PT1M
   mail:
     from-address: no-reply@foreignerwarsaw.local
+  observability:
+    # Canonical Phase 14 (Observability) brief §11 - a request at or above this
+    # duration logs at WARN instead of INFO (RequestLoggingFilter). 3s is a generous
+    # starting point for a first release with no real production latency baseline yet
+    # (docs/operations/METRICS.md marks it INITIAL/TUNING_REQUIRED, not a proven SLO).
+    slow-request-threshold-ms: ${APP_SLOW_REQUEST_THRESHOLD_MS:3000}

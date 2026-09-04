@@ -1,5 +1,6 @@
 import {
   ApplicationConfig,
+  ErrorHandler,
   inject,
   provideAppInitializer,
   provideBrowserGlobalErrorListeners,
@@ -8,6 +9,7 @@ import { provideHttpClient, withInterceptors, withXsrfConfiguration } from '@ang
 import { provideRouter } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { routes } from './app.routes';
+import { GlobalErrorHandler } from './core/error-handling/global-error-handler';
 import { credentialsInterceptor } from './core/interceptors/credentials.interceptor';
 import { AuthService } from './core/services/auth.service';
 
@@ -20,6 +22,10 @@ import { AuthService } from './core/services/auth.service';
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
+    // Canonical Phase 14 (Observability) brief §40/§43 - the real integration
+    // boundary for a future error-tracking SDK; see
+    // core/error-handling/global-error-handler.ts.
+    { provide: ErrorHandler, useClass: GlobalErrorHandler },
     provideRouter(routes),
     provideHttpClient(
       withInterceptors([credentialsInterceptor]),

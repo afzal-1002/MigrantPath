@@ -1,0 +1,131 @@
+{
+  "title": "Foreigner Warsaw - Overview",
+  "uid": "foreigner-warsaw-overview",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Request rate by status class",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(rate(http_server_requests_seconds_count[1m])) by (status)",
+          "legendFormat": "{{status}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Latency p50/p95/p99",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        { "expr": "histogram_quantile(0.5, sum(rate(http_server_requests_seconds_bucket[5m])) by (le))", "legendFormat": "p50" },
+        { "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket[5m])) by (le))", "legendFormat": "p95" },
+        { "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket[5m])) by (le))", "legendFormat": "p99" }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Assessments completed (1h)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 8 },
+      "targets": [{ "expr": "increase(assessment_completed_total[1h])" }]
+    },
+    {
+      "id": 4,
+      "title": "Recommendation run outcomes (1h)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 8 },
+      "targets": [
+        { "expr": "increase(recommendation_completed_total[1h])", "legendFormat": "completed" },
+        { "expr": "increase(recommendation_partial_total[1h])", "legendFormat": "partial" },
+        { "expr": "increase(recommendation_failed_total[1h])", "legendFormat": "failed" }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Cases created / upgraded (1h)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 8 },
+      "targets": [
+        { "expr": "increase(case_creation_total[1h])", "legendFormat": "created" },
+        { "expr": "increase(case_upgrade_total[1h])", "legendFormat": "upgraded" },
+        { "expr": "increase(case_upgrade_failed_total[1h])", "legendFormat": "upgrade failed" }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Rule evaluation error rate by category",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "targets": [{ "expr": "rate(rule_evaluation_error_total[15m])", "legendFormat": "{{errorCategory}}" }]
+    },
+    {
+      "id": 7,
+      "title": "Legal content health (informational - never gates readiness)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "targets": [
+        { "expr": "legal_sources_outdated", "legendFormat": "outdated sources" },
+        { "expr": "legal_content_with_outdated_source", "legendFormat": "procedures w/ outdated source" }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Email send outcomes (1h)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 24 },
+      "targets": [
+        { "expr": "increase(email_send_success_total[1h])", "legendFormat": "{{type}} success" },
+        { "expr": "increase(email_send_failure_total[1h])", "legendFormat": "{{type}} failure" }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Privacy operations (1d)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 24 },
+      "targets": [
+        { "expr": "increase(account_export_completed_total[1d])", "legendFormat": "export completed" },
+        { "expr": "increase(account_export_failed_total[1d])", "legendFormat": "export failed" },
+        { "expr": "increase(account_deletion_completed_total[1d])", "legendFormat": "deletion completed" },
+        { "expr": "increase(account_deletion_failed_total[1d])", "legendFormat": "deletion failed" }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "Token cleanup job",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 24 },
+      "targets": [
+        { "expr": "token_cleanup_run_total", "legendFormat": "runs" },
+        { "expr": "token_cleanup_deleted_total", "legendFormat": "deleted" },
+        { "expr": "token_cleanup_failure_total", "legendFormat": "failures" }
+      ]
+    },
+    {
+      "id": 11,
+      "title": "JVM heap usage ratio",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 32 },
+      "targets": [{ "expr": "jvm_memory_used_bytes{area=\"heap\"} / jvm_memory_max_bytes{area=\"heap\"}" }]
+    },
+    {
+      "id": 12,
+      "title": "Hikari connection pool",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 32 },
+      "targets": [
+        { "expr": "hikaricp_connections_active", "legendFormat": "active" },
+        { "expr": "hikaricp_connections_pending", "legendFormat": "pending" },
+        { "expr": "hikaricp_connections_idle", "legendFormat": "idle" }
+      ]
+    }
+  ]
+}

@@ -1,6 +1,7 @@
 package com.foreignerwarsaw.email;
 
 import com.foreignerwarsaw.config.AuthProperties;
+import com.foreignerwarsaw.observability.EmailMetrics;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -24,6 +25,7 @@ public class PasswordResetEmailService {
         email - your password will not be changed.</p>
         """
             .formatted(link, authProperties.passwordResetTokenTtl().toMinutes());
-    emailService.send(toEmail, "Reset your Foreigner Warsaw password", body);
+    emailService.send(
+        toEmail, "Reset your Foreigner Warsaw password", body, EmailMetrics.Type.PASSWORD_RESET);
   }
 }

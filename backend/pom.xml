@@ -41,6 +41,25 @@
 			<artifactId>spring-boot-starter-actuator</artifactId>
 		</dependency>
 		<dependency>
+			<!-- Canonical Phase 14 (Observability) brief §16/§17 - Micrometer's core is
+			     already transitive via spring-boot-starter-actuator; this is the one concrete
+			     registry that turns it into a real, scrapeable /actuator/prometheus endpoint.
+			     No custom metrics transport written - brief §16's own "do not build custom
+			     metrics transport". -->
+			<groupId>io.micrometer</groupId>
+			<artifactId>micrometer-registry-prometheus</artifactId>
+		</dependency>
+		<dependency>
+			<!-- Canonical Phase 14 (Observability) brief §3 - JSON structured logging for
+			     staging/production (see logback-spring.xml); local/test keep the existing
+			     human-readable console pattern. Deliberately the exact dependency
+			     docs/operations/OBSERVABILITY.md already named as "the clear, scoped follow-up"
+			     when this was first deferred in Phase 11. -->
+			<groupId>net.logstash.logback</groupId>
+			<artifactId>logstash-logback-encoder</artifactId>
+			<version>8.0</version>
+		</dependency>
+		<dependency>
 			<!-- In-memory (ConcurrentMapCacheManager) caching for stable, small public
 			     reference data (brief §34) - no Redis needed for this scale. -->
 			<groupId>org.springframework.boot</groupId>

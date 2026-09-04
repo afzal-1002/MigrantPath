@@ -5,9 +5,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.foreignerwarsaw.observability.RuleMetrics;
 import com.foreignerwarsaw.procedure.source.OfficialSource;
 import com.foreignerwarsaw.procedure.source.SourceRole;
 import com.foreignerwarsaw.procedure.source.SourceType;
@@ -52,6 +54,14 @@ class RuleEvaluatorTest {
   @Mock private CountryClassificationService countryClassificationService;
   @Mock private RuleVersionSourceRepository ruleVersionSourceRepository;
 
+  // Canonical Phase 14 (Observability) - a plain Mockito mock, not a real
+  // SimpleMeterRegistry-backed instance: this test class's own purpose is the
+  // condition-tree evaluation semantics, not metrics (RuleMetricsIntegrationTest
+  // covers those against a real MeterRegistry), so mocking this one extra
+  // collaborator - consistent with every other collaborator here - keeps the test
+  // focused rather than mixing concerns.
+  @Mock private RuleMetrics ruleMetrics;
+
   private RuleEvaluator evaluator;
   private final LocalDate evaluationDate = LocalDate.of(2026, 1, 1);
 
@@ -63,7 +73,8 @@ class RuleEvaluatorTest {
             thresholdService,
             countryClassificationService,
             ruleVersionSourceRepository,
-            new ObjectMapper());
+            new ObjectMapper(),
+            ruleMetrics);
     lenient().when(ruleVersionSourceRepository.findByRuleVersion_Id(any())).thenReturn(List.of());
   }
 
@@ -231,6 +242,13 @@ class RuleEvaluatorTest {
     assertThat(result.thresholdsUsed().get(0).value()).isEqualByComparingTo("15000");
   }
 
+  /**
+   * Canonical Phase 14 (Observability) - the "rule evaluation error" failure exercise: a real
+   * unresolvable threshold reference (no active published {@code ThresholdVersion}) must produce
+   * both an {@code ERROR}-status result AND the correct observability signal - {@code
+   * ruleMetrics.recordEvaluation(ERROR)} plus {@code recordError(THRESHOLD_RESOLUTION)}, never left
+   * unverified as a side effect nobody actually checks.
+   */
   @Test
   void leaf_noActivePublishedThresholdVersion_isError_neverSilentlyPass() {
     when(factResolver.resolve(eq("SALARY_MONTHLY_GROSS"), any(), any()))
@@ -244,6 +262,8 @@ class RuleEvaluatorTest {
 
     assertThat(result.status()).isEqualTo(RuleEvaluationStatus.ERROR);
     assertThat(result.errorConditions()).hasSize(1);
+    verify(ruleMetrics).recordEvaluation(RuleEvaluationStatus.ERROR);
+    verify(ruleMetrics).recordError(RuleMetrics.ErrorCategory.THRESHOLD_RESOLUTION);
   }
 
   @Test
@@ -300,6 +320,12 @@ class RuleEvaluatorTest {
     assertThat(result.missingConditions()).isEmpty();
   }
 
+  /**
+   * Canonical Phase 14 (Observability) - a second "rule evaluation error" failure exercise: a
+   * genuinely malformed condition tree (the CONFIGURATION category) must also produce both the
+   * correct result status and the correct metric signal, distinct from the THRESHOLD_RESOLUTION
+   * case above.
+   */
   @Test
   void malformedConditionTreeJson_producesErrorStatus_neverThrows() {
     RuleVersion version = versionWithTree("{not valid json");
@@ -308,6 +334,8 @@ class RuleEvaluatorTest {
 
     assertThat(result.status()).isEqualTo(RuleEvaluationStatus.ERROR);
     assertThat(result.errorConditions()).hasSize(1);
+    verify(ruleMetrics).recordEvaluation(RuleEvaluationStatus.ERROR);
+    verify(ruleMetrics).recordError(RuleMetrics.ErrorCategory.CONFIGURATION);
   }
 
   @Test
