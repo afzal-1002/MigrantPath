@@ -18,6 +18,8 @@ app:
     allowed-origins: ${FRONTEND_URL}
   auth:
     frontend-base-url: ${FRONTEND_URL}
+  token-cleanup:
+    enabled: true
 
 server:
   # See application-production.yml's own comment - staging sits behind the same kind

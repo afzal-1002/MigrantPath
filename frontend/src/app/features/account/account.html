@@ -1,0 +1,37 @@
+<h1>Account</h1>
+
+<mat-card class="section">
+  <h2>Account</h2>
+  @if (currentUser(); as user) {
+    <p><strong>Email:</strong> {{ user.email }}</p>
+    <p><strong>Name:</strong> {{ user.firstName || '—' }}</p>
+  }
+</mat-card>
+
+<mat-card class="section">
+  <h2>Privacy</h2>
+
+  <div class="privacy-action">
+    <h3>Export my data</h3>
+    <p>
+      Download a JSON file containing your account details, consents, assessments, recommendation
+      history, and case/checklist data. It does not include your password or any security
+      credentials.
+    </p>
+    <button mat-flat-button color="primary" [disabled]="exporting()" (click)="export()">
+      {{ exporting() ? 'Preparing your export…' : 'Export my data' }}
+    </button>
+    @if (exportError()) {
+      <p class="error">{{ exportError() }}</p>
+    }
+  </div>
+
+  <div class="privacy-action danger">
+    <h3>Delete my account</h3>
+    <p>
+      Permanently deletes your account, assessments, recommendations, and case/checklist history.
+      This cannot be undone. Public procedure content is not affected.
+    </p>
+    <button mat-stroked-button color="warn" (click)="openDeleteDialog()">Delete my account</button>
+  </div>
+</mat-card>

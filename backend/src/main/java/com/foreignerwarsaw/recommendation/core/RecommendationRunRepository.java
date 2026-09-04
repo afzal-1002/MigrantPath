@@ -18,4 +18,9 @@ public interface RecommendationRunRepository extends JpaRepository<Recommendatio
 
   /** History listing (brief §66/§81), most recent first. */
   List<RecommendationRun> findByAssessment_IdOrderByCreatedAtDesc(UUID assessmentId);
+
+  /**
+   * Phase 12 personal-data export (brief §20) - every run for the account, across all assessments.
+   */
+  List<RecommendationRun> findByUser_IdOrderByCreatedAtDesc(UUID userId);
 }

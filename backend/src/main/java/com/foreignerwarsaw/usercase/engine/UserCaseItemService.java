@@ -151,15 +151,31 @@ public class UserCaseItemService {
     }
   }
 
-  // A tiny shared helper so the three item lookups share one not-found + wrong-revision check
-  // without three near-identical method bodies. A user may only mutate an item belonging to the
-  // case's *current* revision - a historical revision's items are read-only (brief §105).
+  // A tiny shared helper so the three item lookups share one not-found + ownership + wrong-
+  // revision check without three near-identical method bodies.
+  //
+  // Canonical Phase 12 (Security/Privacy/GDPR) brief §30/§72 - hardens what canonical Phase 11
+  // (Testing) found and only *proved* safe, not *made* safe: this used to check only whether the
+  // resolved item's revision matched the case's current revision, which happened to also reject
+  // a cross-case item id (since revision ids are never shared across cases) but never actually
+  // asked "does this item belong to the case the caller is authorized for" directly. That's now
+  // the first, explicit check below - same 404 CASE_ITEM_NOT_FOUND convention every other owned
+  // resource in this codebase uses for ownership-hiding (brief §9's IDOR discipline), so a
+  // cross-case id and a genuinely-nonexistent id are indistinguishable to the caller either way.
+  // The historical-revision check (409 CASE_ITEM_NOT_APPLICABLE) only ever runs once ownership of
+  // the *case* itself is already established - a user may only mutate an item belonging to the
+  // case's *current* revision; a historical revision's items are read-only (brief §105).
   private <T> T requireCurrentRevisionItem(UserCase userCase, java.util.Optional<T> found) {
     T item =
         found.orElseThrow(
             () ->
                 new ApiException(
                     HttpStatus.NOT_FOUND, "CASE_ITEM_NOT_FOUND", "No case item found"));
+    if (!userCase.getId().equals(caseIdOf(item))) {
+      // Deliberately the identical exception the "not found at all" branch above throws - never
+      // reveal that an item with this id exists in some other case.
+      throw new ApiException(HttpStatus.NOT_FOUND, "CASE_ITEM_NOT_FOUND", "No case item found");
+    }
     UUID revisionId = revisionIdOf(item);
     if (userCase.getCurrentRevision() == null
         || !userCase.getCurrentRevision().getId().equals(revisionId)) {
@@ -180,6 +196,19 @@ public class UserCaseItemService {
     }
     if (item instanceof UserCaseFee fee) {
       return fee.getSnapshotRevision().getId();
+    }
+    throw new IllegalStateException("Unknown case item type: " + item.getClass());
+  }
+
+  private UUID caseIdOf(Object item) {
+    if (item instanceof UserCaseStep step) {
+      return step.getSnapshotRevision().getUserCase().getId();
+    }
+    if (item instanceof UserCaseDocument document) {
+      return document.getSnapshotRevision().getUserCase().getId();
+    }
+    if (item instanceof UserCaseFee fee) {
+      return fee.getSnapshotRevision().getUserCase().getId();
     }
     throw new IllegalStateException("Unknown case item type: " + item.getClass());
   }

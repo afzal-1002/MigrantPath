@@ -33,6 +33,10 @@ import org.springframework.test.web.servlet.MvcResult;
  * accounts (editor/reviewer/admin) exercise the CONTENT_EDITOR/LEGAL_REVIEWER/ADMIN role split
  * (brief §44/§46) - the creator never approves or publishes their own content.
  */
+// @DirtiesContext(AFTER_CLASS): see RecommendationEngineIntegrationTest's identical Javadoc -
+// same real, reproduced-this-phase CookieCsrfTokenRepository pollution pattern.
+@org.springframework.test.annotation.DirtiesContext(
+    classMode = org.springframework.test.annotation.DirtiesContext.ClassMode.AFTER_CLASS)
 class ProcedureVersioningIntegrationTest extends AbstractIntegrationTest {
 
   private static final String BASE = "/api/v1/internal/content";

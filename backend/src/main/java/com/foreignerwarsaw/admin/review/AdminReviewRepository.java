@@ -20,7 +20,7 @@ public interface AdminReviewRepository extends JpaRepository<AdminReview, UUID> 
    * repositories).
    */
   @Query(
-      "SELECT r FROM AdminReview r JOIN FETCH r.submittedBy LEFT JOIN FETCH r.reviewer"
+      "SELECT r FROM AdminReview r LEFT JOIN FETCH r.submittedBy LEFT JOIN FETCH r.reviewer"
           + " WHERE r.entityType = :entityType AND r.entityVersionId = :entityVersionId"
           + " ORDER BY r.createdAt DESC")
   List<AdminReview> findByEntityTypeAndEntityVersionIdOrderByCreatedAtDesc(
@@ -28,7 +28,7 @@ public interface AdminReviewRepository extends JpaRepository<AdminReview, UUID> 
       @Param("entityVersionId") UUID entityVersionId);
 
   @Query(
-      "SELECT r FROM AdminReview r JOIN FETCH r.submittedBy LEFT JOIN FETCH r.reviewer"
+      "SELECT r FROM AdminReview r LEFT JOIN FETCH r.submittedBy LEFT JOIN FETCH r.reviewer"
           + " WHERE r.status = :status ORDER BY r.createdAt ASC")
   List<AdminReview> findByStatusOrderByCreatedAtAsc(@Param("status") AdminReviewStatus status);
 }

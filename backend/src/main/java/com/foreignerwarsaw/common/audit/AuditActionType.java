@@ -42,5 +42,14 @@ public enum AuditActionType {
   SOURCE_MARKED_OUTDATED,
 
   ROLE_ASSIGNED,
-  ROLE_REMOVED
+  ROLE_REMOVED,
+
+  // Phase 12 (Security/Privacy/GDPR) - self-service account privacy actions. Metadata for these
+  // never carries email/name/answer content (see AccountDeletionService/AccountExportService) -
+  // only a privacy-safe internal reference, per this project's own audit-vocabulary discipline
+  // above applied to the privacy domain.
+  ACCOUNT_DELETION_REQUESTED,
+  ACCOUNT_DELETION_COMPLETED,
+  PERSONAL_DATA_EXPORT_REQUESTED,
+  PERSONAL_DATA_EXPORT_COMPLETED
 }

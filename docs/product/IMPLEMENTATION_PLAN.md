@@ -1280,18 +1280,28 @@ PHASE_11_TESTING_REPORT.md for the full account, including every canonical brief
 
 ---
 
-## Phase 12 — Security / GDPR hardening — ⏳ PARTIALLY COMPLETE (see [PHASE_11_REPORT.md](PHASE_11_REPORT.md))
+## Phase 12 — Security / GDPR hardening — ✅ SUBSTANTIALLY COMPLETE (see [PHASE_12_REPORT.md](PHASE_12_REPORT.md))
 
-Most of the security-hardening half of this phase was done as part of the
+The security-hardening half of this phase was done as part of the earlier
 production-readiness work described in PHASE_11_REPORT.md: 12.1 (CSP/Referrer-Policy/
 Permissions-Policy headers) ✅, 12.2 (CSRF posture) ✅ already correct pre-existing,
-re-verified not re-built, 12.7 (log-scrub audit) ✅, 12.8 (security posture doc) ✅ as
-`docs/security/PRODUCTION_SECURITY.md`. **Not done**: 12.3 (rate-limit tuning with real
-numbers — the existing in-memory limiter's single-instance limitation is documented, not
-tuned), 12.4 (dependency scanning wired into CI — named as a follow-up, not wired),
-12.5/12.6 (GDPR self-service export/deletion endpoints — a real, disclosed gap, see
-`docs/privacy/DATA_INVENTORY.md`'s "Data subject rights"), 12.9 (a dedicated external
-pre-launch security review — only an internal manual review was done).
+12.7 (log-scrub audit) ✅, 12.8 (security posture doc) ✅ as `docs/security/
+PRODUCTION_SECURITY.md`. **The canonical Phase 12 pass itself (this repository's own
+numbering, done after canonical Phase 11/Testing - see IMPLEMENTATION_PLAN.md's own
+reconciliation note above Phase 11) closed the remaining GDPR items**: 12.5/12.6 (real,
+tested, self-service export/deletion, including a governance-safe fix for accounts with
+review history - `AccountExportService`/`AccountDeletionService`, ADR-014), plus
+canonical-brief items beyond the original 12.1-12.9 list (explicit `UserCaseItemService`
+ownership hardening, a consolidated authorization-matrix test, scheduled token cleanup,
+a formalized plain-text content policy, and the full `docs/privacy/`/`docs/security/`
+document set - `DATA_CLASSIFICATION.md`, `DATA_PURPOSES.md`, `DATA_FLOW.md`,
+`PROCESSOR_INVENTORY.md`, `DATA_SUBJECT_REQUESTS.md`, `GDPR_READINESS.md`,
+`LOGGING_PRIVACY.md`, `SECURITY_GAPS.md`, `THREAT_MODEL.md`). **Still not done**: 12.3
+(rate-limit tuning with real numbers - the single-instance limitation remains
+documented, not tuned), 12.4 (dependency scanning wired into CI - frontend `npm audit`
+was run manually, 0 vulnerabilities; no backend scanner wired), 12.9 (a dedicated
+external security/privacy review - only an internal manual review exists). See
+PHASE_12_REPORT.md for the full account.
 
 #### 12.1 Security headers + production CORS lockdown
 - **Backend:** CSP, `X-Content-Type-Options`, `Referrer-Policy`, HSTS; CORS restricted

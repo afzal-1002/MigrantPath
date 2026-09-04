@@ -17,6 +17,8 @@ app:
     allowed-origins: ${FRONTEND_URL}
   auth:
     frontend-base-url: ${FRONTEND_URL}
+  token-cleanup:
+    enabled: true
 
 server:
   # Trust X-Forwarded-* headers from the reverse proxy in front of this instance

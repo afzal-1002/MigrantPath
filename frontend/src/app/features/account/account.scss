@@ -1,0 +1,18 @@
+.section {
+  max-width: 640px;
+  margin-bottom: 24px;
+  padding: 16px;
+}
+
+.privacy-action {
+  margin-top: 16px;
+
+  &.danger {
+    border-top: 1px solid rgba(0, 0, 0, 0.12);
+    padding-top: 16px;
+  }
+}
+
+.error {
+  color: #b3261e;
+}

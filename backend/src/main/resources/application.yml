@@ -98,6 +98,16 @@ app:
     # docs/operations/DEPLOYMENT.md - typically via APP_ADMIN_BOOTSTRAP_ENABLED=true
     # plus ADMIN_BOOTSTRAP_EMAIL/ADMIN_BOOTSTRAP_PASSWORD, all unset again afterward.
     enabled: ${APP_ADMIN_BOOTSTRAP_ENABLED:false}
+  token-cleanup:
+    # Off by default in the base profile (same fail-safe convention admin-bootstrap
+    # uses) - turned on explicitly per real environment below, and deliberately never
+    # in the test profile, so a scheduled run can never race a test's own assertions
+    # against the token tables (see TokenCleanupService's own Javadoc). interval/
+    # usedTokenRetention always have real defaults regardless of `enabled`, since the
+    # @Scheduled fixedDelayString SpEL expression resolves once at startup either way.
+    enabled: ${APP_TOKEN_CLEANUP_ENABLED:false}
+    used-token-retention: ${APP_TOKEN_CLEANUP_USED_RETENTION:P1D}
+    interval: ${APP_TOKEN_CLEANUP_INTERVAL:PT1H}
   cors:
     # Empty by default - CORS fails safe (denies cross-origin) unless a profile
     # explicitly configures allowed origins. Never "*" (see ARCHITECTURE.md §11 /

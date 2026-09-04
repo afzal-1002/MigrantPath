@@ -59,6 +59,10 @@ import org.springframework.test.web.servlet.MvcResult;
  * com.foreignerwarsaw.rules.evaluation.RuleEvaluationController} IDOR test. Only synthetic {@code
  * TEST_*} rule content is ever created here (brief §54/§116) - no real legal claim.
  */
+// @DirtiesContext(AFTER_CLASS): see RecommendationEngineIntegrationTest's identical Javadoc -
+// same real, reproduced-this-phase CookieCsrfTokenRepository pollution pattern.
+@org.springframework.test.annotation.DirtiesContext(
+    classMode = org.springframework.test.annotation.DirtiesContext.ClassMode.AFTER_CLASS)
 class RuleEngineIntegrationTest extends AbstractIntegrationTest {
 
   private static final String CONTENT_BASE = "/api/v1/internal/content";

@@ -26,6 +26,10 @@ import org.springframework.http.MediaType;
  * real {@code authorizeHttpRequests} matchers/{@code AccessDeniedHandler} in {@code SecurityConfig}
  * - this test is about authorization, not authentication.
  */
+// @DirtiesContext(AFTER_CLASS): see RecommendationEngineIntegrationTest's identical Javadoc -
+// same real, reproduced-this-phase CookieCsrfTokenRepository pollution pattern.
+@org.springframework.test.annotation.DirtiesContext(
+    classMode = org.springframework.test.annotation.DirtiesContext.ClassMode.AFTER_CLASS)
 class ProcedureAdminApiSecurityTest extends AbstractIntegrationTest {
 
   private static final String BASE = "/api/v1/internal/content";

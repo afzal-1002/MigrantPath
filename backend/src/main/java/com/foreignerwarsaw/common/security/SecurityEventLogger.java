@@ -26,7 +26,9 @@ public class SecurityEventLogger {
     PASSWORD_RESET_REQUESTED,
     PASSWORD_RESET_COMPLETED,
     PASSWORD_CHANGED,
-    ACCOUNT_LOCKED
+    ACCOUNT_LOCKED,
+    ACCOUNT_DELETED,
+    PERSONAL_DATA_EXPORTED
   }
 
   public void log(Event event, String userId) {

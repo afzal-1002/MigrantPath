@@ -15,9 +15,10 @@ legal review, not a substitute for one.
 |---|---|---|---|
 | Account/identity | email, password hash, first/last name, roles | `users`, `roles`, `user_roles` | Authentication, authorization, addressing the user by name in the UI/email. |
 | Account lifecycle | email-verification token hash, expiry; password-reset token hash, expiry; lockout counters | `users` (Phase 2 columns) | Prove account ownership; prevent brute force. Only a hash of any token is ever stored (CLAUDE.md standing rule). |
-| Assessment answers | per-question answers (nationality/country group, purpose of stay, income, family situation, etc. - see docs/product/ASSESSMENT_DECISION_TREE.md) | `assessments`, `assessment_answers` | The guided questionnaire the entire product is built around - drives rule evaluation. |
-| Recommendation history | which procedures were recommended, rule-evaluation trace, timestamp | `recommendations`, `recommendation_results` | Lets the user see why a procedure was/wasn't recommended; supports the "explain, never decide" AI boundary (ADR-003) even though no AI is wired to this data yet. |
-| Case/checklist progress | which procedure the user is pursuing, per-document-requirement checklist state, case status, snapshot of the procedure/rule version at creation | `user_cases`, `user_case_checklist_items` | The personalized checklist feature (Phase 8) - the core "am I done yet" tracking. |
+| Assessment answers | per-question answers (nationality/country group, purpose of stay, income, family situation, etc. - see docs/product/ASSESSMENT_DECISION_TREE.md) | `assessments`, `assessment_answers` | The guided questionnaire the entire product is built around - drives rule evaluation. Full purpose-by-question audit: `docs/privacy/DATA_PURPOSES.md`. |
+| Recommendation history | which procedures were recommended, recommendation type, reasons, timestamp | `recommendation_runs`, `recommendations` | Lets the user see why a procedure was/wasn't recommended; supports the "explain, never decide" AI boundary (ADR-003) even though no AI is wired to this data yet. |
+| Case/checklist progress | which procedure the user is pursuing, per-step/document/fee checklist state, case status, user notes, case events, snapshot revision of the procedure/rule version at creation | `user_cases`, `user_case_snapshot_revisions`, `user_case_steps`, `user_case_documents`, `user_case_fees`, `user_case_events` | The personalized checklist feature (Phase 8) - the core "am I done yet" tracking. |
+| Consent records | which policy was accepted, version, timestamp | `user_consents` | Provable acknowledgement of Terms/Privacy Policy version at registration (Phase 2, real and working since before this phase). |
 | Technical/security logs | IP address, user agent, timestamp, correlation id (request-scoped, not persisted to DB), authentication success/failure events | Application logs only (not a DB table) | Security monitoring, abuse detection, debugging. Never includes password/token/answer content (see docs/operations/OBSERVABILITY.md's log-scrub discipline). |
 | Admin/audit trail | who published/approved/edited a content version and when | `*_version` tables' own audit columns, `audit_log` (Phase 9) | Content-governance accountability (ADR-004) - applies to admin/content-editor accounts acting on legal content, not to end-user personal data. |
 
@@ -51,12 +52,13 @@ legal review, not a substitute for one.
 - Database backups: encrypted, off-instance, access restricted per
   `docs/operations/DATABASE_BACKUP.md`.
 
-## Data subject rights (not yet implemented as self-service - a disclosed gap)
+## Data subject rights (canonical Phase 12 - now real and self-service)
 
-No self-service "export my data" or "delete my account" UI exists yet. Until built, a
-request would be handled manually (query the tables above for the requesting user's id,
-export or delete). This is named here explicitly as a real gap for GDPR-style
-compliance readiness (the product's users are foreigners in Poland/EU, so GDPR
-applicability is a real, non-theoretical consideration), not glossed over - a future
-phase should add real self-service export/delete endpoints rather than leaving this
-permanently manual.
+`GET /api/v1/account/export` and `POST /api/v1/account/delete` (frontend: the Account
+page's Export/Delete actions) are real, tested, self-service implementations -
+`AccountExportService`/`AccountDeletionService`. See `docs/privacy/
+DATA_SUBJECT_REQUESTS.md` for the full runbook (what's self-service vs. still manual)
+and `docs/product/PHASE_12_REPORT.md` for the deletion matrix (what's deleted,
+anonymized, or retained per entity) and the governance-safe design that lets a
+CONTENT_EDITOR/LEGAL_REVIEWER/ADMIN account delete itself without breaking published
+legal content or its own review/audit history (V48 migration).

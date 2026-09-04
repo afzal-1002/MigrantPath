@@ -100,6 +100,15 @@ export const routes: Routes = [
       ),
   },
   {
+    // Canonical Phase 12 (Security/Privacy/GDPR) self-service privacy page (brief §26/§51) -
+    // authenticated-only; every action it exposes operates only on the caller's own account
+    // server-side (brief §74), same ownership discipline as every other private route.
+    path: 'account',
+    canActivate: [authGuard],
+    data: { noIndex: true },
+    loadComponent: () => import('./features/account/account').then((m) => m.Account),
+  },
+  {
     // Phase 8 "My Cases" (brief §40/§41) - authenticated-only; ownership is independently
     // enforced server-side.
     path: 'cases',

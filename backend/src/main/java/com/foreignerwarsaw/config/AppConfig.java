@@ -15,7 +15,11 @@ import org.springframework.context.annotation.Configuration;
  * sleeping.
  */
 @Configuration
-@EnableConfigurationProperties({AuthProperties.class, MailProperties.class})
+@EnableConfigurationProperties({
+  AuthProperties.class,
+  MailProperties.class,
+  TokenCleanupProperties.class
+})
 @EnableCaching
 public class AppConfig {
 

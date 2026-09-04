@@ -47,6 +47,13 @@ import org.springframework.test.web.servlet.MvcResult;
  * across a rule republish, the completed-assessment gate, and the recommendation endpoints'
  * ownership/IDOR boundary. Only synthetic {@code TEST_*} content is ever created here.
  */
+// @DirtiesContext(AFTER_CLASS): canonical Phase 12 finding - this class's with(user())/
+// with(csrf()) MockMvc-postprocessor style otherwise leaves shared CookieCsrfTokenRepository
+// state that breaks a real-cookie-flow class running later in the same cached context (the same
+// pollution AdminGovernanceIntegrationTest's own Javadoc documents), reproduced deterministically
+// against a full ./mvnw verify run this phase, not a one-off flake.
+@org.springframework.test.annotation.DirtiesContext(
+    classMode = org.springframework.test.annotation.DirtiesContext.ClassMode.AFTER_CLASS)
 class RecommendationEngineIntegrationTest extends AbstractIntegrationTest {
 
   private static final String CONTENT_BASE = "/api/v1/internal/content";
@@ -254,14 +261,14 @@ class RecommendationEngineIntegrationTest extends AbstractIntegrationTest {
    * Canonical Phase 11 (Testing Completeness) brief §53 - "Temp Residence Studies": the exact
    * real-world situation `docs/legal-content/PRODUCTION_RULE_COVERAGE.md` documents for {@code
    * TEMP_RESIDENCE_STUDY} (its Rules are {@code APPROVED}, its Procedure is {@code
-   * READY_FOR_PUBLICATION} - neither published) must never leak a recommendation. This
-   * generalizes it: a rule already {@code PUBLISHED} and actively targeting a procedure whose own
-   * content has never been published at all (the harder, more realistic ordering - governance
-   * could plausibly approve+publish a Rule slightly ahead of its Procedure) must still produce
-   * {@code UNAVAILABLE_FOR_ANALYSIS}, never a confident match, and must still be rejected at case
-   * creation - proving the two publication gates (Procedure's own {@code PUBLISHED} version,
-   * independent of whatever its Rules say) are genuinely decoupled and both required, not that
-   * this only happens to work today because the real content also stayed in lockstep.
+   * READY_FOR_PUBLICATION} - neither published) must never leak a recommendation. This generalizes
+   * it: a rule already {@code PUBLISHED} and actively targeting a procedure whose own content has
+   * never been published at all (the harder, more realistic ordering - governance could plausibly
+   * approve+publish a Rule slightly ahead of its Procedure) must still produce {@code
+   * UNAVAILABLE_FOR_ANALYSIS}, never a confident match, and must still be rejected at case creation
+   * - proving the two publication gates (Procedure's own {@code PUBLISHED} version, independent of
+   * whatever its Rules say) are genuinely decoupled and both required, not that this only happens
+   * to work today because the real content also stayed in lockstep.
    */
   @Test
   void ruleTargetingAnUnpublishedProcedure_isUnavailableForAnalysis_neverLeaksAConfidentMatch()
@@ -281,7 +288,9 @@ class RecommendationEngineIntegrationTest extends AbstractIntegrationTest {
     answer(applicant, assessmentId, "PRIMARY_PURPOSE", "{\"selectedOptionCodes\":[\"GET_PESEL\"]}");
     mockMvc
         .perform(
-            post(ASSESSMENTS_BASE + "/" + assessmentId + "/complete").with(user(applicant)).with(csrf()))
+            post(ASSESSMENTS_BASE + "/" + assessmentId + "/complete")
+                .with(user(applicant))
+                .with(csrf()))
         .andExpect(status().isOk());
 
     MvcResult analyzed =
@@ -306,8 +315,10 @@ class RecommendationEngineIntegrationTest extends AbstractIntegrationTest {
         .andExpect(jsonPath("$.code").value("CASE_CREATION_NOT_ALLOWED"));
   }
 
-  /** A Procedure that reaches DRAFT content but is deliberately never published - mirrors the
-   * real TEMP_RESIDENCE_STUDY situation exactly (Procedure held at READY_FOR_PUBLICATION). */
+  /**
+   * A Procedure that reaches DRAFT content but is deliberately never published - mirrors the real
+   * TEMP_RESIDENCE_STUDY situation exactly (Procedure held at READY_FOR_PUBLICATION).
+   */
   private String createUnpublishedProcedure(String prefix) throws Exception {
     String code = uniqueCode(prefix);
     mockMvc

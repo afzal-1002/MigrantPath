@@ -59,6 +59,10 @@ import org.springframework.test.web.servlet.MvcResult;
  * database does not have. The condition-tree logic being protected does not depend on which
  * Procedure it targets.
  */
+// @DirtiesContext(AFTER_CLASS): see RecommendationEngineIntegrationTest's identical Javadoc -
+// same real, reproduced-this-phase CookieCsrfTokenRepository pollution pattern.
+@org.springframework.test.annotation.DirtiesContext(
+    classMode = org.springframework.test.annotation.DirtiesContext.ClassMode.AFTER_CLASS)
 class ProductionRuleRegressionTest extends AbstractIntegrationTest {
 
   private static final String CONTENT_BASE = "/api/v1/internal/content";

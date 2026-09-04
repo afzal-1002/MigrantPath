@@ -29,6 +29,10 @@ import org.springframework.test.web.servlet.MvcResult;
  * required-vs-hidden completion gating, reference-data validation, ownership/IDOR, and
  * unauthenticated rejection.
  */
+// @DirtiesContext(AFTER_CLASS): see RecommendationEngineIntegrationTest's identical Javadoc -
+// same real, reproduced-this-phase CookieCsrfTokenRepository pollution pattern.
+@org.springframework.test.annotation.DirtiesContext(
+    classMode = org.springframework.test.annotation.DirtiesContext.ClassMode.AFTER_CLASS)
 class AssessmentApiIntegrationTest extends AbstractIntegrationTest {
 
   private static final String BASE = "/api/v1/assessments";

@@ -129,4 +129,14 @@ export class AuthService {
   changePassword(currentPassword: string, newPassword: string): Observable<void> {
     return this.http.post<void>(`${this.usersBase}/me/change-password`, { currentPassword, newPassword });
   }
+
+  /**
+   * Canonical Phase 12 - clears local auth state without calling the backend logout endpoint.
+   * Used after account deletion (the account/session are already gone server-side by the time
+   * the delete request succeeds - a follow-up `/auth/logout` call would itself just 401).
+   */
+  clearSessionLocally(): void {
+    this.user.set(null);
+    this.state.set('UNAUTHENTICATED');
+  }
 }

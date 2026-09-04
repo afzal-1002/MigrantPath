@@ -1,0 +1,41 @@
+<h2 mat-dialog-title>Delete your account</h2>
+
+<mat-dialog-content>
+  <p>This will permanently delete:</p>
+  <ul>
+    <li>Your account</li>
+    <li>Your assessments</li>
+    <li>Your recommendations</li>
+    <li>Your case and checklist history</li>
+  </ul>
+  <p><strong>This action cannot be undone.</strong> Public procedure content is not affected.</p>
+
+  <form [formGroup]="form" (ngSubmit)="confirmDelete()">
+    <mat-form-field appearance="outline">
+      <mat-label>Current password</mat-label>
+      <input matInput type="password" formControlName="currentPassword" autocomplete="current-password" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Type DELETE to confirm</mat-label>
+      <input matInput formControlName="confirmation" />
+    </mat-form-field>
+
+    @if (serverError()) {
+      <p class="error">{{ serverError() }}</p>
+    }
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions>
+  <button mat-button type="button" (click)="cancel()">Cancel</button>
+  <button
+    mat-flat-button
+    color="warn"
+    type="button"
+    [disabled]="submitting()"
+    (click)="confirmDelete()"
+  >
+    {{ submitting() ? 'Deleting…' : 'Permanently delete my account' }}
+  </button>
+</mat-dialog-actions>

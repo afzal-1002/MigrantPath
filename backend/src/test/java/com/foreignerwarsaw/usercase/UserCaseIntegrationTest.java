@@ -52,6 +52,10 @@ import org.springframework.test.web.servlet.MvcResult;
  * (outdated recommendation, disallowed recommendation type, empty content). Only synthetic {@code
  * TEST_*} content is ever created here.
  */
+// @DirtiesContext(AFTER_CLASS): see RecommendationEngineIntegrationTest's identical Javadoc -
+// same real, reproduced-this-phase CookieCsrfTokenRepository pollution pattern.
+@org.springframework.test.annotation.DirtiesContext(
+    classMode = org.springframework.test.annotation.DirtiesContext.ClassMode.AFTER_CLASS)
 class UserCaseIntegrationTest extends AbstractIntegrationTest {
 
   private static final String CONTENT_BASE = "/api/v1/internal/content";

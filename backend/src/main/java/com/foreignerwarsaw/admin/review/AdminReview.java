@@ -35,10 +35,10 @@ import java.util.UUID;
  * changed again - unlike {@link #submittedBy} (now {@code ON DELETE SET NULL}, so it goes {@code
  * null} if that account is ever deleted), this field survives account deletion, so the review
  * remains fully attributable to a stable identifier even after the submitting account is gone.
- * Self-approval prevention ({@link ContentReviewCoordinator#requireNotSelfReview}) compares
- * against this field, not {@code submittedBy.getId()}, so it stays correct even for a review
- * whose original submitter has since deleted their account. No email/name/profile data is ever
- * copied here - only the UUID.
+ * Self-approval prevention ({@link ContentReviewCoordinator#requireNotSelfReview}) compares against
+ * this field, not {@code submittedBy.getId()}, so it stays correct even for a review whose original
+ * submitter has since deleted their account. No email/name/profile data is ever copied here - only
+ * the UUID.
  */
 @Entity
 @Table(name = "admin_review")

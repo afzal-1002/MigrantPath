@@ -61,6 +61,10 @@ import org.springframework.test.web.servlet.MvcResult;
  * - see docs/legal-content/PRODUCTION_RULE_COVERAGE.md), exactly like every other real
  * procedure/rule this codebase has ever published; they are not, and must never be, seeded here.
  */
+// @DirtiesContext(AFTER_CLASS): see RecommendationEngineIntegrationTest's identical Javadoc -
+// same real, reproduced-this-phase CookieCsrfTokenRepository pollution pattern.
+@org.springframework.test.annotation.DirtiesContext(
+    classMode = org.springframework.test.annotation.DirtiesContext.ClassMode.AFTER_CLASS)
 class Phase105RuleWiringIntegrationTest extends AbstractIntegrationTest {
 
   private static final String CONTENT_BASE = "/api/v1/internal/content";
