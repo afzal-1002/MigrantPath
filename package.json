@@ -1,0 +1,10 @@
+{
+  "name": "foreigner-warsaw",
+  "private": true,
+  "description": "Root-level convenience scripts for running the full Dockerized app. See scripts/docker-*.sh for what each one actually does.",
+  "scripts": {
+    "docker:build": "bash scripts/docker-build.sh",
+    "docker:up": "bash scripts/docker-up.sh",
+    "docker:down": "bash scripts/docker-down.sh"
+  }
+}
