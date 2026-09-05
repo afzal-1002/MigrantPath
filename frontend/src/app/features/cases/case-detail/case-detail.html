@@ -19,12 +19,36 @@
       <a mat-stroked-button class="hero-back" routerLink="/cases">Back to my cases</a>
     </div>
 
-    <div class="hero-pills">
-      <span class="ui-pill"><span class="ui-pill-label">Status</span><span class="ui-pill-value">{{ statusLabel(d.status) }}</span></span>
-      <span class="ui-pill"><span class="ui-pill-label">Progress</span><span class="ui-pill-value">{{ progressPercent() }}%</span></span>
-      <span class="ui-pill"><span class="ui-pill-label">Days active</span><span class="ui-pill-value">{{ daysActive() }}</span></span>
+    <div class="hero-metrics">
+      <div class="hero-metric">
+        <span class="hero-metric-icon"><app-icon name="document" [size]="16" /></span>
+        <span>
+          <span class="hero-metric-label">Status</span>
+          <span class="hero-metric-value">{{ statusLabel(d.status) }}</span>
+        </span>
+      </div>
+      <div class="hero-metric">
+        <span class="hero-metric-icon"><app-icon name="check-circle" [size]="16" /></span>
+        <span>
+          <span class="hero-metric-label">Progress</span>
+          <span class="hero-metric-value">{{ progressPercent() }}%</span>
+        </span>
+      </div>
+      <div class="hero-metric">
+        <span class="hero-metric-icon"><app-icon name="calendar" [size]="16" /></span>
+        <span>
+          <span class="hero-metric-label">Days active</span>
+          <span class="hero-metric-value">{{ daysActive() }}</span>
+        </span>
+      </div>
       @if (d.authorities.length > 0) {
-        <span class="ui-pill"><span class="ui-pill-label">Authority</span><span class="ui-pill-value">{{ d.authorities[0].name }}</span></span>
+        <div class="hero-metric">
+          <span class="hero-metric-icon"><app-icon name="building" [size]="16" /></span>
+          <span>
+            <span class="hero-metric-label">Authority</span>
+            <span class="hero-metric-value">{{ d.authorities[0].name }}</span>
+          </span>
+        </div>
       }
     </div>
   </section>
@@ -63,7 +87,6 @@
     <div class="detail-main">
       <div class="tabs" role="tablist">
         <button type="button" role="tab" [attr.aria-selected]="activeTab() === 'overview'" [class.active]="activeTab() === 'overview'" (click)="setTab('overview')">Overview</button>
-        <button type="button" role="tab" [attr.aria-selected]="activeTab() === 'checklist'" [class.active]="activeTab() === 'checklist'" (click)="setTab('checklist')">Checklist</button>
         <button type="button" role="tab" [attr.aria-selected]="activeTab() === 'documents'" [class.active]="activeTab() === 'documents'" (click)="setTab('documents')">Documents</button>
         @if (d.fees.length > 0) {
           <button type="button" role="tab" [attr.aria-selected]="activeTab() === 'fees'" [class.active]="activeTab() === 'fees'" (click)="setTab('fees')">Fees</button>
@@ -73,15 +96,56 @@
 
       @if (activeTab() === 'overview') {
         <div class="ui-card tab-panel">
-          <h2>Progress summary</h2>
-          <p>Steps: {{ d.progress.stepsCompleted }} / {{ d.progress.stepsTotal }}</p>
-          <p>Documents: {{ d.progress.documentsReady }} / {{ d.progress.documentsTotal }}</p>
-          @if (d.progress.conditionalDocumentsToReview > 0) {
-            <p>{{ d.progress.conditionalDocumentsToReview }} conditional document(s) need confirmation</p>
-          }
+          <div class="progress-panel-head">
+            <div>
+              <span class="progress-eyebrow">Case progress</span>
+              <h2>Checklist progress</h2>
+              <p class="progress-sub">
+                @if (d.progress.stepsTotal > 0) {
+                  Step {{ currentStepNumber() }} of {{ d.progress.stepsTotal }} &middot;
+                }
+                {{ progressPercent() }}% complete
+              </p>
+            </div>
+            <span class="progress-percent-big">{{ progressPercent() }}%</span>
+          </div>
+          <div class="progress-bar-track"><div class="progress-bar-fill" [style.width.%]="progressPercent()"></div></div>
+
+          <ol class="step-timeline">
+            @for (step of d.steps; track step.id; let i = $index) {
+              <li [class.done]="step.status === 'COMPLETED'" [class.current]="step.status === 'IN_PROGRESS'">
+                <span class="step-marker">
+                  @if (step.status === 'COMPLETED') {
+                    <app-icon name="check-circle" [size]="16" />
+                  } @else {
+                    <span class="step-number">{{ i + 1 }}</span>
+                  }
+                </span>
+                <div class="step-body">
+                  <div class="step-title-row">
+                    <p class="step-title">
+                      {{ step.title }}
+                      @if (step.mandatory) {
+                        <span class="ui-badge">Required</span>
+                      }
+                    </p>
+                    <span class="step-status">{{ stepStatusText(step) }}</span>
+                  </div>
+                  @if (step.description) {
+                    <p class="item-description">{{ step.description }}</p>
+                  }
+                  @if (step.status !== 'COMPLETED') {
+                    <button mat-stroked-button type="button" (click)="setStepStatus(step, 'COMPLETED')">Mark complete</button>
+                  } @else {
+                    <button mat-button type="button" (click)="setStepStatus(step, 'NOT_STARTED')">Reopen</button>
+                  }
+                </div>
+              </li>
+            }
+          </ol>
 
           @if (d.authorities.length > 0 || d.offices.length > 0) {
-            <h2>Where to go</h2>
+            <h2 class="section-heading">Where to go</h2>
             @for (authority of d.authorities; track authority.code) {
               <p>{{ authority.name }}</p>
             }
@@ -96,46 +160,11 @@
           }
 
           @if (d.sources.length > 0) {
-            <h2>Official sources</h2>
+            <h2 class="section-heading">Official sources</h2>
             @for (source of d.sources; track source.url) {
               <p><a [href]="source.url" target="_blank" rel="noopener noreferrer">{{ source.title }}</a></p>
             }
           }
-        </div>
-      }
-
-      @if (activeTab() === 'checklist') {
-        <div class="ui-card tab-panel">
-          <h2>Checklist progress</h2>
-          <ol class="step-timeline">
-            @for (step of d.steps; track step.id) {
-              <li [class.done]="step.status === 'COMPLETED'" [class.current]="step.status === 'IN_PROGRESS'">
-                <span class="step-marker">
-                  @if (step.status === 'COMPLETED') {
-                    <app-icon name="check-circle" [size]="18" />
-                  } @else {
-                    <span class="step-dot"></span>
-                  }
-                </span>
-                <div class="step-body">
-                  <p>
-                    <strong>{{ step.title }}</strong> - {{ statusLabel(step.status) }}
-                    @if (step.mandatory) {
-                      <span class="ui-badge">Required</span>
-                    }
-                  </p>
-                  @if (step.description) {
-                    <p class="item-description">{{ step.description }}</p>
-                  }
-                  @if (step.status !== 'COMPLETED') {
-                    <button mat-stroked-button type="button" (click)="setStepStatus(step, 'COMPLETED')">Mark complete</button>
-                  } @else {
-                    <button mat-button type="button" (click)="setStepStatus(step, 'NOT_STARTED')">Reopen</button>
-                  }
-                </div>
-              </li>
-            }
-          </ol>
         </div>
       }
 
@@ -193,8 +222,11 @@
             <ul class="activity-list">
               @for (event of events(); track event.occurredAt + event.eventType) {
                 <li>
-                  <span>{{ statusLabel(event.eventType) }}</span>
-                  <span class="activity-date">{{ event.occurredAt | date: 'medium' }}</span>
+                  <span class="activity-icon"><app-icon name="info" [size]="14" /></span>
+                  <span class="activity-text">
+                    <span>{{ statusLabel(event.eventType) }}</span>
+                    <span class="activity-date">{{ event.occurredAt | date: 'medium' }}</span>
+                  </span>
                 </li>
               }
             </ul>
@@ -207,21 +239,33 @@
       <div class="ui-card side-card">
         <h2>Case overview</h2>
         <div class="overview-row">
-          <span class="overview-label">Documents provided</span>
-          <span class="overview-value">{{ d.progress.documentsReady }} / {{ d.progress.documentsTotal }}</span>
+          <span class="overview-icon"><app-icon name="document" [size]="15" /></span>
+          <span class="overview-text">
+            <span class="overview-label">Documents</span>
+            <span class="overview-value">{{ d.progress.documentsReady }} of {{ d.progress.documentsTotal }} provided</span>
+          </span>
         </div>
         <div class="overview-row">
-          <span class="overview-label">Steps completed</span>
-          <span class="overview-value">{{ d.progress.stepsCompleted }} / {{ d.progress.stepsTotal }}</span>
+          <span class="overview-icon"><app-icon name="check-circle" [size]="15" /></span>
+          <span class="overview-text">
+            <span class="overview-label">Steps</span>
+            <span class="overview-value">{{ d.progress.stepsCompleted }} of {{ d.progress.stepsTotal }} completed</span>
+          </span>
         </div>
         <div class="overview-row">
-          <span class="overview-label">Days since intake</span>
-          <span class="overview-value">{{ daysActive() }}</span>
+          <span class="overview-icon"><app-icon name="calendar" [size]="15" /></span>
+          <span class="overview-text">
+            <span class="overview-label">Days active</span>
+            <span class="overview-value">{{ daysActive() }} since intake</span>
+          </span>
         </div>
         @if (d.submittedAt) {
           <div class="overview-row">
-            <span class="overview-label">Submitted</span>
-            <span class="overview-value">{{ d.submittedAt | date: 'mediumDate' }}</span>
+            <span class="overview-icon"><app-icon name="calendar" [size]="15" /></span>
+            <span class="overview-text">
+              <span class="overview-label">Submitted</span>
+              <span class="overview-value">{{ d.submittedAt | date: 'mediumDate' }}</span>
+            </span>
           </div>
         }
       </div>
@@ -234,8 +278,11 @@
           <ul class="activity-list compact">
             @for (event of events().slice(0, 5); track event.occurredAt + event.eventType) {
               <li>
-                <span>{{ statusLabel(event.eventType) }}</span>
-                <span class="activity-date">{{ event.occurredAt | date: 'shortDate' }}</span>
+                <span class="activity-icon"><app-icon name="info" [size]="13" /></span>
+                <span class="activity-text">
+                  <span>{{ statusLabel(event.eventType) }}</span>
+                  <span class="activity-date">{{ event.occurredAt | date: 'shortDate' }}</span>
+                </span>
               </li>
             }
           </ul>

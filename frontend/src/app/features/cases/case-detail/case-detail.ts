@@ -25,7 +25,7 @@ interface ApiErrorBody {
   message?: string;
 }
 
-type CaseDetailTab = 'overview' | 'checklist' | 'documents' | 'fees' | 'activity';
+type CaseDetailTab = 'overview' | 'documents' | 'fees' | 'activity';
 
 /**
  * Case detail (brief §41/§58): overview, step/document/fee checklists, sources/authorities/
@@ -76,6 +76,28 @@ export class CaseDetailPage {
     }
     return Math.max(0, Math.floor((Date.now() - new Date(d.createdAt).getTime()) / 86_400_000));
   });
+
+  /** "Step N of Total" (visual style borrowed from the reference's "Petition Progress"
+   * card) - N is however many steps are already completed, plus one for the step still
+   * ahead, capped at the total so a fully-completed case reads "Step Total of Total"
+   * rather than overshooting. */
+  protected readonly currentStepNumber = computed(() => {
+    const d = this.detail();
+    if (!d || d.progress.stepsTotal === 0) {
+      return 0;
+    }
+    return Math.min(d.progress.stepsCompleted + 1, d.progress.stepsTotal);
+  });
+
+  protected stepStatusText(step: CaseStep): string {
+    if (step.status === 'COMPLETED') {
+      return step.completedAt ? new DatePipe('en-US').transform(step.completedAt, 'MMM d') ?? 'Completed' : 'Completed';
+    }
+    if (step.status === 'IN_PROGRESS') {
+      return 'In progress';
+    }
+    return 'Pending';
+  }
 
   constructor() {
     if (!this.caseId) {

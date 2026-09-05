@@ -99,8 +99,9 @@ describe('CaseDetailPage', () => {
     flushEvents(httpMock);
     fixture.detectChanges();
 
-    fixture.componentInstance['setTab']('checklist');
-    fixture.detectChanges();
+    // The step timeline is part of the default 'overview' tab (merged with what used
+    // to be a separate 'checklist' tab, matching the reference's own "Petition
+    // Progress" landing view).
     expect(fixture.nativeElement.textContent).toContain('Prepare documents');
 
     fixture.componentInstance['setTab']('documents');
