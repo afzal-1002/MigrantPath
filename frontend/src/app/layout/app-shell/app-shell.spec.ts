@@ -61,14 +61,15 @@ describe('AppShell', () => {
 
   afterEach(() => httpMock.verify());
 
-  it('renders every primary navigation item as an accessible, labeled rail icon', () => {
+  it('renders every primary navigation item as a labeled sidebar link', () => {
     fixture.detectChanges();
     flushDashboard();
     fixture.detectChanges();
 
     const rail: HTMLElement = fixture.nativeElement.querySelector('.rail');
+    const text = rail.textContent as string;
     for (const label of ['Dashboard', 'Find my pathway', 'My Cases', 'Procedures', 'Help', 'Account', 'Recommendations']) {
-      expect(rail.querySelector(`[aria-label="${label}"]`), label).toBeTruthy();
+      expect(text, label).toContain(label);
     }
   });
 
@@ -119,8 +120,9 @@ describe('AppShell', () => {
     flushDashboard({ assessmentStatus: { assessmentId: 'assessment-9', status: 'COMPLETED', progressPercent: 100 } });
     fixture.detectChanges();
 
-    const link: HTMLAnchorElement = fixture.nativeElement.querySelector('[aria-label="Recommendations"]');
-    expect(link.getAttribute('href')).toBe('/assessment/assessment-9/results');
+    const links: HTMLAnchorElement[] = Array.from(fixture.nativeElement.querySelectorAll('.rail a'));
+    const recommendationsLink = links.find((a) => a.textContent?.includes('Recommendations'));
+    expect(recommendationsLink?.getAttribute('href')).toBe('/assessment/assessment-9/results');
   });
 
   it('never blocks rendering if the dashboard summary fetch fails', () => {

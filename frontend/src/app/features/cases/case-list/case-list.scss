@@ -1,6 +1,6 @@
 :host {
   display: block;
-  max-width: 720px;
+  max-width: 960px;
   margin: 0 auto;
   padding: 1.5rem 1rem 3rem;
 }
@@ -15,15 +15,69 @@ section {
   margin-top: 1.5rem;
 }
 
-.case-card {
-  margin-bottom: 1rem;
+.case-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--app-space-md);
+  margin-top: var(--app-space-sm);
 }
 
-.case-card.closed {
-  opacity: 0.8;
+.case-card {
+  display: block;
+  padding: 1.1rem 1.25rem;
+  text-decoration: none;
+  color: inherit;
+  transition: box-shadow 0.15s ease;
+
+  &:hover {
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.1);
+  }
+
+  &.closed {
+    opacity: 0.75;
+  }
+}
+
+.case-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.case-title {
+  font-weight: 600;
+  font-size: 0.98rem;
+}
+
+.progress-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--app-status-neutral-bg);
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--app-primary);
+  border-radius: 999px;
+}
+
+.case-meta {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--mat-sys-on-surface-variant, #64748b);
 }
 
 .update-flag {
-  color: #7a4a00;
+  margin: 8px 0 0;
+  color: var(--app-status-warning);
   font-weight: 500;
+  font-size: 0.85rem;
+}
+
+.error {
+  color: var(--app-status-danger);
 }

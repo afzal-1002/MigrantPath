@@ -1,7 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { MatMenuModule } from '@angular/material/menu';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { AuthService } from '../../core/services/auth.service';
 import { Dashboard as DashboardData, DashboardApiService, DashboardNextAction } from '../../core/services/dashboard.service';
 import { Icon, IconName } from '../../shared/icon/icon';
@@ -46,7 +45,7 @@ const PRIMARY_NAV: NavItem[] = [
  */
 @Component({
   selector: 'app-authenticated-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, MatMenuModule, MatTooltipModule, Icon],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, MatMenuModule, Icon],
   templateUrl: './app-shell.html',
   styleUrl: './app-shell.scss',
 })

@@ -1,43 +1,37 @@
 <div class="shell">
   <nav class="rail" aria-label="Primary">
-    <a routerLink="/dashboard" class="rail-brand" matTooltip="Foreigner Warsaw" matTooltipPosition="right">FW</a>
+    <a routerLink="/dashboard" class="rail-brand">
+      <span class="brand-mark" aria-hidden="true">FW</span>
+      <span class="brand-text">Foreigner Warsaw</span>
+    </a>
 
     <ul class="rail-nav">
       @for (item of navItems; track item.path) {
         <li>
-          <a
-            [routerLink]="item.path"
-            routerLinkActive="active"
-            [routerLinkActiveOptions]="{ exact: false }"
-            [matTooltip]="item.label"
-            matTooltipPosition="right"
-            [attr.aria-label]="item.label"
-          >
-            <app-icon [name]="item.icon" />
+          <a [routerLink]="item.path" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: false }">
+            <app-icon [name]="item.icon" [size]="19" />
+            <span>{{ item.label }}</span>
           </a>
         </li>
       }
       <li>
-        <a
-          [routerLink]="recommendationsLink()"
-          routerLinkActive="active"
-          matTooltip="Recommendations"
-          matTooltipPosition="right"
-          aria-label="Recommendations"
-        >
-          <app-icon name="recommendations" />
+        <a [routerLink]="recommendationsLink()" routerLinkActive="active">
+          <app-icon name="recommendations" [size]="19" />
+          <span>Recommendations</span>
         </a>
       </li>
     </ul>
 
     <div class="rail-bottom">
       @if (isContentAdmin()) {
-        <a routerLink="/admin" matTooltip="Administration" matTooltipPosition="right" aria-label="Administration">
-          <app-icon name="admin" />
+        <a routerLink="/admin">
+          <app-icon name="admin" [size]="19" />
+          <span>Administration</span>
         </a>
       }
-      <button type="button" (click)="logout()" matTooltip="Logout" matTooltipPosition="right" aria-label="Logout">
-        <app-icon name="logout" />
+      <button type="button" (click)="logout()">
+        <app-icon name="logout" [size]="19" />
+        <span>Logout</span>
       </button>
     </div>
   </nav>
@@ -54,7 +48,7 @@
     ></div>
     <nav class="mobile-drawer" aria-label="Primary">
       <div class="mobile-drawer-header">
-        <span class="rail-brand small">FW</span>
+        <span class="brand-mark" aria-hidden="true">FW</span>
         <button type="button" class="icon-btn" (click)="closeMobileNav()" aria-label="Close navigation">
           <app-icon name="close" />
         </button>
@@ -90,7 +84,7 @@
 
       <form class="search" (submit)="$event.preventDefault(); onSearchSubmit(searchInput.value)">
         <app-icon name="search" [size]="16" />
-        <input #searchInput type="search" placeholder="Search procedures &amp; help" aria-label="Search procedures and help" />
+        <input #searchInput type="search" placeholder="Search cases, procedures…" aria-label="Search cases and procedures" />
       </form>
 
       <div class="topbar-actions">
@@ -124,7 +118,7 @@
           [matMenuTriggerFor]="userMenu"
           [attr.aria-label]="'Account menu for ' + displayName()"
         >
-          <span class="avatar" aria-hidden="true">{{ userInitials() }}</span>
+          <span class="ui-avatar avatar-sm" aria-hidden="true">{{ userInitials() }}</span>
           <span class="user-name">{{ displayName() }}</span>
           <app-icon name="chevron-down" [size]="14" />
         </button>

@@ -64,20 +64,36 @@ mat-label,
    component that already references them keeps working; `--app-rail-width` is the new,
    additional token the thin icon rail itself uses. */
 :root {
-  --app-sidebar-bg: #101c33;
+  // "Dark surface" tokens - shared by every deliberately-dark element (the Dashboard's
+  // own case timeline, and the new case-detail hero banner below) - kept as one token
+  // pair rather than duplicated literals so the two stay visually consistent.
+  --app-sidebar-bg: #0f172a;
   --app-sidebar-fg: #dbe4f3;
   --app-sidebar-fg-muted: #8fa2c2;
   --app-sidebar-active-bg: #1e3358;
+  --app-hero-from: #1e293b;
+  --app-hero-to: #0f172a;
   --app-rail-width: 64px;
   --app-mobile-drawer-width: 260px;
 
-  --app-primary: #0b5fa5;
-  --app-primary-dark: #084a82;
+  // Redesign (light, labeled navigation) - a separate token set from the dark-surface
+  // tokens above, since the sidebar/header chrome and the deliberately-dark hero/
+  // timeline surfaces are now two different visual roles, not one repainted role.
+  --app-nav-bg: #ffffff;
+  --app-nav-width: 232px;
+  --app-nav-fg: #475569;
+  --app-nav-fg-muted: #94a3b8;
+  --app-nav-border: #e2e8f0;
+  --app-nav-active-bg: #eff6ff;
+  --app-nav-active-fg: #2563eb;
+
+  --app-primary: #2563eb;
+  --app-primary-dark: #1d4ed8;
   --app-accent-teal: #0f8a80;
 
-  --app-page-bg: #f5f6f8;
+  --app-page-bg: #f8fafc;
   --app-surface: #ffffff;
-  --app-border: rgba(15, 23, 42, 0.1);
+  --app-border: #e2e8f0;
   --app-shadow-card: 0 1px 2px rgba(15, 23, 42, 0.06);
 
   --app-status-success: #1a7f4b;
@@ -100,6 +116,84 @@ mat-label,
 }
 
 /* You can add global styles to this file, and also import other style files */
+
+// UI redesign (case-management look, brief §1: "clean card layout with light borders,
+// soft drop shadows, clear typography hierarchy") - shared, global utility classes
+// (same reasoning as the admin-panel block below: Angular's per-component view
+// encapsulation would otherwise force every feature page to duplicate this CSS) used
+// across the case-detail hero, case list, and dashboard cards.
+.ui-card {
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  box-shadow: var(--app-shadow-card);
+}
+
+.ui-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  background: var(--app-status-neutral-bg);
+  color: var(--app-status-neutral);
+  white-space: nowrap;
+}
+.ui-badge.success {
+  background: var(--app-status-success-bg);
+  color: var(--app-status-success);
+}
+.ui-badge.warning {
+  background: var(--app-status-warning-bg);
+  color: var(--app-status-warning);
+}
+.ui-badge.danger {
+  background: var(--app-status-danger-bg);
+  color: var(--app-status-danger);
+}
+.ui-badge.info {
+  background: var(--app-status-info-bg);
+  color: var(--app-status-info);
+}
+
+// A hero-banner "quick metric" chip - deliberately never salary/nationality/DOB (this
+// product's own standing privacy rule, ARCHITECTURE.md/CLAUDE.md - no sensitive fact is
+// ever surfaced here or anywhere else user-facing); only non-sensitive facts (procedure,
+// status, jurisdiction, elapsed time, progress) ever populate one of these.
+.ui-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #fff;
+  font-size: 0.8rem;
+}
+.ui-pill .ui-pill-label {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.65rem;
+  opacity: 0.75;
+  display: block;
+}
+.ui-pill .ui-pill-value {
+  font-weight: 600;
+}
+
+.ui-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--app-primary);
+  color: #fff;
+  font-weight: 600;
+  flex: 0 0 auto;
+}
 
 // Phase 9 admin panel - shared, global (not component-scoped, since Angular's per-component
 // view encapsulation would otherwise require duplicating these rules in every admin

@@ -1,5 +1,6 @@
+import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -8,6 +9,7 @@ import {
   CaseDetail,
   CaseDocument,
   CaseDocumentStatus,
+  CaseEvent,
   CaseFee,
   CaseFeeStatus,
   CaseService,
@@ -16,11 +18,14 @@ import {
   RequirementChangeReport,
 } from '../../../core/services/case.service';
 import { formatStatusLabel } from '../../../shared/status-label.util';
+import { Icon } from '../../../shared/icon/icon';
 
 interface ApiErrorBody {
   code?: string;
   message?: string;
 }
+
+type CaseDetailTab = 'overview' | 'checklist' | 'documents' | 'fees' | 'activity';
 
 /**
  * Case detail (brief §41/§58): overview, step/document/fee checklists, sources/authorities/
@@ -31,7 +36,7 @@ interface ApiErrorBody {
  */
 @Component({
   selector: 'app-case-detail',
-  imports: [RouterLink, MatButtonModule, MatCardModule, MatProgressSpinnerModule],
+  imports: [RouterLink, MatButtonModule, MatCardModule, MatProgressSpinnerModule, Icon, DatePipe],
   templateUrl: './case-detail.html',
   styleUrl: './case-detail.scss',
 })
@@ -43,10 +48,34 @@ export class CaseDetailPage {
   protected readonly loading = signal(true);
   protected readonly notFound = signal(false);
   protected readonly detail = signal<CaseDetail | null>(null);
+  protected readonly events = signal<CaseEvent[]>([]);
   protected readonly changes = signal<RequirementChangeReport | null>(null);
   protected readonly showChanges = signal(false);
   protected readonly upgrading = signal(false);
   protected readonly actionError = signal<string | null>(null);
+  protected readonly activeTab = signal<CaseDetailTab>('overview');
+
+  /** Checklist-completion only (steps + documents), matching the dashboard's own
+   * definition exactly - never a legal-probability or eligibility percentage. */
+  protected readonly progressPercent = computed(() => {
+    const d = this.detail();
+    if (!d) {
+      return 0;
+    }
+    const total = d.progress.stepsTotal + d.progress.documentsTotal;
+    if (total === 0) {
+      return 0;
+    }
+    return Math.round(((d.progress.stepsCompleted + d.progress.documentsReady) / total) * 100);
+  });
+
+  protected readonly daysActive = computed(() => {
+    const d = this.detail();
+    if (!d) {
+      return 0;
+    }
+    return Math.max(0, Math.floor((Date.now() - new Date(d.createdAt).getTime()) / 86_400_000));
+  });
 
   constructor() {
     if (!this.caseId) {
@@ -71,6 +100,14 @@ export class CaseDetailPage {
         this.loading.set(false);
       },
     });
+    this.caseService.getEvents(this.caseId).subscribe({
+      next: (events) => this.events.set(events),
+      error: () => this.events.set([]),
+    });
+  }
+
+  protected setTab(tab: CaseDetailTab): void {
+    this.activeTab.set(tab);
   }
 
   protected toggleChanges(): void {

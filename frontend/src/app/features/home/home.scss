@@ -1,7 +1,55 @@
+.hero {
+  background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%);
+  border: 1px solid var(--app-border);
+  border-radius: 14px;
+  padding: 28px 32px;
+
+  h1 {
+    margin: 0 0 8px;
+  }
+  p {
+    margin: 0;
+    color: var(--mat-sys-on-surface-variant, #475569);
+  }
+}
+
 .cta-row {
   display: flex;
   gap: 12px;
-  margin: 16px 0;
+  margin: 16px 0 0;
+}
+
+.quick-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--app-space-md);
+  margin: var(--app-space-lg) 0;
+}
+
+.quick-card {
+  display: block;
+  padding: 1.25rem 1.4rem;
+  text-decoration: none;
+  color: inherit;
+  transition: box-shadow 0.15s ease;
+
+  h2 {
+    font-size: 1rem;
+    margin: 10px 0 6px;
+  }
+  p {
+    margin: 0;
+    font-size: 0.88rem;
+    color: var(--mat-sys-on-surface-variant, #64748b);
+  }
+
+  app-icon {
+    color: var(--app-primary);
+  }
+
+  &:hover {
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.1);
+  }
 }
 
 .status-card {

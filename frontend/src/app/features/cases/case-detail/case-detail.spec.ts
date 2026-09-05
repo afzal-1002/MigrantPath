@@ -82,16 +82,31 @@ async function setUp() {
   return { fixture, httpMock };
 }
 
+/** UI redesign: `load()` now always fires a second, independent request for the
+ * Activity log/Recent activity widgets (brief's own "Recent Activity feed" - via
+ * CaseService's existing, already-public `getEvents`, not a new endpoint). Every test
+ * below must flush it too or `httpMock.verify()` fails on an unflushed request. */
+function flushEvents(httpMock: HttpTestingController, events: { eventType: string; occurredAt: string; metadata: string | null }[] = []): void {
+  httpMock.expectOne(`${BASE}/events`).flush(events);
+}
+
 describe('CaseDetailPage', () => {
-  it('renders the checklist once loaded', async () => {
+  it('renders the checklist and documents once loaded, tab by tab', async () => {
     const { fixture, httpMock } = await setUp();
     fixture.detectChanges();
 
     httpMock.expectOne(BASE).flush(detail());
+    flushEvents(httpMock);
     fixture.detectChanges();
 
+    fixture.componentInstance['setTab']('checklist');
+    fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Prepare documents');
+
+    fixture.componentInstance['setTab']('documents');
+    fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Passport');
+
     httpMock.verify();
   });
 
@@ -99,6 +114,7 @@ describe('CaseDetailPage', () => {
     const { fixture, httpMock } = await setUp();
     fixture.detectChanges();
     httpMock.expectOne(BASE).flush(detail());
+    flushEvents(httpMock);
     fixture.detectChanges();
 
     fixture.componentInstance['setStepStatus'](detail().steps[0], 'COMPLETED');
@@ -116,6 +132,7 @@ describe('CaseDetailPage', () => {
     const { fixture, httpMock } = await setUp();
     fixture.detectChanges();
     httpMock.expectOne(BASE).flush(detail({ hasRequirementUpdates: true }));
+    flushEvents(httpMock);
     fixture.detectChanges();
 
     httpMock.expectOne(`${BASE}/requirement-changes`).flush({
@@ -128,11 +145,27 @@ describe('CaseDetailPage', () => {
     httpMock.verify();
   });
 
+  it('shows a real recent-activity feed in the sidebar and the full activity log tab', async () => {
+    const { fixture, httpMock } = await setUp();
+    fixture.detectChanges();
+    httpMock.expectOne(BASE).flush(detail());
+    flushEvents(httpMock, [{ eventType: 'CASE_CREATED', occurredAt: '2026-09-03T00:00:00Z', metadata: null }]);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Case created');
+
+    fixture.componentInstance['setTab']('activity');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Activity log');
+    httpMock.verify();
+  });
+
   it('shows a not-found state for an unknown case id', async () => {
     const { fixture, httpMock } = await setUp();
     fixture.detectChanges();
 
     httpMock.expectOne(BASE).flush({ code: 'CASE_NOT_FOUND' }, { status: 404, statusText: 'Not Found' });
+    flushEvents(httpMock);
     fixture.detectChanges();
 
     expect(fixture.componentInstance['notFound']()).toBe(true);

@@ -1,8 +1,8 @@
 import { Component, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
-import { MatCardModule } from '@angular/material/card';
 import { PlatformStatusService } from '../../core/services/platform-status.service';
+import { Icon } from '../../shared/icon/icon';
 
 /**
  * The two entry points Product Requirements §5 requires (docs/architecture/ARCHITECTURE.md §10):
@@ -14,7 +14,7 @@ import { PlatformStatusService } from '../../core/services/platform-status.servi
  */
 @Component({
   selector: 'app-home',
-  imports: [MatCardModule, MatButtonModule, RouterLink],
+  imports: [MatButtonModule, RouterLink, Icon],
   templateUrl: './home.html',
   styleUrl: './home.scss',
 })

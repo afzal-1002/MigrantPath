@@ -13,41 +13,39 @@
   @if (activeCases().length > 0) {
     <section aria-labelledby="active-heading">
       <h2 id="active-heading">Active</h2>
-      @for (c of activeCases(); track c.id) {
-        <mat-card class="case-card">
-          <mat-card-header>
-            <mat-card-title>{{ c.procedureTitle }}</mat-card-title>
-            <mat-card-subtitle>{{ statusLabel(c.status) }}</mat-card-subtitle>
-          </mat-card-header>
-          <mat-card-content>
-            <p>Steps: {{ c.stepsCompleted }} / {{ c.stepsTotal }}</p>
-            <p>Documents: {{ c.documentsReady }} / {{ c.documentsTotal }}</p>
+      <div class="case-grid">
+        @for (c of activeCases(); track c.id) {
+          <a class="ui-card case-card" [routerLink]="['/cases', c.id]">
+            <div class="case-card-head">
+              <span class="case-title">{{ c.procedureTitle }}</span>
+              <span class="ui-badge" [class.warning]="c.hasRequirementUpdates">{{ statusLabel(c.status) }}</span>
+            </div>
+            <div class="progress-bar" [attr.aria-label]="'Checklist ' + progressPercent(c) + '% complete'">
+              <div class="progress-fill" [style.width.%]="progressPercent(c)"></div>
+            </div>
+            <p class="case-meta">Steps {{ c.stepsCompleted }}/{{ c.stepsTotal }} · Documents {{ c.documentsReady }}/{{ c.documentsTotal }}</p>
             @if (c.hasRequirementUpdates) {
               <p class="update-flag" role="status">Requirements have changed</p>
             }
-          </mat-card-content>
-          <mat-card-actions>
-            <a mat-button [routerLink]="['/cases', c.id]">Continue →</a>
-          </mat-card-actions>
-        </mat-card>
-      }
+          </a>
+        }
+      </div>
     </section>
   }
 
   @if (closedCases().length > 0) {
     <section aria-labelledby="closed-heading">
       <h2 id="closed-heading">Completed / cancelled</h2>
-      @for (c of closedCases(); track c.id) {
-        <mat-card class="case-card closed">
-          <mat-card-header>
-            <mat-card-title>{{ c.procedureTitle }}</mat-card-title>
-            <mat-card-subtitle>{{ statusLabel(c.status) }}</mat-card-subtitle>
-          </mat-card-header>
-          <mat-card-actions>
-            <a mat-button [routerLink]="['/cases', c.id]">View →</a>
-          </mat-card-actions>
-        </mat-card>
-      }
+      <div class="case-grid">
+        @for (c of closedCases(); track c.id) {
+          <a class="ui-card case-card closed" [routerLink]="['/cases', c.id]">
+            <div class="case-card-head">
+              <span class="case-title">{{ c.procedureTitle }}</span>
+              <span class="ui-badge">{{ statusLabel(c.status) }}</span>
+            </div>
+          </a>
+        }
+      </div>
     </section>
   }
 }

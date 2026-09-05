@@ -1,7 +1,5 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { MatButtonModule } from '@angular/material/button';
-import { MatCardModule } from '@angular/material/card';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { CaseService, CaseStatus, CaseSummary } from '../../../core/services/case.service';
 import { formatStatusLabel } from '../../../shared/status-label.util';
@@ -23,7 +21,7 @@ const ACTIVE_STATUSES: CaseStatus[] = [
  * backend's own ordering); completed/cancelled cases listed separately below. */
 @Component({
   selector: 'app-case-list',
-  imports: [RouterLink, MatButtonModule, MatCardModule, MatProgressSpinnerModule],
+  imports: [RouterLink, MatProgressSpinnerModule],
   templateUrl: './case-list.html',
   styleUrl: './case-list.scss',
 })
@@ -52,5 +50,12 @@ export class CaseList {
 
   protected statusLabel(status: CaseStatus): string {
     return formatStatusLabel(status);
+  }
+
+  protected progressPercent(c: CaseSummary): number {
+    if (c.stepsTotal === 0) {
+      return 0;
+    }
+    return Math.round((c.stepsCompleted / c.stepsTotal) * 100);
   }
 }
