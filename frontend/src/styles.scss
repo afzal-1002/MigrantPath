@@ -5,6 +5,25 @@
 // custom components at https://material.angular.dev/guide/theming
 @use '@angular/material' as mat;
 
+// Real bug found post-redesign, reported by the user: every `--mat-sys-*` typography
+// variable `mat.theme()` generates resolves to a bare `Roboto` with no trailing generic
+// fallback family at all (confirmed in the built CSS: `--mat-sys-body-medium: 400
+// .875rem / 1.25rem Roboto;`). Canonical Phase 13 removed the Google Fonts `<link>` that
+// used to actually load the Roboto font file (a correct call - CSP is `font-src 'self'`
+// and self-hosting/omitting third-party font origins is this project's own deliberate
+// privacy posture) but that change's own doc comment (frontend/src/index.html) assumed
+// Material would "already degrade to its own generic sans-serif fallback with no code
+// change needed" - never actually verified in a real browser. It doesn't: with no font
+// named "Roboto" installed and no fallback in the value, every browser instead falls
+// back to its own absolute default document font, which on a real Windows browser is a
+// serif face - visible on every single page since Phase 13, not something either UX1
+// pass introduced. Fixed at the source (not by patching `body` after the fact) so every
+// Material component's own internal typography - not just plain headings/paragraphs -
+// resolves correctly too: a real, no-network-fetch system-font stack, in Roboto's
+// absence, that matches each OS's native UI font (Segoe UI on Windows, San Francisco on
+// macOS, Roboto on Android/Chrome OS if actually present).
+$app-font-stack: 'Roboto, "Segoe UI", -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif';
+
 html {
   height: 100%;
   @include mat.theme(
@@ -13,7 +32,7 @@ html {
         primary: mat.$azure-palette,
         tertiary: mat.$blue-palette,
       ),
-      typography: Roboto,
+      typography: $app-font-stack,
       density: 0,
     )
   );
