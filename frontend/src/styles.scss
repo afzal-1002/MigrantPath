@@ -95,16 +95,26 @@ mat-label,
   --app-rail-width: 64px;
   --app-mobile-drawer-width: 260px;
 
-  // Redesign (light, labeled navigation) - a separate token set from the dark-surface
-  // tokens above, since the sidebar/header chrome and the deliberately-dark hero/
-  // timeline surfaces are now two different visual roles, not one repainted role.
-  --app-nav-bg: #ffffff;
+  // "Eviza" reference (visual style only) - the sidebar goes back to a dark navy
+  // surface (reusing the same --app-sidebar-* dark tokens above, not a third
+  // near-duplicate palette) with a colored vertical accent bar marking the active
+  // item; --app-nav-* now names that dark chrome's OWN text/border/active tokens
+  // (kept as its own token group, not literals, since the sidebar's colors still
+  // differ slightly from the hero/timeline's - a lighter foreground, a distinct
+  // active-row tint - even though both are "dark").
+  --app-nav-bg: var(--app-sidebar-bg);
   --app-nav-width: 232px;
-  --app-nav-fg: #475569;
-  --app-nav-fg-muted: #94a3b8;
-  --app-nav-border: #e2e8f0;
-  --app-nav-active-bg: #eff6ff;
-  --app-nav-active-fg: #2563eb;
+  --app-nav-fg: var(--app-sidebar-fg);
+  --app-nav-fg-muted: var(--app-sidebar-fg-muted);
+  --app-nav-border: rgba(255, 255, 255, 0.1);
+  --app-nav-active-bg: var(--app-sidebar-active-bg);
+  --app-nav-active-fg: #ffffff;
+  --app-nav-accent: #fb7185;
+
+  // The reference's own icy top-banner gradient, used by the shell's header only -
+  // kept distinct from --app-hero-from/to (the Dashboard/case-detail hero's dark
+  // navy) since this is a light, separate visual role.
+  --app-header-gradient: linear-gradient(135deg, #a5f3fc 0%, #e0f2fe 50%, #7dd3fc 100%);
 
   --app-primary: #2563eb;
   --app-primary-dark: #1d4ed8;

@@ -130,6 +130,16 @@ export class AuthService {
     return this.http.post<void>(`${this.usersBase}/me/change-password`, { currentPassword, newPassword });
   }
 
+  /** brief (Eviza redesign) - wires the backend's own already-existing `PATCH /users/me`
+   * (Phase 2, brief §30: "first name and preferred language only" - no email, no last
+   * name, no phone number; those fields don't exist on `User` at all) into the UI for
+   * the first time. Updates the local `currentUser` signal from the real response so
+   * every other component reading it (the shell's avatar/greeting, the dashboard hero)
+   * reflects the change immediately, without a full reload. */
+  updateProfile(firstName: string): Observable<CurrentUser> {
+    return this.http.patch<CurrentUser>(`${this.usersBase}/me`, { firstName }).pipe(tap((user) => this.user.set(user)));
+  }
+
   /**
    * Canonical Phase 12 - clears local auth state without calling the backend logout endpoint.
    * Used after account deletion (the account/session are already gone server-side by the time

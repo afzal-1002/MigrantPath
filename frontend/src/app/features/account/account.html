@@ -1,14 +1,133 @@
-<h1>Account</h1>
+<header class="account-header">
+  <h1 tabindex="-1">General details</h1>
+  <p class="account-subtitle">Update your personal details and password here.</p>
+</header>
 
-<mat-card class="section">
-  <h2>Account</h2>
-  @if (currentUser(); as user) {
-    <p><strong>Email:</strong> {{ user.email }}</p>
-    <p><strong>Name:</strong> {{ user.firstName || '—' }}</p>
-  }
-</mat-card>
+@if (currentUser(); as user) {
+  <div class="account-grid">
+    <form class="ui-card account-card" [formGroup]="profileForm" (ngSubmit)="saveProfile()">
+      <h2>Your personal information</h2>
 
-<mat-card class="section">
+      <div class="form-row">
+        <mat-form-field appearance="outline">
+          <mat-label>First name</mat-label>
+          <input matInput formControlName="firstName" placeholder="Enter first name" autocomplete="given-name" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Email address</mat-label>
+          <input matInput [value]="user.email" disabled />
+        </mat-form-field>
+      </div>
+      <p class="field-hint">Email can't be changed here. Only your first name is stored beyond this.</p>
+
+      @if (profileSaved()) {
+        <p class="success" role="status">Saved.</p>
+      }
+      @if (profileError()) {
+        <p class="error" role="alert">{{ profileError() }}</p>
+      }
+
+      <div class="card-actions">
+        <button mat-stroked-button type="button" (click)="resetProfileForm()">Cancel</button>
+        <button mat-flat-button color="primary" type="submit" [disabled]="savingProfile()">
+          {{ savingProfile() ? 'Saving…' : 'Save changes' }}
+        </button>
+      </div>
+    </form>
+
+    <div class="ui-card account-card avatar-card">
+      <h2>Your avatar</h2>
+      <div class="avatar-display">
+        <span class="ui-avatar avatar-lg" aria-hidden="true">{{ (user.firstName || user.email).charAt(0).toUpperCase() }}</span>
+        <p class="item-description">
+          Foreigner Warsaw doesn't support uploaded profile photos - this initial is generated
+          from your name so there's nothing to manage here.
+        </p>
+      </div>
+    </div>
+
+    <form class="ui-card account-card password-card" [formGroup]="passwordForm" (ngSubmit)="changePassword()">
+      <h2>Password</h2>
+      <p class="field-hint">Changing your password signs you out everywhere else, for your security.</p>
+
+      <div class="form-row three">
+        <mat-form-field appearance="outline">
+          <mat-label>Current password</mat-label>
+          <input
+            matInput
+            [type]="showCurrentPassword() ? 'text' : 'password'"
+            formControlName="currentPassword"
+            autocomplete="current-password"
+          />
+          <button
+            mat-icon-button
+            matSuffix
+            type="button"
+            [attr.aria-label]="showCurrentPassword() ? 'Hide password' : 'Show password'"
+            (click)="showCurrentPassword.set(!showCurrentPassword())"
+          >
+            <app-icon [name]="showCurrentPassword() ? 'eye-off' : 'eye'" [size]="18" />
+          </button>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>New password</mat-label>
+          <input
+            matInput
+            [type]="showNewPassword() ? 'text' : 'password'"
+            formControlName="newPassword"
+            autocomplete="new-password"
+          />
+          <button
+            mat-icon-button
+            matSuffix
+            type="button"
+            [attr.aria-label]="showNewPassword() ? 'Hide password' : 'Show password'"
+            (click)="showNewPassword.set(!showNewPassword())"
+          >
+            <app-icon [name]="showNewPassword() ? 'eye-off' : 'eye'" [size]="18" />
+          </button>
+          <mat-hint>At least 10 characters</mat-hint>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Confirm new password</mat-label>
+          <input
+            matInput
+            [type]="showConfirmPassword() ? 'text' : 'password'"
+            formControlName="confirmPassword"
+            autocomplete="new-password"
+          />
+          <button
+            mat-icon-button
+            matSuffix
+            type="button"
+            [attr.aria-label]="showConfirmPassword() ? 'Hide password' : 'Show password'"
+            (click)="showConfirmPassword.set(!showConfirmPassword())"
+          >
+            <app-icon [name]="showConfirmPassword() ? 'eye-off' : 'eye'" [size]="18" />
+          </button>
+          @if (passwordForm.hasError('passwordMismatch') && passwordForm.get('confirmPassword')?.touched) {
+            <mat-error>Passwords don't match</mat-error>
+          }
+        </mat-form-field>
+      </div>
+
+      @if (passwordError()) {
+        <p class="error" role="alert">{{ passwordError() }}</p>
+      }
+
+      <div class="card-actions">
+        <button mat-flat-button color="primary" type="submit" [disabled]="changingPassword()">
+          {{ changingPassword() ? 'Changing…' : 'Change password' }}
+        </button>
+      </div>
+    </form>
+  </div>
+}
+
+<div class="ui-card account-card privacy-card">
   <h2>Privacy</h2>
 
   <div class="privacy-action">
@@ -34,4 +153,4 @@
     </p>
     <button mat-stroked-button color="warn" (click)="openDeleteDialog()">Delete my account</button>
   </div>
-</mat-card>
+</div>

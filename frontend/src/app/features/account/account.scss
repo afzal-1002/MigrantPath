@@ -1,18 +1,129 @@
-.section {
-  max-width: 640px;
-  margin-bottom: 24px;
-  padding: 16px;
+:host {
+  display: block;
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 0 0 3rem;
+}
+
+.account-header {
+  margin-bottom: var(--app-space-lg);
+
+  h1 {
+    margin: 0 0 4px;
+  }
+}
+
+.account-subtitle {
+  margin: 0;
+  color: var(--mat-sys-on-surface-variant, #64748b);
+  font-size: 0.92rem;
+}
+
+.account-grid {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: var(--app-space-md);
+  margin-bottom: var(--app-space-md);
+
+  @media (max-width: 860px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.password-card {
+  grid-column: 1 / -1;
+}
+
+.account-card {
+  padding: 1.25rem 1.5rem;
+
+  h2 {
+    margin: 0 0 4px;
+    font-size: 1rem;
+    color: var(--app-primary);
+  }
+}
+
+.field-hint {
+  margin: 0 0 var(--app-space-sm);
+  font-size: 0.8rem;
+  color: var(--mat-sys-on-surface-variant, #64748b);
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--app-space-md);
+  margin-top: var(--app-space-sm);
+
+  &.three {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+
+    &.three {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  mat-form-field {
+    width: 100%;
+  }
+}
+
+.card-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--app-space-sm);
+  margin-top: var(--app-space-md);
+}
+
+.avatar-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.avatar-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--app-space-sm);
+  margin-top: var(--app-space-sm);
+}
+
+.avatar-lg {
+  width: 72px;
+  height: 72px;
+  font-size: 1.8rem;
+}
+
+.privacy-card {
+  margin-top: var(--app-space-md);
 }
 
 .privacy-action {
   margin-top: 16px;
 
   &.danger {
-    border-top: 1px solid rgba(0, 0, 0, 0.12);
+    border-top: 1px solid var(--app-border);
     padding-top: 16px;
+  }
+
+  h3 {
+    margin: 0 0 4px;
+    font-size: 0.95rem;
   }
 }
 
+.success {
+  color: var(--app-status-success);
+  font-size: 0.85rem;
+}
+
 .error {
-  color: #b3261e;
+  color: var(--app-status-danger);
+  font-size: 0.85rem;
 }

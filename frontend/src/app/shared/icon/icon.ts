@@ -29,7 +29,9 @@ export type IconName =
   | 'chevron-down'
   | 'chevron-right'
   | 'document'
-  | 'building';
+  | 'building'
+  | 'eye'
+  | 'eye-off';
 
 @Component({
   selector: 'app-icon',
@@ -132,6 +134,14 @@ export type IconName =
         @case ('building') {
           <rect x="5" y="3.5" width="10" height="17" rx="0.8" />
           <path d="M15 9.5h4v11h-4M8 7.5h.01M11.5 7.5h.01M8 11h.01M11.5 11h.01M8 14.5h.01M11.5 14.5h.01" />
+        }
+        @case ('eye') {
+          <path d="M3 12s3.5-6.5 9-6.5S21 12 21 12s-3.5 6.5-9 6.5S3 12 3 12z" />
+          <circle cx="12" cy="12" r="2.6" />
+        }
+        @case ('eye-off') {
+          <path d="M3 12s3.5-6.5 9-6.5c1.6 0 3 .4 4.2 1M21 12s-1.1 2.1-3.1 3.8M9.9 9.9a2.6 2.6 0 0 0 3.6 3.7" />
+          <path d="M6.3 6.3L3 3.5M17.7 17.7L21 20.5" />
         }
       }
     </svg>
