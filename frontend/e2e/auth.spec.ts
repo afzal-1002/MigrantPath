@@ -13,6 +13,13 @@ function uniqueEmail(): string {
   return `e2e-${Date.now()}-${Math.floor(Math.random() * 10000)}@example.com`;
 }
 
+/** Post-MVP UX Milestone UX1 (redesign pass 4, "Eviza" dashboard) - the greeting is now
+ * real-clock-based ("Good morning/afternoon/evening, ..."), not a fixed "Welcome back,"
+ * prefix - a regex tolerates whichever period of day the suite happens to run in. */
+function greetingHeading(email: string): RegExp {
+  return new RegExp(`Good (morning|afternoon|evening), ${email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`);
+}
+
 // Deliberately no global Mailpit cleanup between tests: with fullyParallel execution,
 // a shared "delete everything" beforeEach would race against another test's
 // in-flight email (a real bug caught during this suite's first run, not a
@@ -51,7 +58,7 @@ test('Scenario 1: register, verify, login, dashboard, logout, dashboard unavaila
   await page.getByRole('button', { name: 'Sign in' }).click();
 
   await expect(page).toHaveURL(/\/dashboard$/);
-  await expect(page.getByRole('heading', { name: `Welcome back, ${email}` })).toBeVisible();
+  await expect(page.getByRole('heading', { name: greetingHeading(email) })).toBeVisible();
 
   // Post-MVP UX Milestone UX1 - the redesigned authenticated shell (layout/app-shell)
   // has exactly one Logout action, inside the topbar's account menu (the dashboard's
@@ -131,7 +138,7 @@ test('Scenario 3: session persists across a page reload', async ({ page }) => {
   await page.reload();
 
   await expect(page).toHaveURL(/\/dashboard$/);
-  await expect(page.getByRole('heading', { name: `Welcome back, ${email}` })).toBeVisible();
+  await expect(page.getByRole('heading', { name: greetingHeading(email) })).toBeVisible();
 });
 
 test('Scenario 4: an unauthenticated visitor opening /dashboard is redirected to /login', async ({ page }) => {

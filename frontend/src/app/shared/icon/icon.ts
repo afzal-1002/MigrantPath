@@ -31,7 +31,8 @@ export type IconName =
   | 'document'
   | 'building'
   | 'eye'
-  | 'eye-off';
+  | 'eye-off'
+  | 'plus';
 
 @Component({
   selector: 'app-icon',
@@ -142,6 +143,9 @@ export type IconName =
         @case ('eye-off') {
           <path d="M3 12s3.5-6.5 9-6.5c1.6 0 3 .4 4.2 1M21 12s-1.1 2.1-3.1 3.8M9.9 9.9a2.6 2.6 0 0 0 3.6 3.7" />
           <path d="M6.3 6.3L3 3.5M17.7 17.7L21 20.5" />
+        }
+        @case ('plus') {
+          <path d="M12 5v14M5 12h14" />
         }
       }
     </svg>

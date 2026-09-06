@@ -58,7 +58,7 @@ describe('Dashboard', () => {
     expect(navigateSpy).toHaveBeenCalledWith('/login');
   });
 
-  it('renders the full structural shell (hero, timeline, 3x2 grid) for a brand-new user', () => {
+  it('renders the full structural shell (stats, tracker, applications grid) for a brand-new user', () => {
     createComponent();
     flush({
       nextActions: [
@@ -74,10 +74,10 @@ describe('Dashboard', () => {
     });
 
     const el = fixture.nativeElement as HTMLElement;
-    expect(el.querySelector('.hero')).toBeTruthy();
-    expect(el.querySelector('.timeline')).toBeTruthy();
-    expect(el.querySelector('.card-grid')).toBeTruthy();
-    expect((el.textContent as string)).toContain('No pathway yet');
+    expect(el.querySelector('.stats-row')).toBeTruthy();
+    expect(el.querySelector('.tracker-card')).toBeTruthy();
+    expect(el.querySelector('.apps-grid')).toBeTruthy();
+    expect((el.textContent as string)).toContain('No application started yet');
     expect((el.textContent as string)).toContain('Find the right pathway for you');
   });
 
@@ -132,7 +132,7 @@ describe('Dashboard', () => {
     expect(text).toContain('PESEL number assignment');
   });
 
-  it('shows the active case in the hero, timeline and card grid with real checklist progress', () => {
+  it('shows the active case in the tracker card and the applications grid with real checklist progress', () => {
     createComponent();
     flush({
       primaryCase: {
@@ -181,9 +181,9 @@ describe('Dashboard', () => {
     });
 
     expect(fixture.componentInstance['caseProgressPercent']()).toBe(67);
-    const text = fixture.nativeElement.textContent as string;
-    expect(text).toContain('PESEL number assignment');
-    expect(text).toContain('Active for 5 days');
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.apps-grid')?.textContent).toContain('PESEL number assignment');
+    expect((el.textContent as string)).toContain('67% complete');
   });
 
   it('flags a requirement update as the top ATTENTION next action', () => {
@@ -221,7 +221,7 @@ describe('Dashboard', () => {
     });
 
     const el = fixture.nativeElement as HTMLElement;
-    expect(el.querySelector('.severity-attention')).toBeTruthy();
+    expect(el.querySelector('.action-pill.attention')).toBeTruthy();
     expect((el.textContent as string)).toContain('Requirements have changed');
   });
 
