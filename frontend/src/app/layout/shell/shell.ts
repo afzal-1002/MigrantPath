@@ -1,20 +1,28 @@
 import { Component, computed, inject } from '@angular/core';
-import { Router, RouterLink, RouterOutlet } from '@angular/router';
-import { MatToolbarModule } from '@angular/material/toolbar';
-import { MatButtonModule } from '@angular/material/button';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
+import { Icon } from '../../shared/icon/icon';
 
 const ADMIN_ROLES = ['CONTENT_EDITOR', 'LEGAL_REVIEWER', 'ADMIN'];
 
 /**
- * Minimal application shell (docs/architecture/ARCHITECTURE.md §10) - just enough
- * chrome to host routed pages and show auth-aware navigation. Real navigation
- * (Residence/Work/Study/... from the Product Requirements home page) arrives with the
- * features that back it, not as placeholder links now.
+ * Public/anonymous application shell (docs/architecture/ARCHITECTURE.md §10).
+ *
+ * UI redesign (a real government immigration-portal reference, visual style only): a
+ * dark banner + underlined nav tabs + a thin top utility bar, adapted honestly rather
+ * than copied - this is an independent, informational service (every legal page says
+ * so explicitly), not a government body, so the reference's own department crest,
+ * exact name, and green are deliberately not reproduced; this uses this app's own
+ * brand mark and the shared --app-accent-teal token instead. The reference's
+ * "Choose Your Language" dropdown and settings gear are also left out - this app has
+ * no working i18n or user-settings page for either to actually control, and a
+ * decorative control that does nothing is exactly the kind of dead UI this codebase
+ * has consistently avoided all session. Real conditional nav (Login/Register vs
+ * Dashboard/Account/Admin/Logout) is unchanged logic, only restyled.
  */
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet, RouterLink, MatToolbarModule, MatButtonModule],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, Icon],
   templateUrl: './shell.html',
   styleUrl: './shell.scss',
 })

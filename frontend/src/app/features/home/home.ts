@@ -1,8 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { MatButtonModule } from '@angular/material/button';
 import { PlatformStatusService } from '../../core/services/platform-status.service';
-import { Icon } from '../../shared/icon/icon';
 
 /**
  * The two entry points Product Requirements §5 requires (docs/architecture/ARCHITECTURE.md §10):
@@ -14,7 +12,7 @@ import { Icon } from '../../shared/icon/icon';
  */
 @Component({
   selector: 'app-home',
-  imports: [MatButtonModule, RouterLink, Icon],
+  imports: [RouterLink],
   templateUrl: './home.html',
   styleUrl: './home.scss',
 })

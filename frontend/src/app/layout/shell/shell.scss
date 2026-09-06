@@ -1,21 +1,117 @@
-.brand {
-  color: inherit;
-  text-decoration: none;
-  font-weight: 600;
+// Government-portal-style header (visual pattern only - see shell.ts's own doc
+// comment on why the reference's specific crest/name/exact green aren't reproduced).
+// Reuses this app's own --app-accent-teal token, not a new color.
+:host {
+  display: block;
 }
 
-.spacer {
+.gov-header {
+  background: var(--app-accent-teal, #0f8a80);
+  color: #fff;
+}
+
+.gov-topbar {
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.gov-topbar-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 6px 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 0.82rem;
+}
+
+.gov-topbar-spacer {
   flex: 1 1 auto;
 }
 
+.gov-toplink {
+  color: #fff;
+  text-decoration: underline;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.gov-pill {
+  background: #fff;
+  color: var(--app-accent-teal, #0f8a80);
+  border: none;
+  border-radius: 999px;
+  padding: 3px 14px;
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.8rem;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.gov-mainbar-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 14px 16px 0;
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  flex-wrap: wrap;
+}
+
+.gov-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #fff;
+  text-decoration: none;
+  padding-bottom: 14px;
+}
+
+.gov-brand-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.18);
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.gov-brand-text {
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.gov-tabs {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+
+  a {
+    color: #fff;
+    text-decoration: underline;
+    font-size: 0.92rem;
+    padding-bottom: 14px;
+    border-bottom: 3px solid transparent;
+
+    &.active {
+      font-weight: 700;
+      border-bottom-color: #fff;
+    }
+  }
+}
+
 .content {
-  max-width: 960px;
+  max-width: 1100px;
   margin: 0 auto;
   padding: 24px 16px;
 }
 
 .site-footer {
-  max-width: 960px;
+  max-width: 1100px;
   margin: 0 auto;
   padding: 16px;
   display: flex;

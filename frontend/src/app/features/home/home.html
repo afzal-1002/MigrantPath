@@ -1,24 +1,26 @@
 <section class="hero">
   <h1>Your guide to living legally in Warsaw</h1>
   <p>Answer a few questions and receive a personalized roadmap based on your situation.</p>
-
-  <div class="cta-row">
-    <a mat-flat-button color="primary" routerLink="/assessment/start">Help me choose</a>
-    <a mat-stroked-button routerLink="/procedures">Browse procedures</a>
-  </div>
 </section>
 
-<div class="quick-cards">
-  <a class="ui-card quick-card" routerLink="/assessment/start">
-    <app-icon name="pathway" [size]="22" />
-    <h2>Guided eligibility assessment</h2>
-    <p>Answer a few questions about your situation and see which pathways may apply to you.</p>
-  </a>
-  <a class="ui-card quick-card" routerLink="/procedures">
-    <app-icon name="procedures" [size]="22" />
-    <h2>Browse procedures</h2>
-    <p>Already know what you need? Look up a specific procedure's steps, documents, and fees.</p>
-  </a>
+<div class="apply-grid">
+  <article class="ui-card apply-card">
+    <h2>Guided Eligibility Assessment</h2>
+    <p>
+      Answer a few questions about your citizenship, current status, and goals, and see which
+      procedures may be relevant to your situation. Requires a free account.
+    </p>
+    <a class="apply-button" routerLink="/assessment/start">Start Assessment</a>
+  </article>
+
+  <article class="ui-card apply-card">
+    <h2>Browse Procedures</h2>
+    <p>
+      Already know what you need? Look up a specific procedure's real steps, required documents,
+      and fees - sourced from official Polish government publications.
+    </p>
+    <a class="apply-button secondary" routerLink="/procedures">Browse Procedures</a>
+  </article>
 </div>
 
 <div class="ui-card status-card">
@@ -33,4 +35,28 @@
       <p>API not reachable. Is the backend running?</p>
     }
   }
+</div>
+
+<div class="info-grid">
+  <div class="ui-card info-card">
+    <h3>Immigration Information</h3>
+    <ul>
+      <li><a routerLink="/procedures">Browse all procedures</a></li>
+      <li><a routerLink="/help">Help &amp; guidance</a></li>
+    </ul>
+  </div>
+  <div class="ui-card info-card">
+    <h3>Security</h3>
+    <ul>
+      <li><a routerLink="/privacy">Privacy Policy and Cookies</a></li>
+      <li><a routerLink="/terms">Terms of Service</a></li>
+    </ul>
+  </div>
+  <div class="ui-card info-card">
+    <h3>Support</h3>
+    <ul>
+      <li><a routerLink="/help">Get help using this service</a></li>
+      <li><a routerLink="/disclaimer">Disclaimer</a></li>
+    </ul>
+  </div>
 </div>

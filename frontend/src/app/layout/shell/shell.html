@@ -1,19 +1,40 @@
-<mat-toolbar color="primary">
-  <a routerLink="/" class="brand">Foreigner Guide</a>
-  <a mat-button routerLink="/procedures">Browse procedures</a>
-  <span class="spacer"></span>
-  @if (authService.isAuthenticated()) {
-    <a mat-button routerLink="/dashboard">Dashboard</a>
-    <a mat-button routerLink="/account">Account</a>
-    @if (isContentAdmin()) {
-      <a mat-button routerLink="/admin">Admin</a>
-    }
-    <button mat-button (click)="logout()">Logout</button>
-  } @else {
-    <a mat-button routerLink="/login">Sign in</a>
-    <a mat-button routerLink="/register">Register</a>
-  }
-</mat-toolbar>
+<header class="gov-header">
+  <div class="gov-topbar">
+    <div class="gov-topbar-inner">
+      <span class="gov-topbar-spacer"></span>
+      @if (authService.isAuthenticated()) {
+        <a routerLink="/account" class="gov-toplink">
+          <app-icon name="account" [size]="14" /> My account
+        </a>
+        <button type="button" class="gov-pill" (click)="logout()">Log out</button>
+      } @else {
+        <a routerLink="/login" class="gov-toplink">Sign in</a>
+        <a routerLink="/register" class="gov-pill">Register</a>
+      }
+    </div>
+  </div>
+
+  <div class="gov-mainbar">
+    <div class="gov-mainbar-inner">
+      <a routerLink="/" class="gov-brand">
+        <span class="gov-brand-mark" aria-hidden="true">FG</span>
+        <span class="gov-brand-text">Foreigner Guide</span>
+      </a>
+
+      <nav class="gov-tabs" aria-label="Primary">
+        <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Home</a>
+        <a routerLink="/procedures" routerLinkActive="active">Procedures</a>
+        <a routerLink="/help" routerLinkActive="active">Help</a>
+        @if (authService.isAuthenticated()) {
+          <a routerLink="/dashboard" routerLinkActive="active">Dashboard</a>
+          @if (isContentAdmin()) {
+            <a routerLink="/admin" routerLinkActive="active">Admin</a>
+          }
+        }
+      </nav>
+    </div>
+  </div>
+</header>
 
 <main class="content">
   <router-outlet />

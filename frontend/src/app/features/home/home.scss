@@ -3,6 +3,7 @@
   border: 1px solid var(--app-border);
   border-radius: 14px;
   padding: 28px 32px;
+  margin-bottom: var(--app-space-lg);
 
   h1 {
     margin: 0 0 8px;
@@ -13,46 +14,99 @@
   }
 }
 
-.cta-row {
-  display: flex;
-  gap: 12px;
-  margin: 16px 0 0;
-}
-
-.quick-cards {
+.apply-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: 1fr 1fr;
   gap: var(--app-space-md);
-  margin: var(--app-space-lg) 0;
+  margin-bottom: var(--app-space-lg);
+
+  @media (max-width: 700px) {
+    grid-template-columns: 1fr;
+  }
 }
 
-.quick-card {
-  display: block;
-  padding: 1.25rem 1.4rem;
-  text-decoration: none;
-  color: inherit;
-  transition: box-shadow 0.15s ease;
+.apply-card {
+  padding: 1.5rem 1.75rem;
+  display: flex;
+  flex-direction: column;
 
   h2 {
-    font-size: 1rem;
-    margin: 10px 0 6px;
-  }
-  p {
-    margin: 0;
-    font-size: 0.88rem;
-    color: var(--mat-sys-on-surface-variant, #64748b);
+    margin: 0 0 8px;
+    font-size: 1.05rem;
   }
 
-  app-icon {
-    color: var(--app-primary);
+  p {
+    margin: 0 0 20px;
+    color: var(--mat-sys-on-surface-variant, #64748b);
+    font-size: 0.9rem;
+    flex: 1 1 auto;
   }
+}
+
+.apply-button {
+  display: block;
+  text-align: center;
+  padding: 12px 20px;
+  border-radius: var(--app-radius);
+  background: var(--app-primary, #2563eb);
+  color: #fff;
+  font-weight: 600;
+  text-decoration: none;
 
   &:hover {
-    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.1);
+    background: var(--app-primary-dark, #1d4ed8);
+  }
+
+  &.secondary {
+    background: var(--app-accent-teal, #0f8a80);
+
+    &:hover {
+      background: #0c6f67;
+    }
   }
 }
 
 .status-card {
-  margin-top: 16px;
   padding: 16px;
+  margin-bottom: var(--app-space-lg);
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--app-space-md);
+
+  @media (max-width: 700px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.info-card {
+  padding: 1.25rem 1.5rem;
+
+  h3 {
+    margin: 0 0 10px;
+    font-size: 0.92rem;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--app-border);
+  }
+
+  ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  a {
+    color: var(--app-primary, #2563eb);
+    text-decoration: none;
+    font-size: 0.88rem;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
 }
