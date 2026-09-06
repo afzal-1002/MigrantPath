@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test('the application opens and the home page loads', async ({ page }) => {
   await page.goto('/');
-  await expect(page).toHaveTitle('Foreigner Warsaw');
+  await expect(page).toHaveTitle('Foreigner Guide');
   await expect(page.getByRole('heading', { name: 'Your guide to living legally in Warsaw' })).toBeVisible();
 });
 

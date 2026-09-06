@@ -20,13 +20,13 @@ public class VerificationEmailService {
     String link = authProperties.frontendBaseUrl() + "/verify-email?token=" + rawToken;
     String body =
         """
-        <p>Welcome to Foreigner Warsaw.</p>
+        <p>Welcome to Foreigner Guide.</p>
         <p>Please confirm your email address to activate your account:</p>
         <p><a href="%s">Verify my email</a></p>
         <p>This link expires in %d hours. If you didn't create this account, you can ignore this email.</p>
         """
             .formatted(link, authProperties.emailVerificationTokenTtl().toHours());
     emailService.send(
-        toEmail, "Verify your Foreigner Warsaw account", body, EmailMetrics.Type.VERIFICATION);
+        toEmail, "Verify your Foreigner Guide account", body, EmailMetrics.Type.VERIFICATION);
   }
 }

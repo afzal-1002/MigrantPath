@@ -39,6 +39,6 @@ public class PlatformStatusController {
     String version = buildProperties != null ? buildProperties.getVersion() : "dev-local";
     String commit = buildProperties != null ? buildProperties.get("commit") : null;
     return new PlatformStatusResponse(
-        "UP", "Foreigner Warsaw", version, commit != null ? commit : "unknown");
+        "UP", "Foreigner Guide", version, commit != null ? commit : "unknown");
   }
 }

@@ -19,13 +19,13 @@ public class PasswordResetEmailService {
     String link = authProperties.frontendBaseUrl() + "/reset-password?token=" + rawToken;
     String body =
         """
-        <p>We received a request to reset your Foreigner Warsaw password.</p>
+        <p>We received a request to reset your Foreigner Guide password.</p>
         <p><a href="%s">Reset my password</a></p>
         <p>This link expires in %d minutes. If you didn't request this, you can ignore this
         email - your password will not be changed.</p>
         """
             .formatted(link, authProperties.passwordResetTokenTtl().toMinutes());
     emailService.send(
-        toEmail, "Reset your Foreigner Warsaw password", body, EmailMetrics.Type.PASSWORD_RESET);
+        toEmail, "Reset your Foreigner Guide password", body, EmailMetrics.Type.PASSWORD_RESET);
   }
 }

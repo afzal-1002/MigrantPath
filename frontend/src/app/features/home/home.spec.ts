@@ -23,7 +23,7 @@ describe('Home', () => {
     fixture.detectChanges();
 
     const req = httpMock.expectOne(`${environment.apiBaseUrl}/platform/status`);
-    req.flush({ status: 'UP', application: 'Foreigner Warsaw', version: '0.0.1-SNAPSHOT' });
+    req.flush({ status: 'UP', application: 'Foreigner Guide', version: '0.0.1-SNAPSHOT' });
 
     expect(fixture.componentInstance['connectionState']()).toBe('connected');
   });
@@ -43,7 +43,7 @@ describe('Home', () => {
     fixture.detectChanges();
     httpMock.expectOne(`${environment.apiBaseUrl}/platform/status`).flush({
       status: 'UP',
-      application: 'Foreigner Warsaw',
+      application: 'Foreigner Guide',
       version: '0.0.1-SNAPSHOT',
     });
 

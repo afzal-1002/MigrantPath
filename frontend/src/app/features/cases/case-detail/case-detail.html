@@ -4,14 +4,14 @@
   <p role="alert" class="error">This case could not be found.</p>
   <a mat-stroked-button routerLink="/cases">Back to my cases</a>
 } @else if (detail(); as d) {
-  <div class="archive">
+  <div class="case-page">
     <nav class="breadcrumb" aria-label="Breadcrumb">
       <a routerLink="/cases">Cases</a>
       <app-icon name="chevron-right" [size]="14" />
       <span aria-current="page">{{ d.procedureTitle }}</span>
     </nav>
 
-    <header class="case-header">
+    <header class="ui-card case-header">
       <div>
         <h1 tabindex="-1">{{ d.procedureTitle }}</h1>
         <div class="case-meta">
@@ -22,18 +22,40 @@
           }
         </div>
       </div>
-      <div class="stamp">
-        <span class="stamp-top">Status</span>
-        <span class="stamp-mid">{{ statusLabel(d.status) }}</span>
-      </div>
+      <span class="ui-badge status-badge" [class]="statusBadgeClass(d.status)">{{ statusLabel(d.status) }}</span>
     </header>
+
+    <div class="metrics-row">
+      <div class="metric">
+        <span class="metric-icon"><app-icon name="check-circle" [size]="17" /></span>
+        <span><span class="metric-value">{{ progressPercent() }}%</span><span class="metric-label">Progress</span></span>
+      </div>
+      <div class="metric">
+        <span class="metric-icon"><app-icon name="calendar" [size]="17" /></span>
+        <span><span class="metric-value">{{ daysActive() }}</span><span class="metric-label">Days active</span></span>
+      </div>
+      <div class="metric">
+        <span class="metric-icon"><app-icon name="document" [size]="17" /></span>
+        <span
+          ><span class="metric-value">{{ d.progress.stepsCompleted }}/{{ d.progress.stepsTotal }}</span
+          ><span class="metric-label">Steps</span></span
+        >
+      </div>
+      <div class="metric">
+        <span class="metric-icon"><app-icon name="procedures" [size]="17" /></span>
+        <span
+          ><span class="metric-value">{{ d.progress.documentsReady }}/{{ d.progress.documentsTotal }}</span
+          ><span class="metric-label">Documents</span></span
+        >
+      </div>
+    </div>
 
     @if (actionError()) {
       <p role="alert" class="error">{{ actionError() }}</p>
     }
 
     @if (d.hasRequirementUpdates) {
-      <section class="update-banner" role="status">
+      <section class="ui-card update-banner" role="status">
         <p><strong>Requirements have changed</strong> since you started this case.</p>
         <button mat-stroked-button type="button" (click)="toggleChanges()">
           {{ showChanges() ? 'Hide changes' : 'Review changes' }}
@@ -58,27 +80,31 @@
       </section>
     }
 
-    <div class="archive-layout">
-      <div class="archive-main">
-        <section>
+    <div class="case-layout">
+      <div class="case-main">
+        <section class="ui-card">
           <h2 class="section-heading">Timeline</h2>
           <div class="timeline">
             @for (step of d.steps; track step.id) {
               <div class="step" [class.done]="step.status === 'COMPLETED'" [class.current]="step.status === 'IN_PROGRESS'">
                 <div class="step-rail">
-                  <div class="step-dot"></div>
+                  <span class="step-marker">
+                    @if (step.status === 'COMPLETED') {
+                      <app-icon name="check-circle" [size]="15" />
+                    }
+                  </span>
                   <div class="step-line"></div>
                 </div>
                 <div class="step-body">
                   <div class="step-title-row">
                     <span class="step-title">{{ step.title }}</span>
                     @if (step.status === 'IN_PROGRESS') {
-                      <span class="badge current">in progress</span>
+                      <span class="ui-badge info">in progress</span>
                     } @else {
                       <span class="step-date">{{ stepStatusText(step) }}</span>
                     }
                     @if (step.mandatory) {
-                      <span class="badge required">required</span>
+                      <span class="ui-badge">required</span>
                     }
                   </div>
                   @if (step.description) {
@@ -95,7 +121,7 @@
           </div>
         </section>
 
-        <section>
+        <section class="ui-card">
           <h2 class="section-heading">Documents</h2>
           <div class="doc-list">
             @for (document of d.documents; track document.id) {
@@ -108,7 +134,7 @@
                     <div class="doc-sub">{{ document.description }}</div>
                   }
                 </div>
-                <span class="status-pill" [class]="documentPillState(document.status)">{{ statusLabel(document.status) }}</span>
+                <span class="ui-badge" [class]="documentPillState(document.status)">{{ statusLabel(document.status) }}</span>
                 @if (document.status !== 'READY') {
                   <button class="doc-action" type="button" (click)="setDocumentStatus(document, 'READY')">Mark ready</button>
                 } @else {
@@ -120,7 +146,7 @@
         </section>
 
         @if (d.fees.length > 0) {
-          <section>
+          <section class="ui-card">
             <h2 class="section-heading">Fees</h2>
             <div class="doc-list">
               @for (fee of d.fees; track fee.id) {
@@ -131,7 +157,7 @@
                       <div class="doc-sub">{{ fee.description }}</div>
                     }
                   </div>
-                  <span class="status-pill" [class]="feePillState(fee.status)">{{ statusLabel(fee.status) }}</span>
+                  <span class="ui-badge" [class]="feePillState(fee.status)">{{ statusLabel(fee.status) }}</span>
                   @if (fee.status !== 'PAID') {
                     <button class="doc-action" type="button" (click)="setFeeStatus(fee, 'PAID')">Mark paid</button>
                   } @else {
@@ -144,7 +170,7 @@
         }
 
         @if (d.sources.length > 0) {
-          <section>
+          <section class="ui-card">
             <h2 class="section-heading">Official sources</h2>
             @for (source of d.sources; track source.url) {
               <p><a class="doc-action" [href]="source.url" target="_blank" rel="noopener noreferrer">{{ source.title }}</a></p>
@@ -152,7 +178,7 @@
           </section>
         }
 
-        <section>
+        <section class="ui-card">
           <h2 class="section-heading">Recent updates</h2>
           @if (events().length === 0) {
             <p class="item-description">No activity recorded yet.</p>
@@ -169,14 +195,14 @@
         </section>
       </div>
 
-      <aside class="archive-rail">
-        <div class="rail-card">
+      <aside class="case-rail">
+        <div class="ui-card rail-card">
           <p class="rail-title">Days active</p>
           <div class="rail-big">{{ daysActive() }}</div>
           <div class="rail-sub">Since case started</div>
         </div>
 
-        <div>
+        <div class="ui-card rail-card">
           <p class="rail-title">Next up</p>
           @if (nextPendingSteps().length === 0) {
             <p class="item-description">Nothing pending - every step is complete.</p>
@@ -189,7 +215,7 @@
           }
         </div>
 
-        <div>
+        <div class="ui-card rail-card">
           <p class="rail-title">Where to go</p>
           @if (d.authorities.length === 0 && d.offices.length === 0) {
             <p class="contact-block">Once your pathway is known, its responsible office appears here.</p>

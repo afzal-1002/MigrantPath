@@ -13,6 +13,7 @@ import {
   CaseFee,
   CaseFeeStatus,
   CaseService,
+  CaseStatus,
   CaseStep,
   CaseStepStatus,
   RequirementChangeReport,
@@ -25,10 +26,30 @@ interface ApiErrorBody {
   message?: string;
 }
 
-/** The three-state pill vocabulary the "archive/paper" reference uses for both
- * documents and fees - a plain, honest re-bucketing of this app's own real statuses,
- * never a new status this page invents on its own. */
-type PillState = 'received' | 'review' | 'needed';
+/** The same shared `.ui-badge` modifier vocabulary (styles.scss) already used by
+ * case-list and the dashboard - a plain, honest re-bucketing of this app's own real
+ * statuses, never a new status this page invents on its own. Reusing it here (instead
+ * of a fourth, page-local pill palette) is the actual fix for "not user friendly" -
+ * every page in this app now shares one visual language instead of switching styles
+ * page to page. */
+type PillState = 'success' | 'warning' | 'info';
+
+/** The case's own status badge, reusing the same real CaseStatus values and the same
+ * shared `.ui-badge` vocabulary - not a new palette per page. */
+const STATUS_BADGE: Record<CaseStatus, string> = {
+  DRAFT: '',
+  PREPARING: '',
+  READY_TO_SUBMIT: 'info',
+  SUBMITTED: 'info',
+  WAITING: 'info',
+  ADDITIONAL_DOCUMENTS_REQUIRED: 'warning',
+  DECISION_RECEIVED: 'success',
+  APPROVED: 'success',
+  APPEAL: 'warning',
+  REJECTED: 'danger',
+  COMPLETED: 'success',
+  CANCELLED: 'danger',
+};
 
 /**
  * Case detail (brief §41/§58): overview, step/document/fee checklists, sources/authorities/
@@ -37,14 +58,17 @@ type PillState = 'received' | 'review' | 'needed';
  * explicit "Update to latest requirements" action that only ever runs on the user's own click
  * (brief §31/§51 - never automatic).
  *
- * UI redesign ("archive/paper" reference, visual style only): one continuous page again
- * (no tabs) - Timeline, Documents, Fees, Recent updates all in reading order, matching the
- * reference's own single-scroll structure. The reference's "Your attorney" and "Upcoming"
- * rail cards don't map onto anything real in this product (no case-manager/attorney
- * assignment, no scheduled-deadline data) - per explicit confirmation, replaced with the
- * case's real responsible-authority info and its real next pending checklist steps
- * (titles only, never an invented date) rather than either fabricating those fields or
- * silently dropping the rail entirely.
+ * UI redesign: one continuous page (no tabs) - Timeline, Documents, Fees, Recent updates
+ * all in reading order. Restyled a second time after real user feedback that the
+ * previous "archive/paper" treatment (serif type, warm cream palette, a rotated brass
+ * stamp) felt out of place next to every other page's own light/white/blue look
+ * (Dashboard, Account, the shell itself) - this page now shares that same visual
+ * language (the global `.ui-card`/`.ui-badge`/`.ui-avatar` utility classes and
+ * `--app-*` tokens) instead of its own one-off palette, which is the actual fix for
+ * "not user friendly": one consistent design system across the app, not a fourth
+ * distinct aesthetic on this one page. The right rail's real-data substitutions from
+ * the earlier pass are unchanged: responsible-authority info (no case-manager/attorney
+ * concept exists) and real next pending checklist steps, never an invented date.
  */
 @Component({
   selector: 'app-case-detail',
@@ -123,22 +147,22 @@ export class CaseDetailPage {
 
   protected documentPillState(status: CaseDocumentStatus): PillState {
     if (status === 'READY' || status === 'NOT_APPLICABLE') {
-      return 'received';
+      return 'success';
     }
     if (status === 'IN_PROGRESS') {
-      return 'review';
+      return 'info';
     }
-    return 'needed';
+    return 'warning';
   }
 
   protected feePillState(status: CaseFeeStatus): PillState {
     if (status === 'PAID' || status === 'NOT_APPLICABLE') {
-      return 'received';
+      return 'success';
     }
     if (status === 'UNKNOWN') {
-      return 'review';
+      return 'info';
     }
-    return 'needed';
+    return 'warning';
   }
 
   constructor() {
@@ -222,5 +246,9 @@ export class CaseDetailPage {
 
   protected statusLabel(status: string): string {
     return formatStatusLabel(status);
+  }
+
+  protected statusBadgeClass(status: string): string {
+    return STATUS_BADGE[status as CaseStatus] ?? '';
   }
 }
