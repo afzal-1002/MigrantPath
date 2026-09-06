@@ -24,3 +24,25 @@
   <p><a routerLink="/forgot-password">Forgot your password?</a></p>
   <p><a routerLink="/register">Need an account? Register</a></p>
 </mat-card>
+
+@if (showQuickLogin) {
+  <mat-card class="auth-card quick-login-card">
+    <p class="quick-login-warning">
+      <strong>Debug only.</strong> Visible on localhost only - real test-account passwords, remove
+      before any public deployment.
+    </p>
+    <h2>Quick login (debug)</h2>
+    @for (account of quickLoginAccounts; track account.email) {
+      <button
+        type="button"
+        class="quick-login-item"
+        [disabled]="submitting()"
+        (click)="quickLogin(account)"
+      >
+        <span class="quick-login-label">{{ account.label }}</span>
+        <span class="quick-login-desc">{{ account.description }}</span>
+        <span class="quick-login-email">{{ account.email }}</span>
+      </button>
+    }
+  </mat-card>
+}

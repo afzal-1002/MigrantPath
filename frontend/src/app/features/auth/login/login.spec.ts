@@ -62,4 +62,31 @@ describe('Login', () => {
 
     expect(component['serverError']()).toBe('Invalid email or password');
   });
+
+  // TEMPORARY debug feature (see login.ts's own doc comment) - gated behind
+  // environment.debugQuickLoginEnabled AND a localhost-only runtime check; the test
+  // runner's own default location is http://localhost/, so both gates are open here,
+  // same as they would be for the user's own local/Docker testing.
+  it('shows the quick-login panel on localhost and logs in as the chosen account', () => {
+    expect(component['showQuickLogin']).toBe(true);
+    const navigateSpy = vi.spyOn(router, 'navigateByUrl');
+
+    const adminAccount = component['quickLoginAccounts'].find((a) => a.label === 'Admin');
+    expect(adminAccount).toBeTruthy();
+    component['quickLogin'](adminAccount!);
+
+    expect(component['form'].getRawValue()).toEqual({ email: adminAccount!.email, password: adminAccount!.password });
+    const req = httpMock.expectOne(`${environment.apiBaseUrl}/auth/login`);
+    expect(req.request.body).toEqual({ email: adminAccount!.email, password: adminAccount!.password });
+    req.flush({
+      id: '1',
+      email: adminAccount!.email,
+      firstName: 'QA Admin',
+      preferredLanguage: null,
+      emailVerified: true,
+      roles: ['ADMIN'],
+    });
+
+    expect(navigateSpy).toHaveBeenCalledWith('/dashboard');
+  });
 });

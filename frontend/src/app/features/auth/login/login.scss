@@ -21,3 +21,62 @@
 .server-error {
   color: var(--mat-sys-error);
 }
+
+.quick-login-card {
+  margin-top: 16px;
+
+  h2 {
+    font-size: 0.95rem;
+    margin: 0 0 10px;
+  }
+}
+
+.quick-login-warning {
+  margin: 0 0 14px;
+  font-size: 0.78rem;
+  color: var(--app-status-warning, #a15c00);
+  background: var(--app-status-warning-bg, #fdf0dc);
+  padding: 8px 10px;
+  border-radius: 6px;
+}
+
+.quick-login-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  border: 1px solid var(--app-border, rgba(0, 0, 0, 0.12));
+  border-radius: 8px;
+  background: var(--app-surface, #fff);
+  cursor: pointer;
+  font: inherit;
+
+  &:hover:not(:disabled) {
+    background: var(--app-page-bg, #f5f6f8);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+}
+
+.quick-login-label {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.quick-login-desc {
+  font-size: 0.78rem;
+  color: var(--mat-sys-on-surface-variant, #666);
+  margin-top: 2px;
+}
+
+.quick-login-email {
+  font-size: 0.75rem;
+  color: var(--mat-sys-on-surface-variant, #888);
+  margin-top: 2px;
+}

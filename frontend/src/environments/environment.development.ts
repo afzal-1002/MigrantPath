@@ -15,4 +15,7 @@
 export const environment = {
   production: false,
   apiBaseUrl: '/api/v1',
+  // See environment.ts's own comment on debugQuickLoginEnabled - same temporary,
+  // explicitly-requested, must-remove-before-launch feature.
+  debugQuickLoginEnabled: true,
 };
