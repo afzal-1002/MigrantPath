@@ -103,6 +103,22 @@ test.describe('full admin governance lifecycle through the real UI', () => {
   });
 
   test.afterAll(async () => {
+    // Real test-hygiene fix (found via this exact test's own synthetic procedure
+    // accumulating, unarchived, in the shared dev database across many session runs,
+    // until ~50 of them were visible on the real public "Browse procedures" page):
+    // archive whatever got published here, best-effort, regardless of how far the
+    // suite actually got.
+    try {
+      const cookies = await admin.context.cookies();
+      const csrf = cookies.find((c) => c.name === 'XSRF-TOKEN')?.value;
+      if (csrf) {
+        await admin.page.request.post(`/api/v1/internal/content/procedures/${procedureCode}/versions/1/archive`, {
+          headers: { 'X-XSRF-TOKEN': csrf },
+        });
+      }
+    } catch {
+      // best-effort cleanup only - never fail the suite over it
+    }
     await editor.context.close();
     await reviewer.context.close();
     await admin.context.close();

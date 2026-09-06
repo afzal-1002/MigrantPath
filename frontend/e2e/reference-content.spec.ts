@@ -57,6 +57,19 @@ test('a real published procedure created via the content API renders on the publ
   const headers = { 'X-XSRF-TOKEN': xsrfCookie.value, 'Content-Type': 'application/json' };
   const base = '/api/v1/internal/content';
 
+  // Real test-hygiene fix (found via this exact test's own synthetic content
+  // accumulating, unarchived, in the shared dev database across many session runs,
+  // until it was visible on the real public "Browse procedures" page): archive
+  // whatever got published, in a finally, regardless of how the test itself ends.
+  try {
+    await publishAndAssert();
+  } finally {
+    await page.request
+      .post(`${base}/procedures/${procedureCode}/versions/1/archive`, { headers })
+      .catch(() => undefined);
+  }
+
+  async function publishAndAssert(): Promise<void> {
   await page.request.post(`${base}/procedures`, {
     headers,
     data: {
@@ -124,4 +137,5 @@ test('a real published procedure created via the content API renders on the publ
   await expect(page.getByText('Do the test thing')).toBeVisible();
   await expect(page.getByText('Test document')).toBeVisible();
   await expect(page.getByRole('link', { name: 'Test source (E2E)' })).toBeVisible();
+  }
 });
