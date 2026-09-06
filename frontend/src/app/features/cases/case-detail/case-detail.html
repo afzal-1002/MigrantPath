@@ -4,135 +4,85 @@
   <p role="alert" class="error">This case could not be found.</p>
   <a mat-stroked-button routerLink="/cases">Back to my cases</a>
 } @else if (detail(); as d) {
-  <nav class="breadcrumb" aria-label="Breadcrumb">
-    <a routerLink="/cases">Cases</a>
-    <app-icon name="chevron-right" [size]="14" />
-    <span aria-current="page">{{ d.procedureTitle }}</span>
-  </nav>
+  <div class="archive">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a routerLink="/cases">Cases</a>
+      <app-icon name="chevron-right" [size]="14" />
+      <span aria-current="page">{{ d.procedureTitle }}</span>
+    </nav>
 
-  <section class="hero">
-    <div class="hero-top">
+    <header class="case-header">
       <div>
         <h1 tabindex="-1">{{ d.procedureTitle }}</h1>
-        <p class="hero-sub">Case started {{ d.createdAt | date: 'mediumDate' }}</p>
-      </div>
-      <a mat-stroked-button class="hero-back" routerLink="/cases">Back to my cases</a>
-    </div>
-
-    <div class="hero-metrics">
-      <div class="hero-metric">
-        <span class="hero-metric-icon"><app-icon name="document" [size]="16" /></span>
-        <span>
-          <span class="hero-metric-label">Status</span>
-          <span class="hero-metric-value">{{ statusLabel(d.status) }}</span>
-        </span>
-      </div>
-      <div class="hero-metric">
-        <span class="hero-metric-icon"><app-icon name="check-circle" [size]="16" /></span>
-        <span>
-          <span class="hero-metric-label">Progress</span>
-          <span class="hero-metric-value">{{ progressPercent() }}%</span>
-        </span>
-      </div>
-      <div class="hero-metric">
-        <span class="hero-metric-icon"><app-icon name="calendar" [size]="16" /></span>
-        <span>
-          <span class="hero-metric-label">Days active</span>
-          <span class="hero-metric-value">{{ daysActive() }}</span>
-        </span>
-      </div>
-      @if (d.authorities.length > 0) {
-        <div class="hero-metric">
-          <span class="hero-metric-icon"><app-icon name="building" [size]="16" /></span>
-          <span>
-            <span class="hero-metric-label">Authority</span>
-            <span class="hero-metric-value">{{ d.authorities[0].name }}</span>
-          </span>
-        </div>
-      }
-    </div>
-  </section>
-
-  @if (actionError()) {
-    <p role="alert" class="error">{{ actionError() }}</p>
-  }
-
-  @if (d.hasRequirementUpdates) {
-    <section class="ui-card updates-banner" role="status">
-      <p><strong>Requirements have changed</strong> since you started this case.</p>
-      <button mat-stroked-button type="button" (click)="toggleChanges()">
-        {{ showChanges() ? 'Hide changes' : 'Review changes' }}
-      </button>
-
-      @if (showChanges() && changes(); as report) {
-        <div class="changes-review">
-          @for (change of report.changes; track change.stableCode + change.changeType) {
-            <p class="change-row" [attr.data-type]="change.changeType">
-              <strong>{{ change.changeType }}</strong> ({{ change.category }}) - {{ change.title }}: {{ change.detail }}
-            </p>
+        <div class="case-meta">
+          <span>{{ d.procedureCode }}</span>
+          <span>Started {{ d.createdAt | date: 'mediumDate' }}</span>
+          @if (d.submittedAt) {
+            <span>Submitted {{ d.submittedAt | date: 'mediumDate' }}</span>
           }
-          <p class="confirm-note">
-            Your existing progress will be preserved where possible. Changed items may be marked
-            as needing review.
-          </p>
-          <button mat-flat-button color="primary" type="button" [disabled]="upgrading()" (click)="upgrade()">
-            {{ upgrading() ? 'Updating…' : 'Update case to latest requirements' }}
-          </button>
         </div>
-      }
-    </section>
-  }
-
-  <div class="detail-layout">
-    <div class="detail-main">
-      <div class="tabs" role="tablist">
-        <button type="button" role="tab" [attr.aria-selected]="activeTab() === 'overview'" [class.active]="activeTab() === 'overview'" (click)="setTab('overview')">Overview</button>
-        <button type="button" role="tab" [attr.aria-selected]="activeTab() === 'documents'" [class.active]="activeTab() === 'documents'" (click)="setTab('documents')">Documents</button>
-        @if (d.fees.length > 0) {
-          <button type="button" role="tab" [attr.aria-selected]="activeTab() === 'fees'" [class.active]="activeTab() === 'fees'" (click)="setTab('fees')">Fees</button>
-        }
-        <button type="button" role="tab" [attr.aria-selected]="activeTab() === 'activity'" [class.active]="activeTab() === 'activity'" (click)="setTab('activity')">Activity log</button>
       </div>
+      <div class="stamp">
+        <span class="stamp-top">Status</span>
+        <span class="stamp-mid">{{ statusLabel(d.status) }}</span>
+      </div>
+    </header>
 
-      @if (activeTab() === 'overview') {
-        <div class="ui-card tab-panel">
-          <div class="progress-panel-head">
-            <div>
-              <span class="progress-eyebrow">Case progress</span>
-              <h2>Checklist progress</h2>
-              <p class="progress-sub">
-                @if (d.progress.stepsTotal > 0) {
-                  Step {{ currentStepNumber() }} of {{ d.progress.stepsTotal }} &middot;
-                }
-                {{ progressPercent() }}% complete
+    @if (actionError()) {
+      <p role="alert" class="error">{{ actionError() }}</p>
+    }
+
+    @if (d.hasRequirementUpdates) {
+      <section class="update-banner" role="status">
+        <p><strong>Requirements have changed</strong> since you started this case.</p>
+        <button mat-stroked-button type="button" (click)="toggleChanges()">
+          {{ showChanges() ? 'Hide changes' : 'Review changes' }}
+        </button>
+
+        @if (showChanges() && changes(); as report) {
+          <div class="changes-review">
+            @for (change of report.changes; track change.stableCode + change.changeType) {
+              <p class="change-row" [attr.data-type]="change.changeType">
+                <strong>{{ change.changeType }}</strong> ({{ change.category }}) - {{ change.title }}: {{ change.detail }}
               </p>
-            </div>
-            <span class="progress-percent-big">{{ progressPercent() }}%</span>
+            }
+            <p class="confirm-note">
+              Your existing progress will be preserved where possible. Changed items may be marked
+              as needing review.
+            </p>
+            <button mat-flat-button color="primary" type="button" [disabled]="upgrading()" (click)="upgrade()">
+              {{ upgrading() ? 'Updating…' : 'Update case to latest requirements' }}
+            </button>
           </div>
-          <div class="progress-bar-track"><div class="progress-bar-fill" [style.width.%]="progressPercent()"></div></div>
+        }
+      </section>
+    }
 
-          <ol class="step-timeline">
-            @for (step of d.steps; track step.id; let i = $index) {
-              <li [class.done]="step.status === 'COMPLETED'" [class.current]="step.status === 'IN_PROGRESS'">
-                <span class="step-marker">
-                  @if (step.status === 'COMPLETED') {
-                    <app-icon name="check-circle" [size]="16" />
-                  } @else {
-                    <span class="step-number">{{ i + 1 }}</span>
-                  }
-                </span>
+    <div class="archive-layout">
+      <div class="archive-main">
+        <section>
+          <h2 class="section-heading">Timeline</h2>
+          <div class="timeline">
+            @for (step of d.steps; track step.id) {
+              <div class="step" [class.done]="step.status === 'COMPLETED'" [class.current]="step.status === 'IN_PROGRESS'">
+                <div class="step-rail">
+                  <div class="step-dot"></div>
+                  <div class="step-line"></div>
+                </div>
                 <div class="step-body">
                   <div class="step-title-row">
-                    <p class="step-title">
-                      {{ step.title }}
-                      @if (step.mandatory) {
-                        <span class="ui-badge">Required</span>
-                      }
-                    </p>
-                    <span class="step-status">{{ stepStatusText(step) }}</span>
+                    <span class="step-title">{{ step.title }}</span>
+                    @if (step.status === 'IN_PROGRESS') {
+                      <span class="badge current">in progress</span>
+                    } @else {
+                      <span class="step-date">{{ stepStatusText(step) }}</span>
+                    }
+                    @if (step.mandatory) {
+                      <span class="badge required">required</span>
+                    }
                   </div>
                   @if (step.description) {
-                    <p class="item-description">{{ step.description }}</p>
+                    <p class="step-note">{{ step.description }}</p>
                   }
                   @if (step.status !== 'COMPLETED') {
                     <button mat-stroked-button type="button" (click)="setStepStatus(step, 'COMPLETED')">Mark complete</button>
@@ -140,154 +90,128 @@
                     <button mat-button type="button" (click)="setStepStatus(step, 'NOT_STARTED')">Reopen</button>
                   }
                 </div>
-              </li>
+              </div>
             }
-          </ol>
+          </div>
+        </section>
 
-          @if (d.authorities.length > 0 || d.offices.length > 0) {
-            <h2 class="section-heading">Where to go</h2>
-            @for (authority of d.authorities; track authority.code) {
-              <p>{{ authority.name }}</p>
-            }
-            @for (office of d.offices; track office.code) {
-              <p>
-                {{ office.name }}
-                @if (office.street) {
-                  , {{ office.street }} {{ office.buildingNumber }}
+        <section>
+          <h2 class="section-heading">Documents</h2>
+          <div class="doc-list">
+            @for (document of d.documents; track document.id) {
+              <div class="doc-row">
+                <div>
+                  <div class="doc-name">{{ document.name }}</div>
+                  @if (document.applicability === 'NEEDS_CONFIRMATION') {
+                    <div class="doc-sub">May be required depending on your circumstances</div>
+                  } @else if (document.description) {
+                    <div class="doc-sub">{{ document.description }}</div>
+                  }
+                </div>
+                <span class="status-pill" [class]="documentPillState(document.status)">{{ statusLabel(document.status) }}</span>
+                @if (document.status !== 'READY') {
+                  <button class="doc-action" type="button" (click)="setDocumentStatus(document, 'READY')">Mark ready</button>
+                } @else {
+                  <button class="doc-action" type="button" (click)="setDocumentStatus(document, 'IN_PROGRESS')">Reopen</button>
                 }
-              </p>
+              </div>
             }
-          }
+          </div>
+        </section>
 
-          @if (d.sources.length > 0) {
+        @if (d.fees.length > 0) {
+          <section>
+            <h2 class="section-heading">Fees</h2>
+            <div class="doc-list">
+              @for (fee of d.fees; track fee.id) {
+                <div class="doc-row">
+                  <div>
+                    <div class="doc-name">{{ fee.amount }} {{ fee.currency }}</div>
+                    @if (fee.description) {
+                      <div class="doc-sub">{{ fee.description }}</div>
+                    }
+                  </div>
+                  <span class="status-pill" [class]="feePillState(fee.status)">{{ statusLabel(fee.status) }}</span>
+                  @if (fee.status !== 'PAID') {
+                    <button class="doc-action" type="button" (click)="setFeeStatus(fee, 'PAID')">Mark paid</button>
+                  } @else {
+                    <button class="doc-action" type="button" (click)="setFeeStatus(fee, 'NOT_PAID')">Undo</button>
+                  }
+                </div>
+              }
+            </div>
+          </section>
+        }
+
+        @if (d.sources.length > 0) {
+          <section>
             <h2 class="section-heading">Official sources</h2>
             @for (source of d.sources; track source.url) {
-              <p><a [href]="source.url" target="_blank" rel="noopener noreferrer">{{ source.title }}</a></p>
+              <p><a class="doc-action" [href]="source.url" target="_blank" rel="noopener noreferrer">{{ source.title }}</a></p>
             }
-          }
-        </div>
-      }
+          </section>
+        }
 
-      @if (activeTab() === 'documents') {
-        <div class="ui-card tab-panel">
-          <h2>Documents</h2>
-          @for (document of d.documents; track document.id) {
-            <div class="checklist-item">
-              <p>
-                <strong>{{ document.name }}</strong> - {{ statusLabel(document.status) }}
-                @if (document.applicability === 'NEEDS_CONFIRMATION') {
-                  <span class="ui-badge warning">May be required depending on your circumstances</span>
-                } @else if (document.mandatory) {
-                  <span class="ui-badge">Required</span>
-                }
-              </p>
-              @if (document.description) {
-                <p class="item-description">{{ document.description }}</p>
-              }
-              @if (document.status !== 'READY') {
-                <button mat-stroked-button type="button" (click)="setDocumentStatus(document, 'READY')">Mark ready</button>
-              } @else {
-                <button mat-button type="button" (click)="setDocumentStatus(document, 'IN_PROGRESS')">Reopen</button>
-              }
-            </div>
-          }
-        </div>
-      }
-
-      @if (activeTab() === 'fees' && d.fees.length > 0) {
-        <div class="ui-card tab-panel">
-          <h2>Fees</h2>
-          @for (fee of d.fees; track fee.id) {
-            <div class="checklist-item">
-              <p><strong>{{ fee.amount }} {{ fee.currency }}</strong> - {{ statusLabel(fee.status) }}</p>
-              @if (fee.description) {
-                <p class="item-description">{{ fee.description }}</p>
-              }
-              @if (fee.status !== 'PAID') {
-                <button mat-stroked-button type="button" (click)="setFeeStatus(fee, 'PAID')">Mark paid</button>
-              } @else {
-                <button mat-button type="button" (click)="setFeeStatus(fee, 'NOT_PAID')">Undo</button>
-              }
-            </div>
-          }
-        </div>
-      }
-
-      @if (activeTab() === 'activity') {
-        <div class="ui-card tab-panel">
-          <h2>Activity log</h2>
+        <section>
+          <h2 class="section-heading">Recent updates</h2>
           @if (events().length === 0) {
             <p class="item-description">No activity recorded yet.</p>
           } @else {
-            <ul class="activity-list">
+            <div>
               @for (event of events(); track event.occurredAt + event.eventType) {
-                <li>
-                  <span class="activity-icon"><app-icon name="info" [size]="14" /></span>
-                  <span class="activity-text">
-                    <span>{{ statusLabel(event.eventType) }}</span>
-                    <span class="activity-date">{{ event.occurredAt | date: 'medium' }}</span>
-                  </span>
-                </li>
+                <div class="update-row">
+                  <div class="update-date">{{ event.occurredAt | date: 'MMM d, y' }}</div>
+                  <div class="update-text">{{ statusLabel(event.eventType) }}</div>
+                </div>
               }
-            </ul>
+            </div>
+          }
+        </section>
+      </div>
+
+      <aside class="archive-rail">
+        <div class="rail-card">
+          <p class="rail-title">Days active</p>
+          <div class="rail-big">{{ daysActive() }}</div>
+          <div class="rail-sub">Since case started</div>
+        </div>
+
+        <div>
+          <p class="rail-title">Next up</p>
+          @if (nextPendingSteps().length === 0) {
+            <p class="item-description">Nothing pending - every step is complete.</p>
+          } @else {
+            @for (step of nextPendingSteps(); track step.id) {
+              <div class="next-item">
+                <span>{{ step.title }}</span>
+              </div>
+            }
           }
         </div>
-      }
+
+        <div>
+          <p class="rail-title">Where to go</p>
+          @if (d.authorities.length === 0 && d.offices.length === 0) {
+            <p class="contact-block">Once your pathway is known, its responsible office appears here.</p>
+          } @else {
+            <div class="contact-block">
+              @for (authority of d.authorities; track authority.code) {
+                <span class="name">{{ authority.name }}</span>
+                @if (authority.officialWebsite) {
+                  <br /><a [href]="authority.officialWebsite" target="_blank" rel="noopener noreferrer">Official website</a>
+                }
+                <br />
+              }
+              @for (office of d.offices; track office.code) {
+                {{ office.name }}
+                @if (office.street) {
+                  <br />{{ office.street }} {{ office.buildingNumber }}
+                }
+              }
+            </div>
+          }
+        </div>
+      </aside>
     </div>
-
-    <aside class="detail-side">
-      <div class="ui-card side-card">
-        <h2>Case overview</h2>
-        <div class="overview-row">
-          <span class="overview-icon"><app-icon name="document" [size]="15" /></span>
-          <span class="overview-text">
-            <span class="overview-label">Documents</span>
-            <span class="overview-value">{{ d.progress.documentsReady }} of {{ d.progress.documentsTotal }} provided</span>
-          </span>
-        </div>
-        <div class="overview-row">
-          <span class="overview-icon"><app-icon name="check-circle" [size]="15" /></span>
-          <span class="overview-text">
-            <span class="overview-label">Steps</span>
-            <span class="overview-value">{{ d.progress.stepsCompleted }} of {{ d.progress.stepsTotal }} completed</span>
-          </span>
-        </div>
-        <div class="overview-row">
-          <span class="overview-icon"><app-icon name="calendar" [size]="15" /></span>
-          <span class="overview-text">
-            <span class="overview-label">Days active</span>
-            <span class="overview-value">{{ daysActive() }} since intake</span>
-          </span>
-        </div>
-        @if (d.submittedAt) {
-          <div class="overview-row">
-            <span class="overview-icon"><app-icon name="calendar" [size]="15" /></span>
-            <span class="overview-text">
-              <span class="overview-label">Submitted</span>
-              <span class="overview-value">{{ d.submittedAt | date: 'mediumDate' }}</span>
-            </span>
-          </div>
-        }
-      </div>
-
-      <div class="ui-card side-card">
-        <h2>Recent activity</h2>
-        @if (events().length === 0) {
-          <p class="item-description">No activity yet.</p>
-        } @else {
-          <ul class="activity-list compact">
-            @for (event of events().slice(0, 5); track event.occurredAt + event.eventType) {
-              <li>
-                <span class="activity-icon"><app-icon name="info" [size]="13" /></span>
-                <span class="activity-text">
-                  <span>{{ statusLabel(event.eventType) }}</span>
-                  <span class="activity-date">{{ event.occurredAt | date: 'shortDate' }}</span>
-                </span>
-              </li>
-            }
-          </ul>
-        }
-      </div>
-    </aside>
   </div>
 }

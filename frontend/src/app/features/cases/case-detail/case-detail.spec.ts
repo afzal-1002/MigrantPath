@@ -91,7 +91,7 @@ function flushEvents(httpMock: HttpTestingController, events: { eventType: strin
 }
 
 describe('CaseDetailPage', () => {
-  it('renders the checklist and documents once loaded, tab by tab', async () => {
+  it('renders the timeline and documents together on one continuous page (no tabs)', async () => {
     const { fixture, httpMock } = await setUp();
     fixture.detectChanges();
 
@@ -99,13 +99,9 @@ describe('CaseDetailPage', () => {
     flushEvents(httpMock);
     fixture.detectChanges();
 
-    // The step timeline is part of the default 'overview' tab (merged with what used
-    // to be a separate 'checklist' tab, matching the reference's own "Petition
-    // Progress" landing view).
+    // Archive-reference redesign: Timeline, Documents, Fees, and Recent updates all
+    // render together in reading order - no tab-switching required to see any of them.
     expect(fixture.nativeElement.textContent).toContain('Prepare documents');
-
-    fixture.componentInstance['setTab']('documents');
-    fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Passport');
 
     httpMock.verify();
@@ -146,18 +142,15 @@ describe('CaseDetailPage', () => {
     httpMock.verify();
   });
 
-  it('shows a real recent-activity feed in the sidebar and the full activity log tab', async () => {
+  it('shows the real recent-updates feed under "Recent updates"', async () => {
     const { fixture, httpMock } = await setUp();
     fixture.detectChanges();
     httpMock.expectOne(BASE).flush(detail());
     flushEvents(httpMock, [{ eventType: 'CASE_CREATED', occurredAt: '2026-09-03T00:00:00Z', metadata: null }]);
     fixture.detectChanges();
 
+    expect(fixture.nativeElement.textContent).toContain('Recent updates');
     expect(fixture.nativeElement.textContent).toContain('Case created');
-
-    fixture.componentInstance['setTab']('activity');
-    fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Activity log');
     httpMock.verify();
   });
 

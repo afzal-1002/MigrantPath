@@ -103,7 +103,9 @@ test('Scenario 1: work branch end to end, completes, analyzes with a real produc
   await workCard.getByRole('button', { name: 'Start this pathway' }).click();
   await expect(page).toHaveURL(/\/cases\/[0-9a-f-]+$/);
   await expect(page.getByRole('heading', { name: 'Temporary residence and work' })).toBeVisible();
-  await expect(page.getByText(/Steps?/).first()).toBeVisible();
+  // Post-MVP UX Milestone UX1 (archive-style redesign) - the case's real checklist is
+  // now a "Timeline" section (no more literal "Steps: X/Y" text on the page).
+  await expect(page.getByText('Timeline', { exact: true })).toBeVisible();
 
   await page.goto('/dashboard');
   // Post-MVP UX Milestone UX1 (redesign pass) - "My Cases" is now an icon-only rail

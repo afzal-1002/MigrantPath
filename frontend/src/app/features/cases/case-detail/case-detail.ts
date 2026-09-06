@@ -25,7 +25,10 @@ interface ApiErrorBody {
   message?: string;
 }
 
-type CaseDetailTab = 'overview' | 'documents' | 'fees' | 'activity';
+/** The three-state pill vocabulary the "archive/paper" reference uses for both
+ * documents and fees - a plain, honest re-bucketing of this app's own real statuses,
+ * never a new status this page invents on its own. */
+type PillState = 'received' | 'review' | 'needed';
 
 /**
  * Case detail (brief §41/§58): overview, step/document/fee checklists, sources/authorities/
@@ -33,6 +36,15 @@ type CaseDetailTab = 'overview' | 'documents' | 'fees' | 'activity';
  * updates} route - see PHASE_8_REPORT.md "Deviations") a requirement-updates review with an
  * explicit "Update to latest requirements" action that only ever runs on the user's own click
  * (brief §31/§51 - never automatic).
+ *
+ * UI redesign ("archive/paper" reference, visual style only): one continuous page again
+ * (no tabs) - Timeline, Documents, Fees, Recent updates all in reading order, matching the
+ * reference's own single-scroll structure. The reference's "Your attorney" and "Upcoming"
+ * rail cards don't map onto anything real in this product (no case-manager/attorney
+ * assignment, no scheduled-deadline data) - per explicit confirmation, replaced with the
+ * case's real responsible-authority info and its real next pending checklist steps
+ * (titles only, never an invented date) rather than either fabricating those fields or
+ * silently dropping the rail entirely.
  */
 @Component({
   selector: 'app-case-detail',
@@ -53,7 +65,6 @@ export class CaseDetailPage {
   protected readonly showChanges = signal(false);
   protected readonly upgrading = signal(false);
   protected readonly actionError = signal<string | null>(null);
-  protected readonly activeTab = signal<CaseDetailTab>('overview');
 
   /** Checklist-completion only (steps + documents), matching the dashboard's own
    * definition exactly - never a legal-probability or eligibility percentage. */
@@ -99,6 +110,37 @@ export class CaseDetailPage {
     return 'Pending';
   }
 
+  /** Right rail "Next up" (visual style only - real titles, never a fabricated date;
+   * see this class's own doc comment on why this replaces the reference's "Your
+   * attorney"/"Upcoming" cards). */
+  protected readonly nextPendingSteps = computed(() => {
+    const d = this.detail();
+    if (!d) {
+      return [];
+    }
+    return d.steps.filter((s) => s.status !== 'COMPLETED').slice(0, 4);
+  });
+
+  protected documentPillState(status: CaseDocumentStatus): PillState {
+    if (status === 'READY' || status === 'NOT_APPLICABLE') {
+      return 'received';
+    }
+    if (status === 'IN_PROGRESS') {
+      return 'review';
+    }
+    return 'needed';
+  }
+
+  protected feePillState(status: CaseFeeStatus): PillState {
+    if (status === 'PAID' || status === 'NOT_APPLICABLE') {
+      return 'received';
+    }
+    if (status === 'UNKNOWN') {
+      return 'review';
+    }
+    return 'needed';
+  }
+
   constructor() {
     if (!this.caseId) {
       this.notFound.set(true);
@@ -126,10 +168,6 @@ export class CaseDetailPage {
       next: (events) => this.events.set(events),
       error: () => this.events.set([]),
     });
-  }
-
-  protected setTab(tab: CaseDetailTab): void {
-    this.activeTab.set(tab);
   }
 
   protected toggleChanges(): void {
