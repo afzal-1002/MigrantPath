@@ -1,42 +1,37 @@
 <div class="shell">
   <nav class="rail" aria-label="Primary">
-    <a routerLink="/dashboard" class="rail-brand" aria-label="Foreigner Guide - Dashboard">
+    <a routerLink="/dashboard" class="rail-brand">
       <span class="brand-mark" aria-hidden="true">FG</span>
-      <span class="rail-tooltip">Foreigner Guide</span>
+      <span class="brand-text">Foreigner Guide</span>
     </a>
 
     <ul class="rail-nav">
       @for (item of navItems; track item.path) {
         <li>
-          <a
-            [routerLink]="item.path"
-            routerLinkActive="active"
-            [routerLinkActiveOptions]="{ exact: false }"
-            [attr.aria-label]="item.label"
-          >
+          <a [routerLink]="item.path" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: false }">
             <app-icon [name]="item.icon" [size]="19" />
-            <span class="rail-tooltip">{{ item.label }}</span>
+            <span>{{ item.label }}</span>
           </a>
         </li>
       }
       <li>
-        <a [routerLink]="recommendationsLink()" routerLinkActive="active" aria-label="Recommendations">
+        <a [routerLink]="recommendationsLink()" routerLinkActive="active">
           <app-icon name="recommendations" [size]="19" />
-          <span class="rail-tooltip">Recommendations</span>
+          <span>Recommendations</span>
         </a>
       </li>
     </ul>
 
     <div class="rail-bottom">
       @if (isContentAdmin()) {
-        <a routerLink="/admin" aria-label="Administration">
+        <a routerLink="/admin">
           <app-icon name="admin" [size]="19" />
-          <span class="rail-tooltip">Administration</span>
+          <span>Administration</span>
         </a>
       }
-      <button type="button" (click)="logout()" aria-label="Logout">
+      <button type="button" (click)="logout()">
         <app-icon name="logout" [size]="19" />
-        <span class="rail-tooltip">Logout</span>
+        <span>Log out</span>
       </button>
     </div>
   </nav>

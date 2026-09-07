@@ -28,12 +28,14 @@ const PRIMARY_NAV: NavItem[] = [
 ];
 
 /**
- * Post-MVP UX Milestone UX1 (redesign pass) - the real authenticated application shell,
- * rebuilt around a thin (`--app-rail-width`, 64px) icon-only rail + a slim header,
- * replacing pass 1's wide labeled sidebar (brief §2/§3: "very close to" the reference
- * screenshot's own dense, icon-rail structure). Every icon is self-hosted inline SVG via
- * {@link Icon} - `mat-icon`'s ligature font is unusable under this app's CSP (`font-src
- * 'self'`, no icon font bundled - frontend/src/index.html's own Phase 13 finding).
+ * Post-MVP UX Milestone UX1 (redesign pass) - the real authenticated application shell:
+ * a full-width (`--app-nav-width`, 232px) sidebar with an icon and a text label on every
+ * item. A brief icon-only-with-hover-tooltip variant was tried in between and reversed
+ * on direct follow-up feedback - guessing what a bare icon means cost more in
+ * scannability than the ~160px it saved on a wide monitor was worth. Every icon is
+ * self-hosted inline SVG via {@link Icon} - `mat-icon`'s ligature font is unusable under
+ * this app's CSP (`font-src 'self'`, no icon font bundled - frontend/src/index.html's
+ * own Phase 13 finding).
  *
  * Fetches the same dashboard summary the Dashboard page itself renders (brief §27's
  * "prefer one endpoint" extends here too - the shell reuses it rather than adding a

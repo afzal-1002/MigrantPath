@@ -4,27 +4,23 @@
   background: var(--app-page-bg);
 }
 
-// --- desktop sidebar: icon-only rail, labels revealed on hover ---
+// --- desktop sidebar: full-width rail, icon + text label on every item ---
 //
-// Post-MVP UX pass: the previous version showed every label inline, permanently
-// widening the rail. Per direct user feedback this rail is now icon-only - a real
-// route/label pair still exists per item (aria-label on the link, for screen readers
-// and the accessibility tree) but the text is visually hidden until hovered, where it
-// appears as a floating tooltip (.rail-tooltip below). This is a real affordance change,
-// not decoration removed: nothing here is invented, every icon still routes to the same
-// real page it always did.
-$rail-width: 72px;
-
+// Post-MVP UX pass, reversed back from a brief icon-only-with-hover-tooltip
+// experiment per direct follow-up feedback ("guessing what an icon means" /
+// "ultra-wide monitors" - icon-only cost more in scannability than it saved in
+// width). Back to `var(--app-nav-width)` (232px, this app's own established token,
+// unused but left in place during the icon-only pass for exactly this reason) with
+// every item's real label always visible - no tooltip mechanism needed any more.
 .rail {
-  width: $rail-width;
-  flex: 0 0 $rail-width;
+  width: var(--app-nav-width);
+  flex: 0 0 var(--app-nav-width);
   background: var(--app-nav-bg);
   color: var(--app-nav-fg);
   border-right: 1px solid var(--app-nav-border);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: var(--app-space-sm) 0;
+  padding: var(--app-space-sm) var(--app-space-sm);
 
   @media (max-width: 900px) {
     display: none;
@@ -34,20 +30,19 @@ $rail-width: 72px;
 .rail-brand {
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: var(--app-space-sm) 0 var(--app-space-md);
+  gap: 10px;
+  padding: var(--app-space-sm) var(--app-space-sm) var(--app-space-md);
   margin-bottom: var(--app-space-xs);
   text-decoration: none;
   color: inherit;
-  position: relative;
 }
 
 .brand-mark {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   border-radius: 9px;
   background: var(--app-primary);
   color: #fff;
@@ -56,47 +51,41 @@ $rail-width: 72px;
   flex: 0 0 auto;
 }
 
+.brand-text {
+  font-weight: 700;
+  font-size: 0.98rem;
+  color: #fff;
+  white-space: nowrap;
+}
+
 .rail-nav {
   list-style: none;
   margin: 0;
   padding: 0;
-  width: 100%;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 4px;
+  gap: 2px;
   flex: 1 1 auto;
-  // No overflow-y here on purpose: per the CSS overflow spec, an axis set to
-  // 'auto'/'hidden' forces the *other* axis's 'visible' to compute as 'auto' too, which
-  // would silently clip .rail-tooltip (it escapes to the right, past this element's own
-  // box) even while its opacity/visibility looked correct in devtools. The icon-only
-  // rail's real content (8 items) comfortably fits real viewports without scrolling, so
-  // this trades a defensive-but-now-unneeded scrollbar for tooltips that actually render.
-
-  li {
-    width: 100%;
-    display: flex;
-    justify-content: center;
-  }
+  overflow-y: auto;
 
   a {
-    position: relative;
     display: flex;
     align-items: center;
-    justify-content: center;
-    width: 44px;
-    height: 44px;
-    border-radius: 10px;
+    gap: 12px;
+    padding: 9px 12px;
+    border-radius: 8px;
     border-left: 3px solid transparent;
     color: var(--app-nav-fg);
     text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 500;
 
     &:hover {
       background: rgba(255, 255, 255, 0.06);
     }
 
-    // "Eviza" reference's own signature detail - a colored vertical accent bar on the
-    // active item, on top of (not instead of) the tinted active background.
+    // A colored vertical accent bar on the active item, on top of (not instead of) the
+    // tinted active background.
     &.active {
       background: var(--app-nav-active-bg);
       border-left-color: var(--app-nav-accent);
@@ -109,82 +98,31 @@ $rail-width: 72px;
 .rail-bottom {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 4px;
+  gap: 2px;
   padding-top: var(--app-space-sm);
-  margin-top: var(--app-space-sm);
   border-top: 1px solid var(--app-nav-border);
-  width: 100%;
 
   a,
   button {
-    position: relative;
     display: flex;
     align-items: center;
-    justify-content: center;
-    width: 44px;
-    height: 44px;
-    border-radius: 10px;
+    gap: 12px;
+    padding: 9px 12px;
+    border-radius: 8px;
     color: var(--app-nav-fg);
     background: transparent;
     border: none;
     cursor: pointer;
     font: inherit;
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-align: left;
     text-decoration: none;
 
     &:hover {
       background: rgba(255, 255, 255, 0.06);
     }
   }
-}
-
-// Floating label shown only on hover/focus of the icon that owns it - keeps the rail
-// icon-only at rest while still surfacing every item's real name, with no text baked
-// permanently into the layout.
-.rail-tooltip {
-  position: absolute;
-  left: calc(100% + 12px);
-  top: 50%;
-  transform: translate(-6px, -50%);
-  background: #0f172a;
-  color: #fff;
-  padding: 6px 12px;
-  border-radius: 7px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  white-space: nowrap;
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transition:
-    opacity 0.14s ease,
-    transform 0.14s ease,
-    visibility 0.14s;
-  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.28);
-  z-index: 30;
-
-  &::before {
-    content: '';
-    position: absolute;
-    right: 100%;
-    top: 50%;
-    transform: translateY(-50%);
-    border: 5px solid transparent;
-    border-right-color: #0f172a;
-  }
-}
-
-.rail-brand:hover .rail-tooltip,
-.rail-brand:focus-visible .rail-tooltip,
-.rail-nav a:hover .rail-tooltip,
-.rail-nav a:focus-visible .rail-tooltip,
-.rail-bottom a:hover .rail-tooltip,
-.rail-bottom a:focus-visible .rail-tooltip,
-.rail-bottom button:hover .rail-tooltip,
-.rail-bottom button:focus-visible .rail-tooltip {
-  opacity: 1;
-  visibility: visible;
-  transform: translate(0, -50%);
 }
 
 // --- mobile drawer (light, matching the redesigned sidebar) ---
