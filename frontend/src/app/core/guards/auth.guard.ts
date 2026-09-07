@@ -1,5 +1,5 @@
 import { inject } from '@angular/core';
-import { CanActivateFn, Router } from '@angular/router';
+import { CanActivateFn, CanMatchFn, Router } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 
 /**
@@ -17,3 +17,15 @@ export const authGuard: CanActivateFn = () => {
   }
   return router.parseUrl('/login');
 };
+
+/**
+ * Post-MVP UX pass - a `canMatch` sibling to {@link authGuard} for the one route
+ * (Procedures) that legitimately exists twice: once under the public `Shell` (for an
+ * anonymous visitor) and once under the authenticated `AppShell` (so a logged-in user
+ * stays inside their own rail/topbar instead of being dropped back into the public
+ * layout - see app.routes.ts's own comment on the duplication). `canMatch` (unlike
+ * `canActivate`) failing here doesn't block navigation - it just tells the router "this
+ * candidate route doesn't match, try the next sibling config", which is exactly what
+ * lets the anonymous version of `/procedures` take over when this one declines.
+ */
+export const authMatchGuard: CanMatchFn = () => inject(AuthService).isAuthenticated();

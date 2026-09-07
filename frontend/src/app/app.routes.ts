@@ -1,7 +1,7 @@
 import { Routes } from '@angular/router';
 import { adminGuard } from './core/guards/admin.guard';
-import { authGuard } from './core/guards/auth.guard';
-import { guestGuard } from './core/guards/guest.guard';
+import { authGuard, authMatchGuard } from './core/guards/auth.guard';
+import { guestGuard, guestMatchGuard } from './core/guards/guest.guard';
 
 // Auth + dashboard routes for Phase 2 (docs/architecture/ARCHITECTURE.md §10) - real
 // feature routes (assessment, procedures, cases, admin, ...) are lazy-loaded as each
@@ -74,12 +74,22 @@ export const routes: Routes = [
         // Phase 4 "Browse procedures" - the product's "I know what I need" journey
         // (brief §69), public and unauthenticated like the reference routes above. The
         // "Help me choose" questionnaire is a separate route arriving in Phase 5-7.
+        //
+        // Post-MVP UX pass - a real bug found and fixed here: an authenticated user
+        // clicking "Procedures" from the AppShell rail landed on THIS route (the only
+        // one that existed), which swapped them out of their own rail/topbar into the
+        // public Shell entirely - a jarring, inconsistent-looking navigation for someone
+        // who never left the authenticated app. `guestMatchGuard` here makes this
+        // specific route decline to match once logged in, so the router falls through
+        // to the AppShell-wrapped duplicate below instead - see its own comment.
         path: 'procedures',
+        canMatch: [guestMatchGuard],
         loadComponent: () =>
           import('./features/procedures/procedure-list/procedure-list').then((m) => m.ProcedureList),
       },
       {
         path: 'procedures/:code',
+        canMatch: [guestMatchGuard],
         loadComponent: () =>
           import('./features/procedures/procedure-detail/procedure-detail').then((m) => m.ProcedureDetailPage),
       },
@@ -162,6 +172,23 @@ export const routes: Routes = [
         path: 'account',
         data: { noIndex: true },
         loadComponent: () => import('./features/account/account').then((m) => m.Account),
+      },
+      {
+        // Same real page as the public Shell's "procedures" route above, wrapped in the
+        // authenticated shell instead - `authMatchGuard` only lets this copy match once
+        // logged in, and `guestMatchGuard` on the public copy yields to it at that point
+        // (see the comment there for the full rationale). Nothing about the content,
+        // guarding rules, or data differs between the two - only which layout renders it.
+        path: 'procedures',
+        canMatch: [authMatchGuard],
+        loadComponent: () =>
+          import('./features/procedures/procedure-list/procedure-list').then((m) => m.ProcedureList),
+      },
+      {
+        path: 'procedures/:code',
+        canMatch: [authMatchGuard],
+        loadComponent: () =>
+          import('./features/procedures/procedure-detail/procedure-detail').then((m) => m.ProcedureDetailPage),
       },
       {
         // Phase 8 "My Cases" (brief §40/§41) - ownership is independently enforced

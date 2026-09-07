@@ -275,7 +275,16 @@ $rail-width: 72px;
   grid-template-columns: minmax(40px, 1fr) minmax(220px, 460px) minmax(40px, 1fr);
   align-items: center;
   column-gap: var(--app-space-md);
-  height: 72px;
+  // `flex: 0 0 80px` (not a plain `height: 80px`) on purpose - a real bug found while
+  // verifying this pass: `.shell-main` is a flex column, and a flex item with no
+  // explicit flex-shrink defaults to shrinkable. On any route whose content plus this
+  // bar exceeded the 100vh column (e.g. the Dashboard, but not the shorter Cases list),
+  // the browser was silently squeezing this bar down to ~42px instead of its intended
+  // height - real height, not a screenshot artifact, confirmed via getBoundingClientRect
+  // on the live deployed page. `flex-shrink: 0` (folded into the shorthand below) keeps
+  // it at a fixed 80px on every route; `.app-content`'s own `flex: 1 1 auto` is what
+  // absorbs the rest and scrolls.
+  flex: 0 0 80px;
   padding: 0 var(--app-space-lg);
   background: var(--app-header-gradient);
   color: #0f172a;
