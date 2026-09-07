@@ -71,42 +71,74 @@
 }
 
 .stat-card {
+  position: relative;
+  overflow: hidden;
   background: var(--app-surface);
   border: 1px solid var(--dash-border);
-  border-radius: 12px;
+  border-radius: 14px;
   padding: 18px 20px;
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 16px;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    border-color 0.15s ease;
+
+  // A slim top accent, tinted per card below, so each tile reads as its own "kind" of
+  // number even before the icon color registers.
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 3px;
+  }
+
+  &:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 24px rgba(16, 24, 40, 0.09);
+    border-color: var(--dash-border-strong);
+  }
+}
+.stat-card.blue::before {
+  background: var(--dash-primary);
+}
+.stat-card.amber::before {
+  background: var(--dash-warning);
+}
+.stat-card.green::before {
+  background: var(--dash-success);
 }
 
 .stat-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
+  box-shadow: inset 0 0 0 1px rgba(16, 24, 40, 0.04);
 }
 .stat-icon.blue {
-  background: var(--dash-primary-soft);
+  background: linear-gradient(135deg, var(--dash-primary-soft), #d9e4fb);
   color: var(--dash-primary);
 }
 .stat-icon.amber {
-  background: var(--dash-warning-soft);
+  background: linear-gradient(135deg, var(--dash-warning-soft), #f9e4b8);
   color: var(--dash-warning);
 }
 .stat-icon.green {
-  background: var(--dash-success-soft);
+  background: linear-gradient(135deg, var(--dash-success-soft), #cfeddc);
   color: var(--dash-success);
 }
 
 .stat-value {
   display: block;
-  font-size: 1.2rem;
+  font-size: 1.35rem;
   font-weight: 700;
   line-height: 1.1;
+  letter-spacing: -0.2px;
 }
 
 .stat-label {
@@ -366,7 +398,7 @@
 .progress-fill {
   height: 100%;
   border-radius: 20px;
-  background: var(--dash-primary);
+  background: linear-gradient(90deg, var(--dash-primary), #5b83e8);
 }
 
 .progress-num {

@@ -27,22 +27,22 @@
 
     <div class="metrics-row">
       <div class="metric">
-        <span class="metric-icon"><app-icon name="check-circle" [size]="17" /></span>
+        <span class="metric-icon blue"><app-icon name="check-circle" [size]="17" /></span>
         <span><span class="metric-value">{{ progressPercent() }}%</span><span class="metric-label">Progress</span></span>
       </div>
       <div class="metric">
-        <span class="metric-icon"><app-icon name="calendar" [size]="17" /></span>
+        <span class="metric-icon purple"><app-icon name="calendar" [size]="17" /></span>
         <span><span class="metric-value">{{ daysActive() }}</span><span class="metric-label">Days active</span></span>
       </div>
       <div class="metric">
-        <span class="metric-icon"><app-icon name="document" [size]="17" /></span>
+        <span class="metric-icon amber"><app-icon name="document" [size]="17" /></span>
         <span
           ><span class="metric-value">{{ d.progress.stepsCompleted }}/{{ d.progress.stepsTotal }}</span
           ><span class="metric-label">Steps</span></span
         >
       </div>
       <div class="metric">
-        <span class="metric-icon"><app-icon name="procedures" [size]="17" /></span>
+        <span class="metric-icon green"><app-icon name="procedures" [size]="17" /></span>
         <span
           ><span class="metric-value">{{ d.progress.documentsReady }}/{{ d.progress.documentsTotal }}</span
           ><span class="metric-label">Documents</span></span

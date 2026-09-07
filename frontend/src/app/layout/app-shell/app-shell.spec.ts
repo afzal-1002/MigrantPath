@@ -61,7 +61,7 @@ describe('AppShell', () => {
 
   afterEach(() => httpMock.verify());
 
-  it('renders every primary navigation item as a labeled sidebar link', () => {
+  it('renders every primary navigation item as an icon link with its label available (hover tooltip text)', () => {
     fixture.detectChanges();
     flushDashboard();
     fixture.detectChanges();

@@ -18,21 +18,21 @@
     </header>
 
     <section class="stats-row" aria-label="Summary">
-      <div class="stat-card">
+      <div class="stat-card blue">
         <span class="stat-icon blue"><app-icon name="cases" [size]="19" /></span>
         <span>
           <span class="stat-value">{{ activeCaseCount() }}</span>
           <span class="stat-label">Active application{{ activeCaseCount() === 1 ? '' : 's' }}</span>
         </span>
       </div>
-      <div class="stat-card">
+      <div class="stat-card amber">
         <span class="stat-icon amber"><app-icon name="pathway" [size]="19" /></span>
         <span>
           <span class="stat-value">{{ attentionCount() }}</span>
           <span class="stat-label">Action needed</span>
         </span>
       </div>
-      <div class="stat-card">
+      <div class="stat-card green">
         <span class="stat-icon green"><app-icon name="check-circle" [size]="19" /></span>
         <span>
           <span class="stat-value">{{ completedMilestoneCount() }}</span>

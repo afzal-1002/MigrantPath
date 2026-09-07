@@ -1,37 +1,42 @@
 <div class="shell">
   <nav class="rail" aria-label="Primary">
-    <a routerLink="/dashboard" class="rail-brand">
+    <a routerLink="/dashboard" class="rail-brand" aria-label="Foreigner Guide - Dashboard">
       <span class="brand-mark" aria-hidden="true">FG</span>
-      <span class="brand-text">Foreigner Guide</span>
+      <span class="rail-tooltip">Foreigner Guide</span>
     </a>
 
     <ul class="rail-nav">
       @for (item of navItems; track item.path) {
         <li>
-          <a [routerLink]="item.path" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: false }">
+          <a
+            [routerLink]="item.path"
+            routerLinkActive="active"
+            [routerLinkActiveOptions]="{ exact: false }"
+            [attr.aria-label]="item.label"
+          >
             <app-icon [name]="item.icon" [size]="19" />
-            <span>{{ item.label }}</span>
+            <span class="rail-tooltip">{{ item.label }}</span>
           </a>
         </li>
       }
       <li>
-        <a [routerLink]="recommendationsLink()" routerLinkActive="active">
+        <a [routerLink]="recommendationsLink()" routerLinkActive="active" aria-label="Recommendations">
           <app-icon name="recommendations" [size]="19" />
-          <span>Recommendations</span>
+          <span class="rail-tooltip">Recommendations</span>
         </a>
       </li>
     </ul>
 
     <div class="rail-bottom">
       @if (isContentAdmin()) {
-        <a routerLink="/admin">
+        <a routerLink="/admin" aria-label="Administration">
           <app-icon name="admin" [size]="19" />
-          <span>Administration</span>
+          <span class="rail-tooltip">Administration</span>
         </a>
       }
-      <button type="button" (click)="logout()">
+      <button type="button" (click)="logout()" aria-label="Logout">
         <app-icon name="logout" [size]="19" />
-        <span>Logout</span>
+        <span class="rail-tooltip">Logout</span>
       </button>
     </div>
   </nav>
@@ -78,9 +83,11 @@
 
   <div class="shell-main">
     <header class="topbar">
-      <button type="button" class="icon-btn mobile-menu-btn" (click)="mobileNavOpen.set(true)" aria-label="Open navigation">
-        <app-icon name="menu" />
-      </button>
+      <div class="topbar-start">
+        <button type="button" class="icon-btn mobile-menu-btn" (click)="mobileNavOpen.set(true)" aria-label="Open navigation">
+          <app-icon name="menu" />
+        </button>
+      </div>
 
       <form class="search" (submit)="$event.preventDefault(); onSearchSubmit(searchInput.value)">
         <app-icon name="search" [size]="16" />
