@@ -97,7 +97,14 @@ export const routes: Routes = [
         // Post-MVP UX Milestone UX1 (brief §27/§76) - public like the other informational
         // pages; the authenticated shell also links here (topbar + sidebar), but a
         // logged-out visitor loses nothing by reaching it directly too.
+        //
+        // Same real bug as the duplicated "procedures" route above, found and fixed the
+        // same way here: this route's own comment already said the authenticated rail
+        // links here, but nothing actually wrapped it in AppShell, so clicking it from
+        // inside the app dropped a logged-in user into this public Shell entirely.
+        // `guestMatchGuard` yields to the AppShell-wrapped duplicate below once logged in.
         path: 'help',
+        canMatch: [guestMatchGuard],
         loadComponent: () => import('./features/help/help').then((m) => m.Help),
       },
       {
@@ -164,6 +171,14 @@ export const routes: Routes = [
           import('./features/recommendations/recommendation-results/recommendation-results').then(
             (m) => m.RecommendationResults,
           ),
+      },
+      {
+        // Same real page as the public Shell's "help" route above, wrapped in the
+        // authenticated shell instead - same duplicated-route pattern as "procedures"
+        // above it, for the same reason (see that route's own comment for the rationale).
+        path: 'help',
+        canMatch: [authMatchGuard],
+        loadComponent: () => import('./features/help/help').then((m) => m.Help),
       },
       {
         // Canonical Phase 12 (Security/Privacy/GDPR) self-service privacy page (brief §26/§51) -
