@@ -1,7 +1,10 @@
 :host {
   display: block;
-  max-width: 40rem;
-  margin: 0 auto;
+  // No max-width/margin:auto - same fix as the Dashboard (3661398): fills the real
+  // available width. The questions themselves still read as a normal-width column since
+  // `app-question-renderer` (question-renderer.scss) keeps its own comfortable reading
+  // max-width - only the page-level wrapper around it changes here.
+  width: 100%;
   padding: 1.5rem 1rem 3rem;
 }
 

@@ -1,7 +1,8 @@
 :host {
   display: block;
-  max-width: 840px;
-  margin: 0 auto;
+  // No max-width/margin:auto - same fix as the Dashboard (3661398) and Account, for the
+  // same reason: fills the real available width instead of a fixed-width centered column.
+  width: 100%;
   padding: 1.5rem 1rem 3rem;
 }
 

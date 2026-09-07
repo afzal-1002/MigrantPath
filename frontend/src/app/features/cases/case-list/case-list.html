@@ -16,17 +16,26 @@
       <div class="case-grid">
         @for (c of activeCases(); track c.id) {
           <a class="ui-card case-card" [routerLink]="['/cases', c.id]">
-            <div class="case-card-head">
-              <span class="case-title">{{ c.procedureTitle }}</span>
+            <div class="case-card-top">
+              <div>
+                <span class="case-title">{{ c.procedureTitle }}</span>
+                <p class="case-subtitle">Steps {{ c.stepsCompleted }}/{{ c.stepsTotal }} · Documents {{ c.documentsReady }}/{{ c.documentsTotal }}</p>
+              </div>
               <span class="ui-badge" [class.warning]="c.hasRequirementUpdates">{{ statusLabel(c.status) }}</span>
             </div>
-            <div class="progress-bar" [attr.aria-label]="'Checklist ' + progressPercent(c) + '% complete'">
-              <div class="progress-fill" [style.width.%]="progressPercent(c)"></div>
-            </div>
-            <p class="case-meta">Steps {{ c.stepsCompleted }}/{{ c.stepsTotal }} · Documents {{ c.documentsReady }}/{{ c.documentsTotal }}</p>
             @if (c.hasRequirementUpdates) {
               <p class="update-flag" role="status">Requirements have changed</p>
             }
+            <div class="progress-bar" [attr.aria-label]="'Checklist ' + progressPercent(c) + '% complete'">
+              <div class="progress-fill" [style.width.%]="progressPercent(c)"></div>
+            </div>
+            <div class="case-card-foot">
+              <span class="case-card-icon"><app-icon name="cases" [size]="20" /></span>
+              <span class="case-card-stat">
+                <span class="case-card-stat-num">{{ progressPercent(c) }}%</span>
+                <span class="case-card-caption">complete</span>
+              </span>
+            </div>
           </a>
         }
       </div>
@@ -39,9 +48,12 @@
       <div class="case-grid">
         @for (c of closedCases(); track c.id) {
           <a class="ui-card case-card closed" [routerLink]="['/cases', c.id]">
-            <div class="case-card-head">
+            <div class="case-card-top">
               <span class="case-title">{{ c.procedureTitle }}</span>
               <span class="ui-badge">{{ statusLabel(c.status) }}</span>
+            </div>
+            <div class="case-card-foot">
+              <span class="case-card-icon"><app-icon name="cases" [size]="20" /></span>
             </div>
           </a>
         }

@@ -1,7 +1,10 @@
 :host {
   display: block;
-  max-width: 980px;
-  margin: 0 auto;
+  // No max-width/margin:auto - same fix as the Dashboard (3661398): fills the real
+  // available width instead of sitting as a fixed-width column with empty space on
+  // either side on a wide screen. `.app-content`'s own padding is what keeps it off the
+  // page's actual edge.
+  width: 100%;
   padding: 0 0 3rem;
 }
 

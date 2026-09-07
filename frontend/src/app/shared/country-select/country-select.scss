@@ -1,3 +1,10 @@
+// Was missing a max-width entirely (a pre-existing inconsistency, more visible now that
+// the wizard page itself is full-width instead of a narrow 40rem column) - every other
+// question type in question-renderer.scss caps its own mat-form-field at 28rem, but that
+// rule can't reach inside this separate component's own template (Angular's per-component
+// style encapsulation). Matches that same 28rem here so a COUNTRY question doesn't stretch
+// dramatically wider than every sibling question around it.
 mat-form-field {
   width: 100%;
+  max-width: 28rem;
 }

@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { CaseService, CaseStatus, CaseSummary } from '../../../core/services/case.service';
 import { formatStatusLabel } from '../../../shared/status-label.util';
+import { Icon } from '../../../shared/icon/icon';
 
 const ACTIVE_STATUSES: CaseStatus[] = [
   'DRAFT',
@@ -21,7 +22,7 @@ const ACTIVE_STATUSES: CaseStatus[] = [
  * backend's own ordering); completed/cancelled cases listed separately below. */
 @Component({
   selector: 'app-case-list',
-  imports: [RouterLink, MatProgressSpinnerModule],
+  imports: [RouterLink, MatProgressSpinnerModule, Icon],
   templateUrl: './case-list.html',
   styleUrl: './case-list.scss',
 })
