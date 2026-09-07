@@ -166,5 +166,28 @@
         }
       </div>
     </div>
+
+    <div class="section-head"><h2>Quick access</h2></div>
+    <section class="quick-grid">
+      @for (tile of quickTiles(); track tile.title) {
+        <a class="ui-card quick-tile" [routerLink]="tile.path">
+          <div>
+            <h4>{{ tile.title }}</h4>
+            <p class="quick-subtitle">{{ tile.subtitle }}</p>
+          </div>
+          <div class="quick-tile-foot">
+            <span class="quick-tile-icon"><app-icon [name]="tile.icon" [size]="20" /></span>
+            @if (tile.stat) {
+              <span class="quick-tile-stat">
+                <span class="quick-tile-stat-num">{{ tile.stat }}</span>
+                <span class="quick-tile-caption">{{ tile.caption }}</span>
+              </span>
+            } @else if (tile.caption) {
+              <span class="quick-tile-caption">{{ tile.caption }}</span>
+            }
+          </div>
+        </a>
+      }
+    </section>
   </div>
 }

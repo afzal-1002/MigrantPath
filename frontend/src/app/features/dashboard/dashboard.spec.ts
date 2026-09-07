@@ -3,6 +3,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { environment } from '../../../environments/environment';
+import { AuthService, CurrentUser } from '../../core/services/auth.service';
 import { Dashboard as DashboardData } from '../../core/services/dashboard.service';
 import { Dashboard } from './dashboard';
 
@@ -35,6 +36,17 @@ describe('Dashboard', () => {
   function flush(data: Partial<DashboardData>): void {
     httpMock.expectOne(`${environment.apiBaseUrl}/dashboard`).flush({ ...emptyDashboard, ...data });
     fixture.detectChanges();
+  }
+
+  /** Drives `AuthService.currentUser` through its own real `login()` HTTP flow, same
+   * convention as app-shell.spec.ts's own `loginAs` - must run before `createComponent`
+   * so the Dashboard's own `authService` (injected once, at construction) already
+   * observes the signal AuthService.login() updates. */
+  function loginAs(user: CurrentUser): void {
+    const authService = TestBed.inject(AuthService);
+    const mock = TestBed.inject(HttpTestingController);
+    authService.login(user.email, 'irrelevant').subscribe();
+    mock.expectOne(`${environment.apiBaseUrl}/auth/login`).flush(user);
   }
 
   beforeEach(async () => {
@@ -250,6 +262,57 @@ describe('Dashboard', () => {
     });
 
     expect((fixture.nativeElement.textContent as string)).toContain('Office for Foreigners');
+  });
+
+  it('renders a real "Quick access" shortcut to every feature, with the active-case count and no fabricated stat on the informational tiles', () => {
+    createComponent();
+    flush({
+      activeCases: [
+        {
+          id: 'case-1',
+          procedureCode: 'PESEL',
+          procedureTitle: 'PESEL number assignment',
+          status: 'PREPARING',
+          stepsCompleted: 1,
+          stepsTotal: 2,
+          documentsReady: 1,
+          documentsTotal: 1,
+          hasRequirementUpdates: false,
+          updatedAt: '2026-08-05T00:00:00Z',
+        },
+      ],
+    });
+
+    const el = fixture.nativeElement as HTMLElement;
+    const grid = el.querySelector('.quick-grid');
+    expect(grid).toBeTruthy();
+    for (const title of ['Find my pathway', 'My Cases', 'Recommendations', 'Procedures', 'Account', 'Help']) {
+      expect(grid?.textContent, title).toContain(title);
+    }
+    // Administration is never shown to a plain, unauthenticated-in-this-test user.
+    expect(grid?.textContent).not.toContain('Administration');
+    // The one tile with real personal data (My Cases) shows it; Procedures/Account/Help
+    // have no personalized number to report and show none.
+    const tiles = Array.from(grid?.querySelectorAll('.quick-tile') ?? []);
+    const casesTile = tiles.find((t) => t.textContent?.includes('My Cases'));
+    expect(casesTile?.querySelector('.quick-tile-stat-num')?.textContent).toBe('1');
+    const proceduresTile = tiles.find((t) => t.textContent?.includes('Procedures'));
+    expect(proceduresTile?.querySelector('.quick-tile-stat-num')).toBeNull();
+  });
+
+  it('shows the Administration tile only for a caller who actually holds a content-governance role', () => {
+    loginAs({
+      id: 'user-1',
+      email: 'admin@example.com',
+      firstName: 'Admin',
+      preferredLanguage: null,
+      emailVerified: true,
+      roles: ['USER', 'ADMIN'],
+    });
+    createComponent();
+    flush({});
+
+    expect((fixture.nativeElement as HTMLElement).querySelector('.quick-grid')?.textContent).toContain('Administration');
   });
 
   it('shows an error state with a retry action when the aggregation fetch fails', () => {

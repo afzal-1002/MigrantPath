@@ -579,3 +579,85 @@
   color: var(--dash-ink-soft);
   background: var(--app-page-bg);
 }
+
+// --- Quick access (redesign pass 5, corporate-intranet-shortcut-grid reference) ---
+
+.quick-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 16px;
+}
+
+.quick-tile {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 20px;
+  min-height: 150px;
+  padding: 18px 20px;
+  background: var(--app-surface);
+  border: 1px solid var(--dash-border);
+  border-radius: 14px;
+  text-decoration: none;
+  color: inherit;
+  transition:
+    transform 0.14s ease,
+    box-shadow 0.14s ease,
+    border-color 0.14s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(16, 24, 40, 0.08);
+    border-color: var(--dash-border-strong);
+  }
+
+  h4 {
+    margin: 0 0 2px;
+    font-size: 0.92rem;
+    font-weight: 700;
+  }
+}
+
+.quick-subtitle {
+  margin: 0;
+  font-size: 0.76rem;
+  color: var(--dash-ink-soft);
+}
+
+.quick-tile-foot {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.quick-tile-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: var(--dash-primary-soft);
+  color: var(--dash-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.quick-tile-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+}
+
+.quick-tile-stat-num {
+  font-size: 1.3rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.quick-tile-caption {
+  font-size: 0.72rem;
+  color: var(--dash-ink-faint);
+  text-align: right;
+}

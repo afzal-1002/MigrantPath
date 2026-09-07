@@ -44,6 +44,27 @@ const STATUS_PILL: Record<CaseStatus, AppCardPill> = {
  * `primaryCase` are what's actually shown. */
 const TIMELINE_STAGES = ['Started', 'Ready to submit', 'Submitted', 'Decision pending', 'Decision received'];
 
+/** Phase 9's own admin-role check (brief §4/§14), duplicated here rather than shared -
+ * same small, independent check AppShell already makes for its own "Administration"
+ * rail icon; either one being wrong is still independently and authoritatively
+ * enforced server-side regardless. */
+const ADMIN_ROLES = ['CONTENT_EDITOR', 'LEGAL_REVIEWER', 'ADMIN'];
+
+/** One tile in the "Quick access" grid (redesign pass 5, corporate-intranet-style
+ * shortcut grid reference) - every entry routes to a real page this app already has;
+ * `stat`/`caption` are always derived from the same dashboard aggregation the rest of
+ * this page uses, never invented (the reference's own fabricated-looking numbers like
+ * "Target, 176.00" have no equivalent here - a tile with nothing real to report just
+ * shows its static subtitle and no stat). */
+interface QuickTile {
+  title: string;
+  subtitle: string;
+  icon: IconName;
+  path: string | string[];
+  stat?: string;
+  caption?: string;
+}
+
 /**
  * Post-MVP UX Milestone UX1 (redesign pass 4, "Eviza" dashboard reference): a greeting
  * header, three real stat cards, one process-tracker card for the primary case's real
@@ -119,6 +140,96 @@ export class Dashboard {
   protected readonly completedMilestoneCount = computed(() => this.data()?.completedMilestones.length ?? 0);
 
   protected readonly currentStageIndex = computed(() => this.primaryCase()?.stageIndex ?? null);
+
+  protected readonly isContentAdmin = computed(() =>
+    (this.authService.currentUser()?.roles ?? []).some((role) => ADMIN_ROLES.includes(role)),
+  );
+
+  /** Same "go to the latest completed assessment's results, else start one" rule the
+   * AppShell rail's own Recommendations link uses - there is no standalone "my
+   * recommendations" route independent of an assessment. */
+  private readonly recommendationsLink = computed<string[]>(() => {
+    const status = this.data()?.assessmentStatus;
+    if (status?.status === 'COMPLETED') {
+      return ['/assessment', status.assessmentId, 'results'];
+    }
+    return ['/assessment/start'];
+  });
+
+  private readonly pathwayCaption = computed(() => {
+    const status = this.data()?.assessmentStatus;
+    if (!status) {
+      return 'Not started';
+    }
+    if (status.status === 'COMPLETED') {
+      return 'Completed';
+    }
+    return `${status.progressPercent}% complete`;
+  });
+
+  private readonly recommendationsCount = computed(() => this.data()?.latestRecommendations.length ?? 0);
+
+  /** The "Quick access" tile grid (redesign pass 5) - real one-click shortcuts to every
+   * feature this app actually has, styled after a corporate-intranet shortcut grid
+   * (visual pattern only; no unrelated tool names or branding copied - see this file's
+   * own {@link QuickTile} doc comment). Recomputed whenever the underlying dashboard
+   * data or role changes, same as every other stat on this page. */
+  protected readonly quickTiles = computed<QuickTile[]>(() => {
+    const activeCases = this.activeCaseCount();
+    const recommendations = this.recommendationsCount();
+    const tiles: QuickTile[] = [
+      {
+        title: 'Find my pathway',
+        subtitle: 'Guided eligibility assessment',
+        icon: 'pathway',
+        path: '/assessment/start',
+        caption: this.pathwayCaption(),
+      },
+      {
+        title: 'My Cases',
+        subtitle: 'Track your applications',
+        icon: 'cases',
+        path: '/cases',
+        stat: String(activeCases),
+        caption: activeCases === 1 ? 'active case' : 'active cases',
+      },
+      {
+        title: 'Recommendations',
+        subtitle: 'Pathways matched to you',
+        icon: 'recommendations',
+        path: this.recommendationsLink(),
+        stat: recommendations > 0 ? String(recommendations) : undefined,
+        caption: recommendations > 0 ? (recommendations === 1 ? 'match' : 'matches') : 'None yet',
+      },
+      {
+        title: 'Procedures',
+        subtitle: 'Browse every pathway',
+        icon: 'procedures',
+        path: '/procedures',
+      },
+      {
+        title: 'Account',
+        subtitle: 'Manage your profile',
+        icon: 'account',
+        path: '/account',
+      },
+      {
+        title: 'Help',
+        subtitle: 'Guides & support',
+        icon: 'help',
+        path: '/help',
+      },
+    ];
+    if (this.isContentAdmin()) {
+      tiles.push({
+        title: 'Administration',
+        subtitle: 'Content governance',
+        icon: 'admin',
+        path: '/admin',
+      });
+    }
+    return tiles;
+  });
 
   constructor() {
     this.dashboardApi.get().subscribe({
