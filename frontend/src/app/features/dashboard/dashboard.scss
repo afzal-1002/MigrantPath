@@ -42,11 +42,12 @@
   display: flex;
   flex-direction: column;
   gap: 28px;
-  max-width: 1180px;
-  // Was missing before - on any viewport wider than 1180px + the rail, the whole
-  // dashboard column hugged the left edge of the content area instead of sitting in the
-  // middle of the page like every other page's own centered content column.
-  margin: 0 auto;
+  // No max-width/margin:auto here on purpose (reversed after direct feedback on a wide
+  // screen) - on a large monitor a fixed ~1180px centered column left big empty gutters
+  // on both sides, looking like a narrow island floating in the middle of the page. This
+  // now fills the real available width instead, bounded only by `.app-content`'s own
+  // padding (var(--app-space-lg) 24px) - present, but not the page's own edge.
+  width: 100%;
 }
 
 .greeting h1 {
