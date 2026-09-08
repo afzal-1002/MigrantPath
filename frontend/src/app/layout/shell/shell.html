@@ -1,19 +1,4 @@
 <header class="gov-header">
-  <div class="gov-topbar">
-    <div class="gov-topbar-inner">
-      <span class="gov-topbar-spacer"></span>
-      @if (authService.isAuthenticated()) {
-        <a routerLink="/account" class="gov-toplink">
-          <app-icon name="account" [size]="14" /> My account
-        </a>
-        <button type="button" class="gov-pill" (click)="logout()">Log out</button>
-      } @else {
-        <a routerLink="/login" class="gov-toplink">Sign in</a>
-        <a routerLink="/register" class="gov-pill">Register</a>
-      }
-    </div>
-  </div>
-
   <div class="gov-mainbar">
     <div class="gov-mainbar-inner">
       <a routerLink="/" class="gov-brand">
@@ -32,6 +17,18 @@
           }
         }
       </nav>
+
+      <div class="gov-mainbar-actions">
+        @if (authService.isAuthenticated()) {
+          <a routerLink="/account" class="gov-toplink">
+            <app-icon name="account" [size]="14" /> My account
+          </a>
+          <button type="button" class="gov-pill" (click)="logout()">Log out</button>
+        } @else {
+          <a routerLink="/login" class="gov-toplink">Sign in</a>
+          <a routerLink="/register" class="gov-pill">Register</a>
+        }
+      </div>
     </div>
   </div>
 </header>

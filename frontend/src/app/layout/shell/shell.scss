@@ -10,24 +10,6 @@
   color: #fff;
 }
 
-.gov-topbar {
-  background: rgba(0, 0, 0, 0.15);
-}
-
-.gov-topbar-inner {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 6px 16px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  font-size: 0.82rem;
-}
-
-.gov-topbar-spacer {
-  flex: 1 1 auto;
-}
-
 .gov-toplink {
   color: #fff;
   text-decoration: underline;
@@ -52,11 +34,19 @@
 .gov-mainbar-inner {
   max-width: 1100px;
   margin: 0 auto;
-  padding: 14px 16px 0;
+  padding: 14px 16px;
   display: flex;
   align-items: center;
   gap: 32px;
   flex-wrap: wrap;
+}
+
+.gov-mainbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-left: auto;
+  font-size: 0.85rem;
 }
 
 .gov-brand {
@@ -65,7 +55,6 @@
   gap: 10px;
   color: #fff;
   text-decoration: none;
-  padding-bottom: 14px;
 }
 
 .gov-brand-mark {
@@ -94,7 +83,7 @@
     color: #fff;
     text-decoration: underline;
     font-size: 0.92rem;
-    padding-bottom: 14px;
+    padding-bottom: 6px;
     border-bottom: 3px solid transparent;
 
     &.active {

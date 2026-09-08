@@ -4,27 +4,80 @@
   background: var(--app-page-bg);
 }
 
-// --- desktop sidebar: full-width rail, icon + text label on every item ---
+// --- desktop sidebar: collapsed icon strip at rest, expands to full labels on hover ---
 //
-// Post-MVP UX pass, reversed back from a brief icon-only-with-hover-tooltip
-// experiment per direct follow-up feedback ("guessing what an icon means" /
-// "ultra-wide monitors" - icon-only cost more in scannability than it saved in
-// width). Back to `var(--app-nav-width)` (232px, this app's own established token,
-// unused but left in place during the icon-only pass for exactly this reason) with
-// every item's real label always visible - no tooltip mechanism needed any more.
+// Third pass on this rail. Labeled-always (previous commit) was itself a reversal of a
+// hover-tooltip icon-only version; this keeps every label reachable exactly like that
+// labeled version, but only while the pointer (or keyboard focus) is actually on the
+// rail - at rest it's a narrow icon strip. `.rail` itself stays a fixed 72px flex item
+// (so `.shell-main` never reflows/jumps when the rail expands - "keep it on the left
+// side"); `.rail-inner` is an absolutely-positioned panel anchored to that same
+// top-left corner that grows to `var(--app-nav-width)` on hover/focus, overlaying the
+// page content rather than pushing it.
+$rail-collapsed-width: 72px;
+
 .rail {
-  width: var(--app-nav-width);
-  flex: 0 0 var(--app-nav-width);
+  position: relative;
+  width: $rail-collapsed-width;
+  flex: 0 0 $rail-collapsed-width;
+
+  @media (max-width: 900px) {
+    display: none;
+  }
+}
+
+.rail-inner {
+  position: absolute;
+  inset: 0;
+  width: $rail-collapsed-width;
   background: var(--app-nav-bg);
   color: var(--app-nav-fg);
   border-right: 1px solid var(--app-nav-border);
   display: flex;
   flex-direction: column;
   padding: var(--app-space-sm) var(--app-space-sm);
+  overflow: hidden;
+  z-index: 15;
+  transition:
+    width 0.16s ease,
+    box-shadow 0.16s ease;
+}
 
-  @media (max-width: 900px) {
-    display: none;
-  }
+.rail:hover .rail-inner,
+.rail:focus-within .rail-inner {
+  width: var(--app-nav-width);
+  box-shadow: 6px 0 24px rgba(15, 23, 42, 0.35);
+}
+
+// A real bug caught in review: clipping labels purely via `.rail-inner`'s own
+// overflow:hidden left a few stray leading characters of each word visible at rest
+// (whatever fit in the leftover space after the icon) instead of a clean icon-only
+// strip - e.g. "Dashboard" showed as "Dash". Collapsing each label's own box to zero
+// width (not just relying on the ancestor's clip) hides it completely until expanded.
+.rail-nav a span,
+.rail-bottom a span,
+.rail-bottom button span,
+.brand-text {
+  display: inline-block;
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition:
+    max-width 0.16s ease,
+    opacity 0.1s ease;
+}
+
+.rail:hover .rail-nav a span,
+.rail:hover .rail-bottom a span,
+.rail:hover .rail-bottom button span,
+.rail:hover .brand-text,
+.rail:focus-within .rail-nav a span,
+.rail:focus-within .rail-bottom a span,
+.rail:focus-within .rail-bottom button span,
+.rail:focus-within .brand-text {
+  max-width: 180px;
+  opacity: 1;
+  transition-delay: 0.03s;
 }
 
 .rail-brand {
@@ -35,6 +88,7 @@
   margin-bottom: var(--app-space-xs);
   text-decoration: none;
   color: inherit;
+  flex: 0 0 auto;
 }
 
 .brand-mark {
@@ -66,7 +120,9 @@
   flex-direction: column;
   gap: 2px;
   flex: 1 1 auto;
-  overflow-y: auto;
+  // No overflow-y here on purpose (same reasoning as the earlier hover-tooltip pass) -
+  // 8 items comfortably fit any real viewport height, and `.rail-inner`'s own
+  // `overflow: hidden` is what clips each row's label while collapsed anyway.
 
   a {
     display: flex;
@@ -79,6 +135,10 @@
     text-decoration: none;
     font-size: 0.9rem;
     font-weight: 500;
+
+    span {
+      white-space: nowrap;
+    }
 
     &:hover {
       background: rgba(255, 255, 255, 0.06);
@@ -101,6 +161,7 @@
   gap: 2px;
   padding-top: var(--app-space-sm);
   border-top: 1px solid var(--app-nav-border);
+  flex: 0 0 auto;
 
   a,
   button {
@@ -114,6 +175,10 @@
     border: none;
     cursor: pointer;
     font: inherit;
+
+    span {
+      white-space: nowrap;
+    }
     font-size: 0.9rem;
     font-weight: 500;
     text-align: left;

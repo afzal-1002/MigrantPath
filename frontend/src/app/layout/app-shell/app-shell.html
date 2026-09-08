@@ -1,38 +1,40 @@
 <div class="shell">
   <nav class="rail" aria-label="Primary">
-    <a routerLink="/dashboard" class="rail-brand">
-      <span class="brand-mark" aria-hidden="true">FG</span>
-      <span class="brand-text">Foreigner Guide</span>
-    </a>
+    <div class="rail-inner">
+      <a routerLink="/dashboard" class="rail-brand">
+        <span class="brand-mark" aria-hidden="true">FG</span>
+        <span class="brand-text">Foreigner Guide</span>
+      </a>
 
-    <ul class="rail-nav">
-      @for (item of navItems; track item.path) {
+      <ul class="rail-nav">
+        @for (item of navItems; track item.path) {
+          <li>
+            <a [routerLink]="item.path" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: false }">
+              <app-icon [name]="item.icon" [size]="19" />
+              <span>{{ item.label }}</span>
+            </a>
+          </li>
+        }
         <li>
-          <a [routerLink]="item.path" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: false }">
-            <app-icon [name]="item.icon" [size]="19" />
-            <span>{{ item.label }}</span>
+          <a [routerLink]="recommendationsLink()" routerLinkActive="active">
+            <app-icon name="recommendations" [size]="19" />
+            <span>Recommendations</span>
           </a>
         </li>
-      }
-      <li>
-        <a [routerLink]="recommendationsLink()" routerLinkActive="active">
-          <app-icon name="recommendations" [size]="19" />
-          <span>Recommendations</span>
-        </a>
-      </li>
-    </ul>
+      </ul>
 
-    <div class="rail-bottom">
-      @if (isContentAdmin()) {
-        <a routerLink="/admin">
-          <app-icon name="admin" [size]="19" />
-          <span>Administration</span>
-        </a>
-      }
-      <button type="button" (click)="logout()">
-        <app-icon name="logout" [size]="19" />
-        <span>Log out</span>
-      </button>
+      <div class="rail-bottom">
+        @if (isContentAdmin()) {
+          <a routerLink="/admin">
+            <app-icon name="admin" [size]="19" />
+            <span>Administration</span>
+          </a>
+        }
+        <button type="button" (click)="logout()">
+          <app-icon name="logout" [size]="19" />
+          <span>Log out</span>
+        </button>
+      </div>
     </div>
   </nav>
 
