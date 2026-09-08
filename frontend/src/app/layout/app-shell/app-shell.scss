@@ -6,47 +6,41 @@
 
 // --- desktop sidebar: collapsed icon strip at rest, expands to full labels on hover ---
 //
-// Third pass on this rail. Labeled-always (previous commit) was itself a reversal of a
-// hover-tooltip icon-only version; this keeps every label reachable exactly like that
-// labeled version, but only while the pointer (or keyboard focus) is actually on the
-// rail - at rest it's a narrow icon strip. `.rail` itself stays a fixed 72px flex item
-// (so `.shell-main` never reflows/jumps when the rail expands - "keep it on the left
-// side"); `.rail-inner` is an absolutely-positioned panel anchored to that same
-// top-left corner that grows to `var(--app-nav-width)` on hover/focus, overlaying the
-// page content rather than pushing it.
+// Fourth pass on this rail. The previous version made `.rail-inner` an absolutely-
+// positioned overlay so it could expand without touching layout - but that meant the
+// page content sat still underneath it instead of making room, which direct follow-up
+// feedback asked for explicitly ("the page size should be changed as well"). `.rail`
+// itself is now the thing that grows: it's a real flex item (`flex: 0 0 <width>`), so
+// widening it on hover/focus genuinely reflows `.shell-main` beside it, the same way
+// the permanently-wide labeled sidebar always did - just animated, and starting from a
+// collapsed icon-only width instead of a fixed one.
 $rail-collapsed-width: 72px;
 
 .rail {
-  position: relative;
   width: $rail-collapsed-width;
   flex: 0 0 $rail-collapsed-width;
+  background: var(--app-nav-bg);
+  color: var(--app-nav-fg);
+  border-right: 1px solid var(--app-nav-border);
+  overflow: hidden;
+  transition: flex-basis 0.16s ease, width 0.16s ease;
 
   @media (max-width: 900px) {
     display: none;
   }
+
+  &:hover,
+  &:focus-within {
+    width: var(--app-nav-width);
+    flex: 0 0 var(--app-nav-width);
+  }
 }
 
 .rail-inner {
-  position: absolute;
-  inset: 0;
-  width: $rail-collapsed-width;
-  background: var(--app-nav-bg);
-  color: var(--app-nav-fg);
-  border-right: 1px solid var(--app-nav-border);
   display: flex;
   flex-direction: column;
+  height: 100%;
   padding: var(--app-space-sm) var(--app-space-sm);
-  overflow: hidden;
-  z-index: 15;
-  transition:
-    width 0.16s ease,
-    box-shadow 0.16s ease;
-}
-
-.rail:hover .rail-inner,
-.rail:focus-within .rail-inner {
-  width: var(--app-nav-width);
-  box-shadow: 6px 0 24px rgba(15, 23, 42, 0.35);
 }
 
 // A real bug caught in review: clipping labels purely via `.rail-inner`'s own
